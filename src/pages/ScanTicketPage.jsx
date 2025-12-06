@@ -61,7 +61,7 @@ async function confirmAdoptionFromQrPayload(qrText) {
   const { data: activeAdoptions, error: activeErr } = await supabase
     .from("adoptions")
     .select("id")
-    .eq("seeker_id", ticket.seeker_id)
+    .eq("receiver_id", ticket.receiver_id)
     .eq("status", "active");
 
   if (activeErr) {
@@ -92,7 +92,7 @@ async function confirmAdoptionFromQrPayload(qrText) {
       pet_id: deposit.pet_id,
       deposit_id: deposit.id,
       owner_id: deposit.owner_id,
-      seeker_id: deposit.seeker_id,
+      receiver_id: deposit.receiver_id,
       status: "active",
     })
     .select("*")
@@ -103,7 +103,34 @@ async function confirmAdoptionFromQrPayload(qrText) {
     throw new Error("Không tạo được bản ghi nhận mèo.");
   }
 
-  // 7. cập nhật ticket + deposit
+  // 7. tạo nhiệm vụ 1 / 7 / 30 ngày
+  const adoptedAt = adoption.adopted_at
+    ? new Date(adoption.adopted_at)
+    : new Date();
+
+  const dayOffsets = [1, 7, 30];
+
+  const checkins = dayOffsets.map((d) => {
+    const due = new Date(adoptedAt);
+    due.setDate(due.getDate() + d);
+    return {
+      adoption_id: adoption.id,
+      day_offset: d,
+      due_at: due.toISOString(),
+      status: "pending",
+    };
+  });
+
+  const { error: checkinErr } = await supabase
+    .from("adoption_checkins")
+    .insert(checkins);
+
+  if (checkinErr) {
+    console.error(checkinErr);
+    throw new Error("Không tạo được nhiệm vụ theo dõi sau nhận mèo.");
+  }
+
+  // 8. cập nhật ticket + deposit
   const { error: updateTicketErr } = await supabase
     .from("adoption_tickets")
     .update({ status: "used" })

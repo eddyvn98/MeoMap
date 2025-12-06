@@ -52,6 +52,8 @@ export default function Header() {
         {user ? (
           <>
             <span style={{ marginRight: 8 }}>({user.email})</span>
+            <Link to="/adoptions" style={{ marginRight: 8 }}>Mèo đã giao / Đánh giá</Link>
+            <Link to="/deposits" style={{ marginLeft: 8 }}>Cọc đang chờ</Link>
             <button onClick={handleLogout} style={{ marginLeft: 8 }}>Đăng xuất</button>
           </>
         ) : (

@@ -188,6 +188,7 @@ export default function ScanTicketPage() {
         border: "1px solid #ccc",
         borderRadius: 8,
         overflow: "hidden",
+        background: "#000",
         minHeight: 260,
         }}
     >

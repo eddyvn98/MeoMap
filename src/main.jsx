@@ -1,11 +1,11 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import "leaflet/dist/leaflet.css";
-import Router from "./router";
-import "./index.css";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import 'leaflet/dist/leaflet.css'
+import Router from './router'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Router />
   </React.StrictMode>
-);
+)

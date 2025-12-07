@@ -1,139 +1,57 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { useNavigate, Link } from "react-router-dom";
 
 export default function RegisterPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
-  const navigate = useNavigate();
+  const [error, setError] = useState("");
+  
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setErrorMsg("");
-    setSuccessMsg("");
+    setError("");
     setLoading(true);
-
     try {
-      const { data: signUpData, error: signUpError } =
-        await supabase.auth.signUp({
-          email,
-          password,
-        });
-
-      if (signUpError) {
-        setErrorMsg(signUpError.message || "Đăng ký thất bại.");
-        setLoading(false);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      if (error) {
+        setError(error.message || "Register failed");
         return;
       }
-
-      const userId = signUpData.user?.id;
-      if (!userId) {
-        setErrorMsg("Không lấy được user id.");
-        setLoading(false);
-        return;
-      }
-
-      const { error: profileError } = await supabase.from("profiles").insert([
-        {
-          id: userId,
-          role: "user",
-        },
-      ]);
-
-      if (profileError) {
-        console.error("Tạo profile lỗi:", profileError);
-        setErrorMsg("Đăng ký thành công nhưng tạo profile lỗi.");
-        setLoading(false);
-        return;
-      }
-
-      setSuccessMsg(
-        "Đăng ký thành công! Kiểm tra email để confirm và đã tạo profile."
-      );
-      setTimeout(() => navigate("/login"), 1200);
+      // registration ok — you may require email confirmation depending on project
+      alert('Đã tạo tài khoản. Vui lòng kiểm tra email để xác nhận (nếu có).');
+      navigate('/login');
     } catch (err) {
-      console.error(err);
-      setErrorMsg("Có lỗi xảy ra.");
+      setError(err.message || String(err));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white shadow-md rounded-xl p-8">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">
-          Tạo tài khoản
-        </h2>
-
-        <form onSubmit={handleRegister} className="space-y-5">
-          {/* Email */}
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              type="email"
-              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 outline-none"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Nhập email..."
-              required
-            />
-          </div>
-
-          {/* Password */}
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              Mật khẩu
-            </label>
-            <input
-              type="password"
-              minLength={6}
-              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 outline-none"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Tối thiểu 6 ký tự..."
-              required
-            />
-          </div>
-
-          {/* Error */}
-          {errorMsg && (
-            <div className="text-red-600 text-sm font-medium">{errorMsg}</div>
-          )}
-
-          {/* Success */}
-          {successMsg && (
-            <div className="text-green-600 text-sm font-medium">
-              {successMsg}
-            </div>
-          )}
-
-          {/* Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 text-center bg-orange-500 text-white font-semibold rounded-lg shadow hover:bg-orange-600 transition disabled:opacity-60"
-          >
-            {loading ? "Đang xử lý..." : "Tạo tài khoản"}
-          </button>
-        </form>
-
-        {/* Footer */}
-        <p className="text-center mt-6 text-sm text-gray-700">
-          Đã có tài khoản?{" "}
-          <Link
-            to="/login"
-            className="text-orange-600 font-semibold hover:underline"
-          >
-            Đăng nhập
-          </Link>
-        </p>
-      </div>
+    <div style={{ padding: 20 }}>
+      <h2>Đăng ký</h2>
+      <form onSubmit={handleRegister} style={{ maxWidth: 420 }}>
+        <div style={{ marginBottom: 8 }}>
+          <label>Email</label>
+          <br />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: 8 }} />
+        </div>
+        <div style={{ marginBottom: 8 }}>
+          <label>Mật khẩu</label>
+          <br />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: 8 }} />
+        </div>
+        {error && <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>}
+        <button type="submit" disabled={loading} style={{ padding: 10, background: '#ff7f32', color: '#fff', border: 'none', borderRadius: 6 }}>
+          {loading ? 'Đang tạo...' : 'Đăng ký'}
+        </button>
+      </form>
     </div>
   );
 }

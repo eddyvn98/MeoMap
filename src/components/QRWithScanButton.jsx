@@ -1,25 +1,23 @@
-import Header from "./components/Header";
-import BottomNav from "./components/BottomNav";
-import { Outlet, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-export default function MainLayout() {
+export default function QRWithScanButton() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col relative">
-      <Header />
+    <div className="relative w-full h-full">
+      {/* Hình QR */}
+      <img
+        src="/path/to/qr-code.png"
+        alt="QR Code"
+        className="w-64 h-64 mx-auto mt-10"
+      />
 
-      <main className="flex-1">
-        <Outlet />
-      </main>
-
-      <BottomNav />
-
-      {/* Floating scan button */}
+      {/* Nút tròn floating */}
       <button
         onClick={() => navigate("/scan-ticket")}
-        className="fixed bottom-24 right-6 w-14 h-14 bg-orange-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-orange-600 transition z-[99999999]"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-orange-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-orange-600 transition z-50"
       >
+        {/* Icon ví dụ: camera */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-7 w-7"

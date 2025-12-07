@@ -1,108 +1,67 @@
-// src/components/PetList.jsx
-
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { supabase } from "../supabaseClient";
-
-export default function PetList() {
-  const [pets, setPets] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState("");
-
-  useEffect(() => {
-    const loadPets = async () => {
-      setErrorMsg("");
-      setLoading(true);
-
-      const { data, error } = await supabase
-        .from("pets")
-        .select(
-          "id, name, status, district, lat, lng, description, image_url, created_at"
-        )
-        .order("created_at", { ascending: false })
-        .limit(20);
-
-      if (error) {
-        console.error("Load pets error:", error);
-        setErrorMsg("Không tải được danh sách mèo.");
-        setPets([]);
-      } else {
-        setPets(data || []);
-      }
-
-      setLoading(false);
-    };
-
-    loadPets();
-  }, []);
-
-  if (loading) {
-    return <div style={{ padding: 16 }}>Đang tải danh sách mèo...</div>;
-  }
-
-  if (errorMsg) {
-    return <div style={{ padding: 16, color: "red" }}>{errorMsg}</div>;
-  }
-
-  if (!pets.length) {
-    return <div style={{ padding: 16 }}>Chưa có báo mèo nào.</div>;
+export default function PetList({
+  pets,
+  selectedPetId,
+  setSelectedPetId,
+  onFocusPet,
+}) {
+  if (!pets || pets.length === 0) {
+    return (
+      <div style={{ padding: 12, fontSize: 12, color: "#6b7280" }}>
+        Không có mèo nào trong khu vực với bộ lọc hiện tại.
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: 16 }}>
-      <h2>Danh sách mèo mới nhất</h2>
+    <div style={{ height: "100%", overflowY: "auto" }}>
+      <div
+        style={{
+          padding: "10px 12px",
+          fontSize: 12,
+          color: "#6b7280",
+          borderBottom: "1px solid #e5e7eb",
+        }}
+      >
+        Có {pets.length} bé trong khu vực này
+      </div>
 
-      <ul style={{ listStyle: "none", padding: 0, marginTop: 12 }}>
-        {pets.map((pet) => (
-          <li
-            key={pet.id}
+      {pets.map((pet) => {
+        const petId = pet.id || pet.pet_id;
+        const isSelected = petId === selectedPetId;
+
+        const categoryLabel =
+          pet.category === "lost"
+            ? "Mèo thất lạc"
+            : pet.category === "adopt"
+            ? "Cho nhận nuôi"
+            : pet.category === "rescue"
+            ? "Cứu hộ"
+            : "Khác";
+
+        return (
+          <div
+            key={petId}
             style={{
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              padding: 12,
-              marginBottom: 8,
-              display: "flex",
-              gap: 12,
+              padding: "10px 12px",
+              borderBottom: "1px solid #f1f5f9",
+              cursor: "pointer",
+              background: isSelected ? "#e0f2fe" : "transparent",
+            }}
+            onClick={() => {
+              setSelectedPetId?.(petId);
+              onFocusPet && onFocusPet(pet);
             }}
           >
-            {pet.image_url && (
-              <img
-                src={pet.image_url}
-                alt={pet.name}
-                style={{
-                  width: 80,
-                  height: 80,
-                  objectFit: "cover",
-                  borderRadius: 8,
-                }}
-              />
-            )}
-
-            <div style={{ flex: 1 }}>
-              <h3 style={{ margin: 0 }}>
-                <Link to={`/pet/${pet.id}`}>{pet.name}</Link>
-              </h3>
-              <p style={{ margin: "4px 0" }}>
-                <strong>Trạng thái:</strong> {pet.status}
-              </p>
-              {pet.district && (
-                <p style={{ margin: "4px 0" }}>
-                  <strong>Khu vực:</strong> {pet.district}
-                </p>
-              )}
-              {pet.description && (
-                <p style={{ margin: "4px 0", fontSize: 12, color: "#555" }}>
-                  {pet.description}
-                </p>
-              )}
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
+              {pet.name || "Mèo chưa đặt tên"}
             </div>
-
-            <div style={{ alignSelf: "center" }}>
-              <Link to={`/pet/${pet.id}`}>Xem chi tiết</Link>
+            <div style={{ fontSize: 12, color: "#475569" }}>{categoryLabel}</div>
+            <div style={{ fontSize: 11, color: "#6b7280" }}>
+              Trạng thái: {pet.status || "-"}
             </div>
-          </li>
-        ))}
-      </ul>
+          </div>
+        );
+      })}
     </div>
   );
 }

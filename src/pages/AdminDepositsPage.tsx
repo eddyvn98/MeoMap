@@ -180,6 +180,9 @@ export default function AdminDepositsPage() {
     if (newStatus === "confirmed") {
       const token = Math.random().toString(36).substring(2, 10).toUpperCase();
       payload.delivery_token = token;
+      payload.payment_status = "success";
+      payload.payment_provider = "manual";
+      payload.paid_at = new Date().toISOString();
     }
 
     const { error } = await supabase

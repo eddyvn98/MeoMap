@@ -14,6 +14,62 @@ function getShortNumericCode(input) {
   return num.toString().padStart(6, "0"); // luôn 6 số
 }
 
+// Hàm tính số tiền cọc dựa trên uy tín
+function calculateDepositAmount(userInput, rep) {
+  const bad = rep?.bad_trades ?? 0;
+
+  // CASE C: Blacklist - Bị hạ uy tín >= 3 lần
+  if (bad >= 3) {
+    return {
+      blocked: true,
+      amount: null,
+      reason: "Tài khoản đã bị hạ uy tín 3 lần. Không thể đặt cọc."
+    };
+  }
+
+  // CASE B: 1-2 lần xấu → tăng 50%
+  if (bad >= 1) {
+    let boosted = userInput * 1.5;
+    boosted = Math.ceil(boosted / 10000) * 10000; // làm tròn 10k
+    return {
+      blocked: false,
+      amount: boosted,
+      reason: `Bạn đã bị đánh giá không tốt ${bad} lần, số tiền cọc sẽ tăng 50% và làm tròn.`
+    };
+  }
+
+  // CASE A: bình thường → giữ nguyên
+  return {
+    blocked: false,
+    amount: userInput,
+    reason: null
+  };
+}
+
+// Hàm chia tiền ví + chuyển khoản
+function splitWalletAndCash(requiredAmount, walletCredit) {
+  if (walletCredit <= 0) {
+    return {
+      walletUsed: 0,
+      cashAmount: requiredAmount,
+    };
+  }
+
+  if (walletCredit >= requiredAmount) {
+    // đủ ví, không cần chuyển khoản
+    return {
+      walletUsed: requiredAmount,
+      cashAmount: 0,
+    };
+  }
+
+  // không đủ, dùng hết ví, phần còn lại chuyển khoản
+  return {
+    walletUsed: walletCredit,
+    cashAmount: requiredAmount - walletCredit,
+  };
+}
+
 export default function PetDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -29,6 +85,13 @@ export default function PetDetailPage() {
   
   // state cho uy tín người nhận
   const [receiverReputation, setReceiverReputation] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUserReputation, setCurrentUserReputation] = useState(null);
+  const [depositCalculation, setDepositCalculation] = useState(null);
+  
+  // state cho ví
+  const [walletCredit, setWalletCredit] = useState(0);
+  const [splitPreview, setSplitPreview] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -62,7 +125,7 @@ export default function PetDetailPage() {
           setMaxDeposit(null);
         }
 
-        // gợi ý số tiền cọc ban đầu
+        // gợi ý số tiền cọc ban đầu (không còn bắt buộc tối thiểu)
         const base = data.deposit_amount || 50000;
         const suggested =
           depRows && depRows.length > 0
@@ -72,9 +135,30 @@ export default function PetDetailPage() {
 
         setDepositAmount(suggested);
 
-        // Load deposit hiện tại của user (nếu đã đặt cọc)
+        // Load current user và uy tín của user
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          setCurrentUser(user);
+
+          // Load uy tín của user hiện tại
+          const { data: userRep } = await supabase
+            .from("user_reputation")
+            .select("*")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          setCurrentUserReputation(userRep || null);
+          
+          // Load wallet credit
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("wallet_credit")
+            .eq("id", user.id)
+            .single();
+          
+          setWalletCredit(profile?.wallet_credit || 0);
+
+          // Load deposit hiện tại của user (nếu đã đặt cọc)
           const { data: existingDeposit } = await supabase
             .from("deposits")
             .select("*")
@@ -105,6 +189,31 @@ export default function PetDetailPage() {
     load();
   }, [id]);
 
+  // Tính toán số tiền cọc dựa trên uy tín khi depositAmount thay đổi
+  useEffect(() => {
+    if (depositAmount && currentUserReputation !== null) {
+      const userInput = Number(depositAmount);
+      if (userInput > 0) {
+        const result = calculateDepositAmount(userInput, currentUserReputation);
+        setDepositCalculation(result);
+        
+        // Tính split ví + tiền mặt nếu không bị block
+        if (!result.blocked && result.amount) {
+          const split = splitWalletAndCash(result.amount, walletCredit);
+          setSplitPreview(split);
+        } else {
+          setSplitPreview(null);
+        }
+      } else {
+        setDepositCalculation(null);
+        setSplitPreview(null);
+      }
+    } else {
+      setDepositCalculation(null);
+      setSplitPreview(null);
+    }
+  }, [depositAmount, currentUserReputation, walletCredit]);
+
   // Hàm xử lý đặt cọc
   const handleDepositClick = async () => {
     if (!pet) return;
@@ -122,19 +231,69 @@ export default function PetDetailPage() {
         throw new Error("Thiếu thông tin người đăng (owner_id) trong pet.");
       }
 
-      // số tiền cọc: lấy từ input (nếu có) hoặc fallback
-      const base = pet.deposit_amount || 50000;
-      const amount = Number(depositAmount) || base;
-
-      if (!amount || amount <= 0) {
+      // Kiểm tra user input
+      const userInput = Number(depositAmount);
+      if (!userInput || userInput <= 0) {
         throw new Error('Số tiền cọc không hợp lệ.');
       }
 
+      // Tính toán tiền cọc dựa trên uy tín
+      const calculation = calculateDepositAmount(userInput, currentUserReputation);
+
+      // Kiểm tra blacklist
+      if (calculation.blocked) {
+        throw new Error(calculation.reason);
+      }
+
+      const finalAmount = calculation.amount;
+      
+      // Tính split ví + tiền mặt
+      const split = splitWalletAndCash(finalAmount, walletCredit);
+      const walletUsed = split.walletUsed;
+      const cashAmount = split.cashAmount;
+      
+      // Xác định status ban đầu
+      let initialStatus = "pending";
+      let paymentStatus = "pending";
+      let paymentProvider = "manual";
+      
+      if (cashAmount === 0) {
+        // Dùng toàn bộ ví -> confirmed luôn
+        initialStatus = "confirmed";
+        paymentStatus = "success";
+        paymentProvider = "wallet";
+      }
+
+      // Tạo deposit với wallet_used và cash_amount
       const { deposit } = await createDepositAndTicket({
         petId,
         ownerId,
-        amount,
+        amount: finalAmount,
+        walletUsed,
+        cashAmount,
+        initialStatus,
+        paymentStatus,
+        paymentProvider,
       });
+      
+      // Nếu có dùng ví -> trừ ví
+      if (walletUsed > 0) {
+        const { error: walletErr } = await supabase.rpc("decrease_wallet_credit", {
+          p_user_id: currentUser.id,
+          p_amount: walletUsed,
+          p_deposit_id: deposit.id,
+          p_type: "use_for_deposit",
+          p_note: "Dùng ví để đặt cọc nhận mèo.",
+        });
+
+        if (walletErr) {
+          console.error("Lỗi decrease_wallet_credit", walletErr);
+          throw new Error("Có lỗi khi trừ tiền trong ví. Vui lòng liên hệ admin.");
+        }
+        
+        // Cập nhật wallet credit local
+        setWalletCredit(walletCredit - walletUsed);
+      }
 
       // Load lại deposit từ DB để update state
       const { data: freshDeposit } = await supabase
@@ -219,18 +378,16 @@ export default function PetDetailPage() {
                 Cọc cao nhất hiện tại: {" "}
                 <strong>{maxDeposit.toLocaleString()} đ</strong>
               </div>
-              <div>
-                Cọc tối thiểu tiếp theo: {" "}
-                <strong>{(maxDeposit + 10000).toLocaleString()} đ</strong>
+              <div style={{ color: "#6b7280", fontSize: 12, marginTop: 4 }}>
+                (Gợi ý: {(maxDeposit + 10000).toLocaleString()} đ)
               </div>
             </>
           ) : (
             <div>
-              Chưa có ai cọc. Cọc tối thiểu gợi ý: {" "}
-              <strong>
-                {(pet.deposit_amount || 50000).toLocaleString()} {" "}
-                đ
-              </strong>
+              Chưa có ai cọc. {" "}
+              <span style={{ color: "#6b7280", fontSize: 12 }}>
+                (Gợi ý: {(pet.deposit_amount || 50000).toLocaleString()} đ)
+              </span>
             </div>
           )}
         </div>
@@ -238,23 +395,113 @@ export default function PetDetailPage() {
         {/* ô nhập số tiền cọc */}
         <div style={{ marginBottom: 8 }}>
           <label>
-            Số tiền bạn muốn cọc (bước 10.000đ): {" "}
+            Số tiền bạn muốn cọc: {" "}
             <input
               type="number"
               step={10000}
-              min={
-                maxDeposit != null
-                  ? maxDeposit + 10000
-                  : pet.deposit_amount || 50000
-              }
+              min={10000}
               value={depositAmount}
               onChange={(e) => setDepositAmount(Number(e.target.value))}
-              style={{ width: 160, marginLeft: 4 }}
+              style={{ width: 160, marginLeft: 4, padding: "4px 8px" }}
             />
+            {" "} đ
           </label>
         </div>
 
-        <button onClick={handleDepositClick} disabled={loadingDeposit}>
+        {/* Hiển thị số dư ví */}
+        {currentUser && (
+          <div 
+            style={{ 
+              marginBottom: 12, 
+              padding: 10, 
+              background: "#f0fdf4", 
+              border: "1px solid #86efac",
+              borderRadius: 6,
+              fontSize: 13,
+              color: "#166534"
+            }}
+          >
+            💰 Số dư ví hiện tại: <strong>{walletCredit.toLocaleString()} đ</strong>
+          </div>
+        )}
+
+        {/* Hiển thị cảnh báo/thông báo về tính toán tiền cọc */}
+        {depositCalculation && depositCalculation.reason && (
+          <div 
+            style={{ 
+              marginBottom: 12, 
+              padding: 10, 
+              background: "#fef2f2", 
+              border: "1px solid #fca5a5",
+              borderRadius: 6,
+              fontSize: 13,
+              color: "#991b1b"
+            }}
+          >
+            ⚠️ {depositCalculation.reason}
+            <div style={{ marginTop: 6, fontWeight: "bold" }}>
+              Số tiền cọc thực tế: {depositCalculation.amount.toLocaleString()} đ
+            </div>
+          </div>
+        )}
+        
+        {/* Hiển thị preview chia ví + chuyển khoản */}
+        {splitPreview && depositCalculation && !depositCalculation.blocked && (
+          <div 
+            style={{ 
+              marginBottom: 12, 
+              padding: 10, 
+              background: "#eff6ff", 
+              border: "1px solid #93c5fd",
+              borderRadius: 6,
+              fontSize: 13,
+              color: "#1e40af"
+            }}
+          >
+            <div style={{ fontWeight: "bold", marginBottom: 6 }}>📊 Phân bổ thanh toán:</div>
+            {splitPreview.walletUsed > 0 && (
+              <div style={{ marginTop: 4 }}>
+                • Dùng từ ví: <strong>{splitPreview.walletUsed.toLocaleString()} đ</strong>
+              </div>
+            )}
+            {splitPreview.cashAmount > 0 && (
+              <div style={{ marginTop: 4 }}>
+                • Cần chuyển khoản thêm: <strong>{splitPreview.cashAmount.toLocaleString()} đ</strong>
+              </div>
+            )}
+            {splitPreview.cashAmount === 0 && (
+              <div style={{ marginTop: 4, color: "#059669" }}>
+                ✅ Dùng toàn bộ ví, không cần chuyển khoản!
+              </div>
+            )}
+          </div>
+        )}
+
+        {depositCalculation && depositCalculation.blocked && (
+          <div 
+            style={{ 
+              marginBottom: 12, 
+              padding: 10, 
+              background: "#fee2e2", 
+              border: "1px solid #dc2626",
+              borderRadius: 6,
+              fontSize: 13,
+              color: "#7f1d1d",
+              fontWeight: "bold"
+            }}
+          >
+            🚫 {depositCalculation.reason}
+          </div>
+        )}
+
+        <button 
+          onClick={handleDepositClick} 
+          disabled={loadingDeposit || (depositCalculation && depositCalculation.blocked)}
+          style={{
+            opacity: (loadingDeposit || (depositCalculation && depositCalculation.blocked)) ? 0.5 : 1,
+            cursor: (loadingDeposit || (depositCalculation && depositCalculation.blocked)) ? "not-allowed" : "pointer"
+          }}
+        >
           {loadingDeposit ? "Đang xử lý..." : "Đặt cọc & hiện mã QR"}
         </button>
 

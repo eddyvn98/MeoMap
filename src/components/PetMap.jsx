@@ -7,8 +7,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 
 const defaultCenter = { lat: 10.8019, lng: 106.7147 };
 
@@ -18,6 +17,61 @@ function ReportClickHandler({ onSelect }) {
       onSelect(e.latlng);
     },
   });
+  return null;
+}
+
+function MapBoundsWatcher({ onBoundsChange }) {
+  const map = useMapEvents({
+    moveend() {
+      const b = map.getBounds();
+      onBoundsChange?.({
+        north: b.getNorth(),
+        south: b.getSouth(),
+        east: b.getEast(),
+        west: b.getWest(),
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (!onBoundsChange) return;
+    const b = map.getBounds();
+    onBoundsChange({
+      north: b.getNorth(),
+      south: b.getSouth(),
+      east: b.getEast(),
+      west: b.getWest(),
+    });
+  }, [map, onBoundsChange]);
+
+  return null;
+}
+
+function MapInitializer({ setMap, setUserPos }) {
+  const map = useMapEvents({});
+
+  useEffect(() => {
+    setMap(map);
+
+    if (!navigator.geolocation) {
+      console.warn("Geolocation không khả dụng");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        console.log("Got user position:", p);
+        setUserPos(p);
+        map.setView([p.lat, p.lng], 15);
+      },
+      (err) => {
+        console.warn("Geolocation error:", err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [map, setMap, setUserPos]);
+
   return null;
 }
 
@@ -45,50 +99,90 @@ const makeCatIcon = (imageUrl) => {
   });
 };
 
-export default function PetMap({
+const makeStatusIcon = (status, category, imageUrl) => {
+  const cat = (category || "lost").toLowerCase();
+  
+  let badgeColor, badgeText;
+  if (cat === "lost") {
+    badgeColor = "#ef4444";
+    badgeText = "Lost";
+  } else if (cat === "adopt") {
+    badgeColor = "#10b981";
+    badgeText = "Adopt";
+  } else if (cat === "rescue") {
+    badgeColor = "#f59e0b";
+    badgeText = "Rescue";
+  } else {
+    badgeColor = "#3b82f6";
+    badgeText = status || "Unknown";
+  }
+
+  const imgSrc = imageUrl || "https://cdn-icons-png.flaticon.com/512/2127/2127645.png";
+
+  return L.divIcon({
+    className: "pet-marker-icon",
+    html: `
+      <div style="position:relative;width:56px;height:56px;">
+        <div style="width:56px;height:56px;border-radius:50%;overflow:hidden;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.2);background:#fff;">
+          <img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;" />
+        </div>
+        <div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:${badgeColor};color:#fff;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+          ${badgeText}
+        </div>
+      </div>
+    `,
+    iconSize: [56, 70],
+    iconAnchor: [28, 70],
+    popupAnchor: [0, -70],
+  });
+};
+
+export default forwardRef(function PetMap({
   pets = [],
   fullscreen = false,
   reportMode = false,
   onSelectPosition,
-}) {
+  onBoundsChange,
+  selectedPetId,
+  onSelectPet,
+  height = 180,
+  selectedPet,
+  onSelectPetDetail,
+}, ref) {
   const [userPos, setUserPos] = useState(null);
-  const [center, setCenter] = useState(defaultCenter);
+  const [center] = useState(defaultCenter);
   const [selectedPos, setSelectedPos] = useState(null);
   const [map, setMap] = useState(null);
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserPos(p);
-        setCenter(p);
-        if (map) {
-          map.setView([p.lat, p.lng], 15);
-        }
-      },
-      () => {},
-      { enableHighAccuracy: true }
-    );
-  }, [map]);
+  useImperativeHandle(ref, () => map);
 
   const handleSelectPos = (latlng) => {
     setSelectedPos(latlng);
     onSelectPosition && onSelectPosition(latlng);
   };
 
+  useEffect(() => {
+    if (!selectedPetId || !map) return;
+    const pet = pets.find((p) => (p.id || p.pet_id) === selectedPetId);
+    if (!pet || !pet.lat || !pet.lng) return;
+
+    const targetZoom = Math.max(map.getZoom() || 13, 15);
+    map.setView([pet.lat, pet.lng], targetZoom, { animate: true });
+  }, [selectedPetId, pets, map]);
+
   const containerStyle = fullscreen
     ? { width: "100%", height: "calc(100vh - 120px)" }
-    : { width: "100%", height: 180 };
+    : typeof height === "string"
+    ? { width: "100%", height }
+    : { width: "100%", height: height || 180 };
 
   return (
     <div
       style={{
         width: "100%",
-        borderRadius: 12,
+        height: "100%",
+        borderRadius: 0,
         overflow: "hidden",
-        marginBottom: 20,
       }}
     >
       <MapContainer
@@ -96,38 +190,61 @@ export default function PetMap({
         zoom={14}
         style={containerStyle}
         scrollWheelZoom={true}
-        whenCreated={setMap}
+        zoomControl={true}
       >
         <TileLayer
-          attribution="&copy; OpenStreetMap contributors"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png"
         />
 
+        <MapInitializer setMap={setMap} setUserPos={setUserPos} />
+        {onBoundsChange && <MapBoundsWatcher onBoundsChange={onBoundsChange} />}
+
         {userPos && (
-          <Circle
-            center={userPos}
-            radius={500}
-            pathOptions={{
-              color: "#007bff",
-              fillColor: "#007bff",
-              fillOpacity: 0.2,
-            }}
-          />
+          <>
+            <Marker
+              position={userPos}
+              icon={L.icon({
+                iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+                shadowSize: [41, 41],
+              })}
+            >
+              <Popup>Đây là vị trí của bạn</Popup>
+            </Marker>
+            <Circle
+              center={userPos}
+              radius={500}
+              pathOptions={{
+                color: "#3b82f6",
+                fillColor: "#3b82f6",
+                fillOpacity: 0.15,
+                weight: 2,
+              }}
+            />
+          </>
         )}
 
+        {console.log("Rendering map with", pets.length, "pets")}
         {pets.map((p) => {
           if (!p.lat || !p.lng) return null;
 
           const petId = p.id || p.pet_id;
           console.log("Map marker:", { name: p.name, id: p.id, pet_id: p.pet_id, petId });
 
+          const markerIcon = makeStatusIcon(p.status, p.category, p.image_url);
+
           return (
             <Marker
               key={petId}
               position={[p.lat, p.lng]}
-              icon={makeCatIcon(p.image_url)}
+              icon={markerIcon}
               eventHandlers={{
-                click: () => navigate(`/pet/${petId}`),
+                click: () => {
+                  onSelectPetDetail?.(p);
+                },
               }}
             >
               <Popup>
@@ -178,4 +295,4 @@ export default function PetMap({
       </MapContainer>
     </div>
   );
-}
+});

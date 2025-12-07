@@ -436,6 +436,38 @@ export default function DepositListPage() {
                 </p>
               ) : null}
 
+              {/* Trạng thái tiền cọc */}
+              <div style={{ margin: "12px 0", padding: 12, background: "#f0f9ff", borderRadius: 8, border: "1px solid #bfdbfe" }}>
+                <p style={{ margin: "0 0 8px 0", fontSize: 12, fontWeight: 600, color: "#1e40af" }}>
+                  📍 Trạng thái tiền cọc:
+                </p>
+                {d.status === "locked" && (
+                  <p style={{ margin: 0, fontSize: 12, color: "#1e3a8a" }}>
+                    Bạn đã tạo cọc, đang chờ admin xác nhận. Tiền đang nằm ở tài khoản ngân hàng của admin, chưa chuyển thành credit.
+                  </p>
+                )}
+                {d.status === "pending" && (
+                  <p style={{ margin: 0, fontSize: 12, color: "#1e3a8a" }}>
+                    Bạn đã gửi bằng chứng chuyển tiền, đang chờ admin xác nhận. Tiền đang nằm ở tài khoản ngân hàng, chưa chuyển thành credit.
+                  </p>
+                )}
+                {d.status === "confirmed" && !d.delivery_status && (
+                  <p style={{ margin: 0, fontSize: 12, color: "#1e3a8a" }}>
+                    Cọc đã được admin xác nhận. Tiền đang tạm giữ, chờ giao mèo hoặc hủy giao dịch.
+                  </p>
+                )}
+                {d.delivery_status === "delivered" && (
+                  <p style={{ margin: 0, fontSize: 12, color: "#166534" }}>
+                    ✅ Giao mèo thành công. Tiền cọc đã được sử dụng cho giao dịch này.
+                  </p>
+                )}
+                {d.delivery_status === "cancelled_no_trade" && (
+                  <p style={{ margin: 0, fontSize: 12, color: "#7f1d1d" }}>
+                    🔄 Giao dịch đã hủy, tiền cọc {d.amount.toLocaleString()} đ đã chuyển thành credit trong ví của bạn.
+                  </p>
+                )}
+              </div>
+
               {/* Hiển thị QR code khi đã confirm và có delivery_token */}
               {d.status === "confirmed" && d.delivery_token && !d.delivery_status && (
                 <div style={{ margin: "12px 0", padding: 12, background: "#f0fdf4", borderRadius: 8, border: "1px solid #86efac" }}>

@@ -4,7 +4,21 @@ import { supabase } from './supabaseClient';
 // petId: id mèo trong bảng pets
 // ownerId: id người đăng mèo
 // amount: số tiền cọc (vd 50000)
-export async function createDepositAndTicket({ petId, ownerId, amount }) {
+// walletUsed: số tiền dùng từ ví (mặc định 0)
+// cashAmount: số tiền cần chuyển khoản (mặc định = amount)
+// initialStatus: trạng thái ban đầu (mặc định 'locked', có thể là 'confirmed' nếu dùng toàn bộ ví)
+// paymentStatus: trạng thái thanh toán (mặc định 'pending')
+// paymentProvider: nhà cung cấp thanh toán (mặc định 'manual')
+export async function createDepositAndTicket({ 
+  petId, 
+  ownerId, 
+  amount,
+  walletUsed = 0,
+  cashAmount = null,
+  initialStatus = 'locked',
+  paymentStatus = 'pending',
+  paymentProvider = 'manual'
+}) {
   // 1. Lấy user hiện tại (người nhận)
   const {
     data: { user },
@@ -16,6 +30,9 @@ export async function createDepositAndTicket({ petId, ownerId, amount }) {
   }
 
   const seekerId = user.id;
+  
+  // Tính cashAmount nếu không được truyền vào
+  const finalCashAmount = cashAmount !== null ? cashAmount : (amount - walletUsed);
 
   // 2. Kiểm tra mức cọc hiện tại của mèo này
   const { data: existingDeposits, error: existingError } = await supabase
@@ -47,7 +64,7 @@ export async function createDepositAndTicket({ petId, ownerId, amount }) {
     );
   }
 
-  // 3. Tạo bản ghi deposit
+  // 3. Tạo bản ghi deposit với wallet_used và cash_amount
   const { data: deposit, error: depositError } = await supabase
     .from('deposits')
     .insert({
@@ -55,7 +72,11 @@ export async function createDepositAndTicket({ petId, ownerId, amount }) {
       owner_id: ownerId,
       receiver_id: seekerId,
       amount,
-      status: 'locked',
+      wallet_used: walletUsed,
+      cash_amount: finalCashAmount,
+      status: initialStatus,
+      payment_status: paymentStatus,
+      payment_provider: paymentProvider,
     })
     .select('*')
     .single();

@@ -10,6 +10,7 @@ import AdoptionListPage from "./pages/AdoptionListPage";
 import DepositListPage from "./pages/DepositListPage";
 import AdminDepositsPage from "./pages/AdminDepositsPage";
 import DeliverPage from "./pages/DeliverPage";
+import ProfilePage from "./pages/ProfilePage";
 
 export default function Router() {
   return (
@@ -26,6 +27,7 @@ export default function Router() {
         <Route path="/deposits" element={<DepositListPage />} />
         <Route path="/admin/deposits" element={<AdminDepositsPage />} />
         <Route path="/deliver/:token" element={<DeliverPage />} />
+        <Route path="/profile/:userId" element={<ProfilePage />} />
       </Routes>
     </BrowserRouter>
   );

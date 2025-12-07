@@ -26,6 +26,9 @@ export default function PetDetailPage() {
   const [depositError, setDepositError] = useState("");
   const [maxDeposit, setMaxDeposit] = useState(null);
   const [depositAmount, setDepositAmount] = useState("");
+  
+  // state cho uy tín người nhận
+  const [receiverReputation, setReceiverReputation] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -68,6 +71,32 @@ export default function PetDetailPage() {
             : base;
 
         setDepositAmount(suggested);
+
+        // Load deposit hiện tại của user (nếu đã đặt cọc)
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: existingDeposit } = await supabase
+            .from("deposits")
+            .select("*")
+            .eq("pet_id", petId)
+            .eq("receiver_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (existingDeposit) {
+            setCurrentDeposit(existingDeposit);
+
+            // Load uy tín người nhận (chính user hiện tại)
+            const { data: rep } = await supabase
+              .from("user_reputation")
+              .select("*")
+              .eq("user_id", existingDeposit.receiver_id)
+              .maybeSingle();
+
+            setReceiverReputation(rep || null);
+          }
+        }
       } finally {
         setLoading(false);
       }
@@ -115,6 +144,17 @@ export default function PetDetailPage() {
         .single();
 
       setCurrentDeposit(freshDeposit);
+
+      // Load uy tín người nhận (receiver_id từ deposit mới)
+      if (freshDeposit && freshDeposit.receiver_id) {
+        const { data: rep } = await supabase
+          .from("user_reputation")
+          .select("*")
+          .eq("user_id", freshDeposit.receiver_id)
+          .maybeSingle();
+
+        setReceiverReputation(rep || null);
+      }
     } catch (err) {
       console.error(err);
       setDepositError(err.message || "Có lỗi khi đặt cọc.");
@@ -258,6 +298,26 @@ export default function PetDetailPage() {
           <p style={{ fontSize: 12, color: "#666", marginTop: 8 }}>
             Hãy chuyển khoản theo thông tin trên, sau đó upload bằng chứng chuyển tiền trên trang danh sách cọc.
           </p>
+
+          {/* Hiển thị uy tín người nhận */}
+          {currentDeposit.receiver_id && (
+            <div style={{ marginTop: 12, padding: 8, background: "#dbeafe", borderRadius: 6 }}>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: 14, color: "#1e40af" }}>Người đang nhận mèo</h4>
+              <div style={{ fontSize: 12, color: "#1e293b" }}>ID: {currentDeposit.receiver_id}</div>
+
+              {receiverReputation ? (
+                <div style={{ fontSize: 12, color: "#334155", marginTop: 4 }}>
+                  Uy tín: <strong>{receiverReputation.total_trades}</strong> lần nhận •{" "}
+                  OK: <strong>{receiverReputation.ok_trades}</strong> •{" "}
+                  Không OK: <strong>{receiverReputation.bad_trades}</strong>
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                  Chưa có lịch sử uy tín.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

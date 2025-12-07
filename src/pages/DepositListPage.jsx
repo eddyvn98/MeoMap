@@ -20,6 +20,11 @@ export default function DepositListPage() {
   // Cancel delivery state
   const [canceling, setCanceling] = useState(null); // depositId being cancelled
 
+  // Rating modal state
+  const [ratingModal, setRatingModal] = useState(null); // { depositId, isOk, comment, submitting }
+  const [ratingError, setRatingError] = useState("");
+  const [ratedDeposits, setRatedDeposits] = useState(new Set()); // Track which deposits have been rated
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -166,7 +171,82 @@ export default function DepositListPage() {
     }
   };
 
-  // Handle cancel delivery (no trade)
+  // Check if owner has already rated this deposit
+  const checkRatingStatus = async (depositId) => {
+    if (!currentUser) return;
+
+    const { data: existingRating, error } = await supabase
+      .from("adoption_ratings")
+      .select("id")
+      .eq("deposit_id", depositId)
+      .eq("rater_id", currentUser.id)
+      .single();
+
+    if (!error && existingRating) {
+      // Already rated
+      setRatedDeposits((prev) => new Set([...prev, depositId]));
+      return true;
+    }
+
+    return false;
+  };
+
+  // Open rating modal
+  const handleOpenRating = async (deposit) => {
+    const alreadyRated = await checkRatingStatus(deposit.id);
+    if (alreadyRated) {
+      alert("Bạn đã đánh giá deposit này rồi.");
+      return;
+    }
+
+    setRatingModal({
+      depositId: deposit.id,
+      receiverId: deposit.receiver_id,
+      petId: deposit.pet_id,
+      isOk: true,
+      comment: "",
+      submitting: false,
+    });
+    setRatingError("");
+  };
+
+  // Submit rating
+  const handleSubmitRating = async () => {
+    if (!ratingModal || !currentUser) return;
+
+    setRatingModal({ ...ratingModal, submitting: true });
+    setRatingError("");
+
+    try {
+      const { error } = await supabase.from("adoption_ratings").insert({
+        deposit_id: ratingModal.depositId,
+        pet_id: ratingModal.petId,
+        rater_id: currentUser.id,
+        target_id: ratingModal.receiverId,
+        score: ratingModal.isOk ? 1 : 0,
+        comment: ratingModal.comment,
+        created_at: new Date().toISOString(),
+      });
+
+      if (error) throw error;
+
+      // Mark as rated
+      setRatedDeposits((prev) => new Set([...prev, ratingModal.depositId]));
+
+      alert(
+        ratingModal.isOk
+          ? "Cảm ơn bạn đã đánh giá OK cho giao dịch này!"
+          : "Đánh giá KHÔNG OK đã được ghi nhận."
+      );
+
+      setRatingModal(null);
+    } catch (err) {
+      console.error(err);
+      setRatingError(err.message || "Không thể gửi đánh giá.");
+    } finally {
+      setRatingModal({ ...ratingModal, submitting: false });
+    }
+  };
   const handleCancelDelivery = async (deposit) => {
     if (!currentUser) return;
     
@@ -460,6 +540,28 @@ export default function DepositListPage() {
                 </button>
               )}
 
+              {/* Nút đánh giá khi mèo đã được giao */}
+              {d.delivery_status === "delivered" && 
+               currentUser.id === d.owner_id &&
+               !ratedDeposits.has(d.id) && (
+                <button
+                  onClick={() => handleOpenRating(d)}
+                  style={{
+                    marginTop: 8,
+                    padding: "8px 16px",
+                    background: "#f59e0b",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontWeight: "bold",
+                  }}
+                >
+                  ⭐ Đánh giá giao dịch
+                </button>
+              )}
+
               {rep ? (
                 <p style={{ margin: "4px 0", fontSize: 12, color: "#333" }}>
                   Uy tín người nhận: {rep.good_count} OK / {rep.bad_count} KHÔNG OK
@@ -576,6 +678,131 @@ export default function DepositListPage() {
                   border: "none",
                   borderRadius: 6,
                   cursor: proofModal.uploading ? "not-allowed" : "pointer",
+                }}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rating Modal */}
+      {ratingModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => !ratingModal.submitting && setRatingModal(null)}
+        >
+          <div
+            style={{
+              background: "#fff",
+              padding: 20,
+              borderRadius: 8,
+              maxWidth: 400,
+              width: "90%",
+              maxHeight: "80vh",
+              overflowY: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>Đánh giá giao dịch</h3>
+
+            {ratingError && (
+              <p style={{ color: "red", marginBottom: 8, fontSize: 12 }}>{ratingError}</p>
+            )}
+
+            <div style={{ marginBottom: 12 }}>
+              <p style={{ marginBottom: 8, fontWeight: "bold" }}>
+                Giao dịch thành công?
+              </p>
+              <div style={{ display: "flex", gap: 16 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input
+                    type="radio"
+                    name="rating"
+                    checked={ratingModal.isOk === true}
+                    onChange={() =>
+                      setRatingModal({ ...ratingModal, isOk: true })
+                    }
+                    disabled={ratingModal.submitting}
+                  />
+                  ✅ OK - Giao dịch thành công
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input
+                    type="radio"
+                    name="rating"
+                    checked={ratingModal.isOk === false}
+                    onChange={() =>
+                      setRatingModal({ ...ratingModal, isOk: false })
+                    }
+                    disabled={ratingModal.submitting}
+                  />
+                  ❌ Không OK - Có vấn đề
+                </label>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}>
+                Ghi chú (tùy chọn):
+              </label>
+              <textarea
+                placeholder="Mô tả chi tiết về giao dịch..."
+                value={ratingModal.comment}
+                onChange={(e) =>
+                  setRatingModal({ ...ratingModal, comment: e.target.value })
+                }
+                disabled={ratingModal.submitting}
+                style={{
+                  width: "100%",
+                  height: 80,
+                  padding: 8,
+                  border: "1px solid #ddd",
+                  borderRadius: 6,
+                  fontFamily: "inherit",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={handleSubmitRating}
+                disabled={ratingModal.submitting}
+                style={{
+                  flex: 1,
+                  padding: 10,
+                  background: ratingModal.submitting ? "#9ca3af" : "#f59e0b",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: ratingModal.submitting ? "not-allowed" : "pointer",
+                  fontWeight: "bold",
+                }}
+              >
+                {ratingModal.submitting ? "Đang gửi..." : "Gửi đánh giá"}
+              </button>
+              <button
+                onClick={() => !ratingModal.submitting && setRatingModal(null)}
+                disabled={ratingModal.submitting}
+                style={{
+                  flex: 1,
+                  padding: 10,
+                  background: "#e5e7eb",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: ratingModal.submitting ? "not-allowed" : "pointer",
                 }}
               >
                 Đóng

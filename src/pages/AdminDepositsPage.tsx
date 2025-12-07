@@ -28,6 +28,12 @@ type DepositRow = {
   amount: number;
   status: string;
   created_at: string;
+  reputation?: {
+    user_id: string;
+    total_trades: number;
+    ok_trades: number;
+    bad_trades: number;
+  } | null;
 };
 
 export default function AdminDepositsPage() {
@@ -85,6 +91,7 @@ export default function AdminDepositsPage() {
     setLoading(true);
     setErrorMsg(null);
 
+    // 1) Lấy danh sách cọc pending
     const { data, error } = await supabase
       .from("deposits")
       .select(
@@ -96,10 +103,45 @@ export default function AdminDepositsPage() {
     if (error) {
       setErrorMsg(error.message);
       setRows([]);
-    } else {
-      setRows((data || []) as DepositRow[]);
+      setLoading(false);
+      return;
     }
 
+    const deposits = (data || []) as DepositRow[];
+
+    // Nếu không có cọc nào thì khỏi query uy tín
+    if (deposits.length === 0) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+
+    // 2) Lấy list receiver_id duy nhất
+    const receiverIds = Array.from(
+      new Set(deposits.map((d) => d.receiver_id).filter(Boolean))
+    );
+
+    // 3) Query user_reputation cho những user này
+    const { data: reps, error: repErr } = await supabase
+      .from("user_reputation")
+      .select("user_id, total_trades, ok_trades, bad_trades")
+      .in("user_id", receiverIds);
+
+    // Map user_id -> reputation
+    const repMap = new Map<string, any>();
+    if (!repErr && reps) {
+      for (const r of reps) {
+        repMap.set(r.user_id, r);
+      }
+    }
+
+    // 4) Gắn reputation vào từng deposit
+    const withRep: DepositRow[] = deposits.map((d) => ({
+      ...d,
+      reputation: repMap.get(d.receiver_id) || null,
+    }));
+
+    setRows(withRep);
     setLoading(false);
   };
 
@@ -232,6 +274,7 @@ export default function AdminDepositsPage() {
                 <th className="px-3 py-2 text-left">Thời gian</th>
                 <th className="px-3 py-2 text-left">Mã bài đăng</th>
                 <th className="px-3 py-2 text-right">Số tiền (VND)</th>
+                <th className="px-3 py-2 text-left">Uy tín người nhận</th>
                 <th className="px-3 py-2 text-center">Hành động</th>
               </tr>
             </thead>
@@ -239,6 +282,7 @@ export default function AdminDepositsPage() {
               {rows.map((row) => {
                 const isRowUpdating = updatingId === row.id;
                 const code = getShortNumericCode(row.pet_id);
+                const rep = row.reputation;
                 return (
                   <tr key={row.id} className="border-t">
                     <td className="px-3 py-2 align-top">
@@ -249,6 +293,23 @@ export default function AdminDepositsPage() {
                     </td>
                     <td className="px-3 py-2 align-top text-right">
                       {row.amount.toLocaleString("vi-VN")}
+                    </td>
+                    <td className="px-3 py-2 align-top text-sm">
+                      {rep ? (
+                        <>
+                          <div>
+                            Đã nhận mèo: <strong>{rep.total_trades}</strong> lần
+                          </div>
+                          <div>
+                            OK: <strong>{rep.ok_trades}</strong> | Không OK:{" "}
+                            <strong>{rep.bad_trades}</strong>
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-gray-500 text-xs">
+                          Chưa có lịch sử đánh giá
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2 align-top text-center">
                       <div className="flex flex-col gap-1 items-center">

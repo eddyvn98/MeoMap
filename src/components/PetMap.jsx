@@ -25,8 +25,7 @@ const makeCatIcon = (imageUrl) => {
   // Nếu không có ảnh -> dùng icon mặc định của Leaflet
   if (typeof imageUrl !== "string" || !imageUrl.startsWith("http")) {
     return L.icon({
-      iconUrl:
-        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+      iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
       iconSize: [25, 41],
       iconAnchor: [12, 41],
       popupAnchor: [1, -34],
@@ -80,7 +79,7 @@ export default function PetMap({
 
   const containerStyle = fullscreen
     ? { width: "100%", height: "calc(100vh - 120px)" }
-    : { width: "100%", height: 180 };
+    : { width: "100%", height: 300 };
 
   return (
     <div
@@ -119,7 +118,12 @@ export default function PetMap({
           if (!p.lat || !p.lng) return null;
 
           const petId = p.id || p.pet_id;
-          console.log("Map marker:", { name: p.name, id: p.id, pet_id: p.pet_id, petId });
+          console.log("Map marker:", {
+            name: p.name,
+            id: p.id,
+            pet_id: p.pet_id,
+            petId,
+          });
 
           return (
             <Marker
@@ -159,14 +163,11 @@ export default function PetMap({
         {reportMode && selectedPos && (
           <Marker
             position={selectedPos}
-            icon={
-              L.icon({
-                iconUrl:
-                  "https://cdn-icons-png.flaticon.com/512/220/220489.png",
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-              })
-            }
+            icon={L.icon({
+              iconUrl: "https://cdn-icons-png.flaticon.com/512/220/220489.png",
+              iconSize: [32, 32],
+              iconAnchor: [16, 32],
+            })}
           >
             <Popup>
               Vị trí báo mèo:

@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import MainLayout from "./MainLayout";
+
 import App from "./App";
 import MapPage from "./pages/MapPage";
 import PetDetailPage from "./pages/PetDetailPage";
@@ -16,18 +18,21 @@ export default function Router() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/map" element={<MapPage />} />
-        <Route path="/pet/:id" element={<PetDetailPage />} />
-        <Route path="/report" element={<ReportPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/scan-ticket" element={<ScanTicketPage />} />
-        <Route path="/adoptions" element={<AdoptionListPage />} />
-        <Route path="/deposits" element={<DepositListPage />} />
-        <Route path="/admin/deposits" element={<AdminDepositsPage />} />
-        <Route path="/deliver/:token" element={<DeliverPage />} />
-        <Route path="/profile/:userId" element={<ProfilePage />} />
+        {/* Các trang có layout */}
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<App />} />
+          <Route path="/map" element={<MapPage />} />
+          <Route path="/pet/:id" element={<PetDetailPage />} />
+          <Route path="/report" element={<ReportPage />} />
+          <Route path="/scan-ticket" element={<ScanTicketPage />} />
+          <Route path="/adoptions" element={<AdoptionListPage />} />
+          <Route path="/deposits" element={<DepositListPage />} />
+          <Route path="/admin/deposits" element={<AdminDepositsPage />} />
+          <Route path="/deliver/:token" element={<DeliverPage />} />
+          <Route path="/profile/:userId" element={<ProfilePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

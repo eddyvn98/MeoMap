@@ -26,7 +26,7 @@ export default function PetDetailPage() {
   const [depositError, setDepositError] = useState("");
   const [maxDeposit, setMaxDeposit] = useState(null);
   const [depositAmount, setDepositAmount] = useState("");
-  
+
   // state cho uy tín người nhận
   const [receiverReputation, setReceiverReputation] = useState(null);
 
@@ -56,7 +56,10 @@ export default function PetDetailPage() {
         if (depErr) {
           console.error("Load deposits error:", depErr);
         } else if (depRows && depRows.length > 0) {
-          const max = depRows.reduce((m, d) => (d.amount > m ? d.amount : m), 0);
+          const max = depRows.reduce(
+            (m, d) => (d.amount > m ? d.amount : m),
+            0
+          );
           setMaxDeposit(max);
         } else {
           setMaxDeposit(null);
@@ -66,14 +69,15 @@ export default function PetDetailPage() {
         const base = data.deposit_amount || 50000;
         const suggested =
           depRows && depRows.length > 0
-            ? (depRows.reduce((m, d) => (d.amount > m ? d.amount : m), 0) +
-                10000)
+            ? depRows.reduce((m, d) => (d.amount > m ? d.amount : m), 0) + 10000
             : base;
 
         setDepositAmount(suggested);
 
         // Load deposit hiện tại của user (nếu đã đặt cọc)
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
           const { data: existingDeposit } = await supabase
             .from("deposits")
@@ -127,7 +131,7 @@ export default function PetDetailPage() {
       const amount = Number(depositAmount) || base;
 
       if (!amount || amount <= 0) {
-        throw new Error('Số tiền cọc không hợp lệ.');
+        throw new Error("Số tiền cọc không hợp lệ.");
       }
 
       const { deposit } = await createDepositAndTicket({
@@ -178,176 +182,175 @@ export default function PetDetailPage() {
   }
 
   return (
-    <div style={{ padding: 20, paddingBottom: 80 }}>
-      <button onClick={() => navigate(-1)} style={{ marginBottom: 10 }}>
+    <div className="px-4 pb-24 max-w-2xl mx-auto">
+      {/* Back button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="text-blue-600 text-sm mb-4 flex items-center gap-1 hover:underline"
+      >
         ← Quay lại
       </button>
 
-      <h2>{pet.name}</h2>
-      <p>
-        <strong>Trạng thái:</strong> {pet.status}
-      </p>
-      <p>
-        <strong>Khu vực:</strong> {pet.district}
-      </p>
-      <p>
-        <strong>Thời gian:</strong> {pet.timeAgo}
-      </p>
+      {/* Pet info card */}
+      <div className="bg-white shadow-md rounded-xl p-5 border border-gray-200">
+        <h2 className="text-2xl font-bold text-gray-900">{pet.name}</h2>
 
-      {(pet.image_url || pet.imageUrl) && (
-        <img
-          src={pet.image_url || pet.imageUrl}
-          alt={pet.name}
-          style={{
-            width: "100%",
-            maxWidth: 400,
-            borderRadius: 16,
-            margin: "10px 0",
-          }}
-        />
-      )}
+        <div className="mt-2 space-y-1 text-gray-700 text-sm">
+          <p>
+            <span className="font-semibold">Trạng thái:</span> {pet.status}
+          </p>
+          <p>
+            <span className="font-semibold">Khu vực:</span> {pet.district}
+          </p>
+          <p>
+            <span className="font-semibold">Thời gian:</span> {pet.timeAgo}
+          </p>
+        </div>
 
-      <p>{pet.description}</p>
+        {(pet.image_url || pet.imageUrl) && (
+          <img
+            src={pet.image_url || pet.imageUrl}
+            alt={pet.name}
+            className="w-full max-h-[320px] object-cover rounded-xl mt-4"
+          />
+        )}
 
-      {/* Cọc + nút */}
-      <div style={{ marginTop: 20 }}>
-        {/* thông tin mức cọc hiện tại */}
-        <div style={{ marginBottom: 8, fontSize: 14 }}>
+        <p className="mt-4 text-gray-800 leading-relaxed">{pet.description}</p>
+      </div>
+
+      {/* Deposit Section */}
+      <div className="mt-6 bg-white shadow-md rounded-xl p-5 border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-3">
+          Đặt cọc giữ mèo
+        </h3>
+
+        {/* max deposit info */}
+        <div className="text-sm text-gray-700 mb-3">
           {maxDeposit != null ? (
             <>
               <div>
-                Cọc cao nhất hiện tại: {" "}
+                Cọc cao nhất hiện tại:{" "}
                 <strong>{maxDeposit.toLocaleString()} đ</strong>
               </div>
               <div>
-                Cọc tối thiểu tiếp theo: {" "}
+                Cọc tối thiểu tiếp theo:{" "}
                 <strong>{(maxDeposit + 10000).toLocaleString()} đ</strong>
               </div>
             </>
           ) : (
             <div>
-              Chưa có ai cọc. Cọc tối thiểu gợi ý: {" "}
+              Chưa có ai cọc. Gợi ý cọc tối thiểu:{" "}
               <strong>
-                {(pet.deposit_amount || 50000).toLocaleString()} {" "}
-                đ
+                {(pet.deposit_amount || 50000).toLocaleString()} đ
               </strong>
             </div>
           )}
         </div>
 
-        {/* ô nhập số tiền cọc */}
-        <div style={{ marginBottom: 8 }}>
-          <label>
-            Số tiền bạn muốn cọc (bước 10.000đ): {" "}
-            <input
-              type="number"
-              step={10000}
-              min={
-                maxDeposit != null
-                  ? maxDeposit + 10000
-                  : pet.deposit_amount || 50000
-              }
-              value={depositAmount}
-              onChange={(e) => setDepositAmount(Number(e.target.value))}
-              style={{ width: 160, marginLeft: 4 }}
-            />
-          </label>
-        </div>
+        {/* deposit input */}
+        <label className="block mb-4">
+          <span className="text-sm font-medium text-gray-800">
+            Số tiền bạn muốn cọc
+          </span>
+          <input
+            type="number"
+            step={10000}
+            min={
+              maxDeposit != null
+                ? maxDeposit + 10000
+                : pet.deposit_amount || 50000
+            }
+            value={depositAmount}
+            onChange={(e) => setDepositAmount(Number(e.target.value))}
+            className="mt-1 w-full border rounded-lg p-2 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </label>
 
-        <button onClick={handleDepositClick} disabled={loadingDeposit}>
+        <button
+          onClick={handleDepositClick}
+          disabled={loadingDeposit}
+          className="w-full py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+        >
           {loadingDeposit ? "Đang xử lý..." : "Đặt cọc & hiện mã QR"}
         </button>
 
         {depositError && (
-          <p style={{ color: "red", marginTop: 8 }}>{depositError}</p>
+          <p className="text-red-600 text-sm mt-3">{depositError}</p>
         )}
       </div>
 
-      {/* Hiển thị QR + token nếu đã có deposit */}
-      
-      {/* BLOCK 1: QR CHUYỂN TIỀN (hiện ngay sau đặt cọc) */}
+      {/* QR chuyển khoản */}
       {currentDeposit && (
-        <div
-          style={{
-            marginTop: 16,
-            padding: 12,
-            border: "1px solid #3b82f6",
-            borderRadius: 8,
-            maxWidth: 400,
-            background: "#eff6ff",
-          }}
-        >
-          <h3 style={{ marginTop: 0, color: "#1e40af" }}>Mã chuyển khoản cọc</h3>
-          <p>
-            <strong>Nội dung chuyển khoản:</strong>
+        <div className="mt-6 bg-blue-50 border border-blue-300 rounded-xl p-5 shadow-sm">
+          <h3 className="text-lg font-semibold text-blue-800">
+            Mã chuyển khoản cọc
+          </h3>
+
+          <p className="mt-3 text-sm font-medium text-gray-800">
+            Nội dung chuyển khoản:
           </p>
-          <p
-            style={{
-              fontSize: 14,
-              color: "#000",
-              fontFamily: "monospace",
-              fontWeight: "bold",
-              margin: "8px 0",
-            }}
-          >
+
+          <p className="mt-1 font-mono font-bold text-lg tracking-wide text-gray-900 bg-white border rounded-lg inline-block px-3 py-2">
             MEOMAP {getShortNumericCode(pet.id)}
           </p>
-          <p style={{ fontSize: 12, color: "#555", margin: "8px 0" }}>
+
+          <p className="text-sm text-gray-700 mt-3">
             <strong>Số tiền:</strong> {currentDeposit.amount.toLocaleString()} đ
           </p>
-          <p style={{ fontSize: 12, color: "#666", marginTop: 8 }}>
-            Hãy chuyển khoản theo thông tin trên, sau đó upload bằng chứng chuyển tiền trên trang danh sách cọc.
+
+          <p className="text-xs text-gray-500 mt-3">
+            Hãy chuyển khoản đúng nội dung và số tiền rồi upload ảnh chứng minh
+            ở trang danh sách cọc.
           </p>
 
-          {/* Hiển thị uy tín người nhận */}
+          {/* Uy tín người nhận */}
           {currentDeposit.receiver_id && (
-            <div style={{ marginTop: 12, padding: 8, background: "#dbeafe", borderRadius: 6 }}>
-              <h4 style={{ margin: "0 0 8px 0", fontSize: 14, color: "#1e40af" }}>Người đang nhận mèo</h4>
-              <div style={{ fontSize: 12, color: "#1e293b" }}>ID: {currentDeposit.receiver_id}</div>
+            <div className="mt-4 bg-blue-100 p-3 rounded-lg">
+              <h4 className="font-medium text-blue-900 text-sm mb-1">
+                Người đang nhận mèo
+              </h4>
+              <p className="text-xs text-gray-700">
+                ID: {currentDeposit.receiver_id}
+              </p>
 
               {receiverReputation ? (
-                <div style={{ fontSize: 12, color: "#334155", marginTop: 4 }}>
-                  Uy tín: <strong>{receiverReputation.total_trades}</strong> lần nhận •{" "}
-                  OK: <strong>{receiverReputation.ok_trades}</strong> •{" "}
+                <p className="text-xs text-gray-800 mt-1">
+                  Uy tín: <strong>{receiverReputation.total_trades}</strong> lần
+                  nhận • OK: <strong>{receiverReputation.ok_trades}</strong> •{" "}
                   Không OK: <strong>{receiverReputation.bad_trades}</strong>
-                </div>
+                </p>
               ) : (
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                <p className="text-xs text-gray-500 mt-1">
                   Chưa có lịch sử uy tín.
-                </div>
+                </p>
               )}
             </div>
           )}
         </div>
       )}
 
-      {/* BLOCK 2: QR NHẬN MÈO (chỉ hiện khi confirmed + có delivery_token) */}
+      {/* QR nhận mèo */}
       {currentDeposit &&
         currentDeposit.status === "confirmed" &&
         currentDeposit.delivery_token && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: 12,
-              border: "1px solid #10b981",
-              borderRadius: 8,
-              maxWidth: 400,
-              background: "#f0fdf4",
-            }}
-          >
-            <h3 style={{ marginTop: 0, color: "#065f46" }}>Mã QR xác nhận đã nhận mèo</h3>
-            <div style={{ background: "#fff", padding: 8, borderRadius: 6, display: "inline-block" }}>
+          <div className="mt-6 bg-green-50 border border-green-300 rounded-xl p-5 shadow-sm">
+            <h3 className="text-lg font-semibold text-green-800">
+              Mã QR xác nhận đã nhận mèo
+            </h3>
+
+            <div className="bg-white p-3 rounded-lg inline-block mt-3">
               <QRCodeCanvas
                 value={`https://map-meo.web.app/deliver/${currentDeposit.delivery_token}`}
-                size={200}
+                size={180}
               />
             </div>
-            <p style={{ marginTop: 8, fontSize: 12, color: "#000" }}>
-              Mã dự phòng (nhập tay nếu quét lỗi):{" "}
-              <strong>{currentDeposit.delivery_token}</strong>
+
+            <p className="mt-3 text-sm text-gray-900">
+              Mã dự phòng: <strong>{currentDeposit.delivery_token}</strong>
             </p>
-            <p style={{ fontSize: 12, color: "#666", marginTop: 8 }}>
-              Khi gặp người đăng, hãy mở màn hình này để họ quét mã để xác nhận đã nhận mèo.
+
+            <p className="text-xs text-gray-500 mt-2">
+              Khi gặp người đăng, mở màn hình này để họ quét mã.
             </p>
           </div>
         )}

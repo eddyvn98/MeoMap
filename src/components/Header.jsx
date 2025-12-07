@@ -7,15 +7,22 @@ export default function Header() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // get current user (if any)
     supabase.auth.getUser().then(({ data }) => setUser(data?.user || null));
+
+    // subscribe to auth changes
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
     });
 
     return () => {
+      // unsubscribe
       try {
         sub?.subscription?.unsubscribe?.();
-      } catch {}
+      } catch (e) {
+        // fallback for different supabase versions
+        if (sub?.subscription) sub.subscription.unsubscribe();
+      }
     };
   }, []);
 
@@ -24,48 +31,35 @@ export default function Header() {
     navigate("/login");
   };
 
-  const baseLink =
-    "mr-3 no-underline text-gray-700 font-medium px-2 py-1 rounded-md transition hover:bg-gray-100";
-
   return (
-    <div className="sticky top-0 z-[9999] bg-white border-b border-gray-200 shadow-sm px-5 py-3 flex items-center justify-between">
-      {/* Logo */}
-      <div className="text-2xl font-bold text-gray-900">
-        <Link to="/" className="no-underline text-inherit">
-          Pet Rescue
-        </Link>
+    <div style={{
+      padding: "10px 16px",
+      background: "#ffffff",
+      borderBottom: "1px solid #eee",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+      position: "sticky",
+      top: 0,
+      zIndex: 10
+    }}>
+      <div style={{ fontSize: 20, fontWeight: "bold" }}>
+        <Link to="/" style={{ textDecoration: "none", color: "inherit" }}>Pet Rescue</Link>
       </div>
 
-      {/* Right menu */}
-      <div className="flex items-center">
+      <div>
         {user ? (
           <>
-            <span className="mr-3 text-sm text-gray-500">{user.email}</span>
-
-            <Link to="/adoptions" className={baseLink}>
-              Mèo đã giao / Đánh giá
-            </Link>
-
-            <Link to="/deposits" className={baseLink}>
-              Cọc đang chờ
-            </Link>
-
-            <button
-              onClick={handleLogout}
-              className="ml-2 px-3 py-1.5 bg-red-500 text-white rounded-md font-semibold transition hover:bg-red-600"
-            >
-              Đăng xuất
-            </button>
+            <span style={{ marginRight: 8 }}>({user.email})</span>
+            <Link to="/adoptions" style={{ marginRight: 8 }}>Mèo đã giao / Đánh giá</Link>
+            <Link to="/deposits" style={{ marginLeft: 8 }}>Cọc đang chờ</Link>
+            <button onClick={handleLogout} style={{ marginLeft: 8 }}>Đăng xuất</button>
           </>
         ) : (
           <>
-            <Link to="/login" className={baseLink}>
-              Đăng nhập
-            </Link>
-
-            <Link to="/register" className={baseLink}>
-              Đăng ký
-            </Link>
+            <Link to="/login" style={{ marginRight: 8 }}>Đăng nhập</Link>
+            <Link to="/register">Đăng ký</Link>
           </>
         )}
       </div>

@@ -1,10 +1,11 @@
 // src/pages/ScanTicketPage.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Scanner } from "@yudiel/react-qr-scanner";
+import { QrReader } from "react-qr-reader";
 import { supabase } from "../supabaseClient";
 
 async function confirmAdoptionFromQrPayload(qrText) {
+  // 1. parse QR
   let parsed;
   try {
     parsed = JSON.parse(qrText);
@@ -17,6 +18,7 @@ async function confirmAdoptionFromQrPayload(qrText) {
     throw new Error("Thiếu dữ liệu trong mã QR.");
   }
 
+  // 2. lấy user hiện tại (người đăng)
   const {
     data: { user },
     error: userError,
@@ -28,6 +30,7 @@ async function confirmAdoptionFromQrPayload(qrText) {
 
   const ownerId = user.id;
 
+  // 3. lấy ticket
   const { data: ticket, error: ticketError } = await supabase
     .from("adoption_tickets")
     .select("*")
@@ -35,8 +38,10 @@ async function confirmAdoptionFromQrPayload(qrText) {
     .eq("token", token)
     .single();
 
-  if (ticketError || !ticket)
+  if (ticketError || !ticket) {
+    console.error(ticketError);
     throw new Error("Không tìm thấy ticket hoặc token sai.");
+  }
 
   if (ticket.owner_id !== ownerId) {
     throw new Error("Ticket này không thuộc về tài khoản của bạn.");
@@ -48,26 +53,39 @@ async function confirmAdoptionFromQrPayload(qrText) {
 
   const now = new Date();
   const expireAt = new Date(ticket.expire_at);
-  if (now > expireAt) throw new Error("Ticket đã hết hạn.");
+  if (now > expireAt) {
+    throw new Error("Ticket đã hết hạn.");
+  }
 
-  const { data: activeAdoptions } = await supabase
+  // 4. kiểm tra người nhận có adoption active nào chưa
+  const { data: activeAdoptions, error: activeErr } = await supabase
     .from("adoptions")
     .select("id")
     .eq("receiver_id", ticket.receiver_id)
     .eq("status", "active");
 
-  if (activeAdoptions?.length > 0) {
+  if (activeErr) {
+    console.error(activeErr);
+    throw new Error("Không kiểm tra được trạng thái nhận mèo.");
+  }
+
+  if (activeAdoptions && activeAdoptions.length > 0) {
     throw new Error("Người nhận đang có 1 bé active trong hệ thống.");
   }
 
+  // 5. lấy deposit để biết pet_id
   const { data: deposit, error: depErr } = await supabase
     .from("deposits")
     .select("*")
     .eq("id", ticket.deposit_id)
     .single();
 
-  if (depErr || !deposit) throw new Error("Không tìm thấy thông tin cọc.");
+  if (depErr || !deposit) {
+    console.error(depErr);
+    throw new Error("Không tìm thấy thông tin cọc.");
+  }
 
+  // 6. tạo adoption
   const { data: adoption, error: adoptionErr } = await supabase
     .from("adoptions")
     .insert({
@@ -80,12 +98,16 @@ async function confirmAdoptionFromQrPayload(qrText) {
     .select("*")
     .single();
 
-  if (adoptionErr || !adoption)
+  if (adoptionErr || !adoption) {
+    console.error(adoptionErr);
     throw new Error("Không tạo được bản ghi nhận mèo.");
+  }
 
+  // 7. tạo nhiệm vụ 1 / 7 / 30 ngày
   const adoptedAt = adoption.adopted_at
     ? new Date(adoption.adopted_at)
     : new Date();
+
   const dayOffsets = [1, 7, 30];
 
   const checkins = dayOffsets.map((d) => {
@@ -103,27 +125,37 @@ async function confirmAdoptionFromQrPayload(qrText) {
     .from("adoption_checkins")
     .insert(checkins);
 
-  if (checkinErr)
+  if (checkinErr) {
+    console.error(checkinErr);
     throw new Error("Không tạo được nhiệm vụ theo dõi sau nhận mèo.");
+  }
 
+  // 8. cập nhật ticket + deposit
   const { error: updateTicketErr } = await supabase
     .from("adoption_tickets")
     .update({ status: "used" })
     .eq("id", ticket.id);
 
-  if (updateTicketErr) throw new Error("Không cập nhật trạng thái ticket.");
+  if (updateTicketErr) {
+    console.error(updateTicketErr);
+    throw new Error("Không cập nhật trạng thái ticket.");
+  }
 
   const { error: updateDepErr } = await supabase
     .from("deposits")
     .update({ status: "confirmed" })
     .eq("id", deposit.id);
 
-  if (updateDepErr) throw new Error("Không cập nhật trạng thái cọc.");
+  if (updateDepErr) {
+    console.error(updateDepErr);
+    throw new Error("Không cập nhật trạng thái cọc.");
+  }
 
   return adoption;
 }
 
 export default function ScanTicketPage() {
+  const [hasCamera, setHasCamera] = useState(true);
   const [scannedText, setScannedText] = useState("");
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState("");
@@ -131,6 +163,7 @@ export default function ScanTicketPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // kiểm tra user login sơ sơ
     const checkUser = async () => {
       const {
         data: { user },
@@ -142,50 +175,65 @@ export default function ScanTicketPage() {
     checkUser();
   }, []);
 
-  const handleScan = async (resultText) => {
-    if (!resultText || processing) return;
+  const handleScan = async (result) => {
+    if (!result || processing) return;
 
-    setScannedText(resultText);
+    const text = result?.text || result;
+    setScannedText(text);
     setProcessing(true);
     setMessage("Đang xác nhận...");
 
     try {
-      const adoption = await confirmAdoptionFromQrPayload(resultText);
+      const adoption = await confirmAdoptionFromQrPayload(text);
       setMessage("Xác nhận giao mèo thành công.");
       console.log("Adoption created:", adoption);
-
-      setScanning(false); // turn off camera
+      
+      // TẮT CAMERA sau khi thành công
+      setScanning(false);
     } catch (err) {
+      console.error(err);
       setMessage(err.message || "Có lỗi khi xác nhận.");
-      setProcessing(false);
+      setProcessing(false); // cho phép quét lại
     }
+  };
+
+  const handleError = (err) => {
+    console.error(err);
+    setHasCamera(false);
+    setMessage("Không truy cập được camera.");
   };
 
   return (
     <div style={{ padding: 16 }}>
       <h2>Quét mã QR để xác nhận đã giao mèo</h2>
 
-      {scanning ? (
-        <div
-          style={{
-            maxWidth: 400,
-            width: "100%",
-            border: "1px solid #ccc",
-            borderRadius: 8,
-            overflow: "hidden",
-            background: "#000",
-          }}
-        >
-          <Scanner
-            onDecode={(text) => handleScan(text)}
-            onError={(error) => setMessage("Không truy cập được camera.")}
-            constraints={{ facingMode: "environment" }}
-            video={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        </div>
-      ) : (
-        <p>Camera đang tắt.</p>
-      )}
+      {hasCamera && scanning ? (
+    <div
+        style={{
+        maxWidth: 400,
+        width: "100%",
+        border: "1px solid #ccc",
+        borderRadius: 8,
+        overflow: "hidden",
+        background: "#000",
+        minHeight: 260,
+        }}
+    >
+        <QrReader
+        onResult={(result, error) => {
+            if (!!result) {
+            handleScan(result);
+            }
+        }}
+        constraints={{ facingMode: "environment" }}
+        videoStyle={{ width: "100%", height: "100%", objectFit: "cover" }}
+        containerStyle={{ width: "100%", height: "100%" }}
+        />
+    </div>
+    ) : (
+    <p>Camera đang tắt.</p>
+    )}
+
 
       {scannedText && (
         <p style={{ marginTop: 8, fontSize: 12 }}>
@@ -194,12 +242,7 @@ export default function ScanTicketPage() {
       )}
 
       {message && (
-        <p
-          style={{
-            marginTop: 8,
-            color: message.includes("thành công") ? "green" : "red",
-          }}
-        >
+        <p style={{ marginTop: 8, color: message.includes("thành công") ? "green" : "red" }}>
           {message}
         </p>
       )}
@@ -212,26 +255,13 @@ export default function ScanTicketPage() {
             setMessage("");
             setScannedText("");
           }}
-          style={{
-            marginTop: 8,
-            marginRight: 8,
-            padding: 8,
-            background: "#ff7f32",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-          }}
+          style={{ marginTop: 8, marginRight: 8, padding: 8, background: "#ff7f32", color: "#fff", border: "none", borderRadius: 6 }}
         >
           Quét lại
         </button>
       )}
 
-      <button
-        onClick={() => navigate("/")}
-        style={{ marginTop: 8, padding: 8 }}
-      >
-        Về trang chủ
-      </button>
+      <button onClick={() => navigate("/")} style={{ marginTop: 8, padding: 8 }}>Về trang chủ</button>
     </div>
   );
 }

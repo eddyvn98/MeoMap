@@ -17,28 +17,26 @@ export default function MapPage() {
     description: "",
   });
 
-  // HANDLERS ...
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
   const handleFileChange = (e) => {
     const f = e.target.files?.[0];
-    if (f) setFile(f);
+    if (!f) return;
+    setFile(f);
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
+
     const img = new Image();
+    const reader = new FileReader();
 
     reader.onload = (ev) => {
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const maxSize = 160;
-        let w = img.width,
-          h = img.height;
+        const maxSize = 160; // thumbnail vuông 160x160
+
+        let w = img.width;
+        let h = img.height;
 
         if (w > h) {
           if (w > maxSize) {
@@ -54,240 +52,230 @@ export default function MapPage() {
 
         canvas.width = w;
         canvas.height = h;
+
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, w, h);
 
-        setImageThumb(canvas.toDataURL("image/jpeg", 0.7));
+        // nén quality 0.7 cho nhẹ
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+
+        setImageThumb(dataUrl);
       };
+
       img.src = ev.target.result;
     };
 
     reader.readAsDataURL(file);
   };
 
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!position) return alert("Hãy chọn vị trí mèo trên bản đồ.");
-    if (!form.name.trim()) return alert("Nhập tên mèo.");
+
+    if (!position) {
+      alert("Nhấn vào bản đồ để chọn vị trí mèo.");
+      return;
+    }
+    if (!form.name.trim()) {
+      alert("Nhập tên mèo.");
+      return;
+    }
 
     setSaving(true);
     try {
-      let img = null;
+      let imageUrl = null;
 
+      // 1) Upload ảnh lên Supabase nếu có chọn file
       if (file) {
         const ext = file.name.split(".").pop();
-        const fileName = `${Date.now()}-${Math.random()
-          .toString(36)
-          .slice(2)}.${ext}`;
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const filePath = fileName;
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase
+          .storage
           .from("pet-images")
-          .upload(fileName, file);
+          .upload(filePath, file);
 
         if (uploadError) {
-          alert("Lỗi upload hình.");
-          return setSaving(false);
+          console.error("Upload error:", uploadError);
+          alert("Upload ảnh bị lỗi, thử lại sau.");
+          setSaving(false);
+          return;
         }
 
-        const { data } = supabase.storage
+        // 2) Lấy public URL
+        const { data } = supabase
+          .storage
           .from("pet-images")
-          .getPublicUrl(fileName);
+          .getPublicUrl(filePath);
 
-        img = data.publicUrl;
+        imageUrl = data.publicUrl;
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      // 3) Lưu vào Supabase
+      const { data: insertedData, error: insertError } = await supabase
+        .from("pets")
+        .insert([
+          {
+            name: form.name,
+            status: form.status,
+            district: form.district,
+            description: form.description,
+            lat: position.lat,
+            lng: position.lng,
+            image_url: imageUrl,
+            created_at: new Date().toISOString(),
+          },
+        ])
+        .select();
 
-      //Remove imageUrl field from form state
-      const { error } = await supabase.from("pets").insert([
-        {
-          name: form.name,
-          status: form.status,
-          district: form.district,
-          description: form.description,
-          lat: position.lat,
-          lng: position.lng,
-          image_url: img,
-          created_at: new Date().toISOString(),
-          owner_id: user?.id || null,
-        },
-      ]);
-
-      if (error) {
-        alert("Lỗi khi lưu.");
+      if (insertError) {
+        console.error("Insert pet error:", insertError);
+        alert("Lỗi khi lưu báo mèo: " + (insertError.message || insertError));
+        setSaving(false);
         return;
       }
 
-      alert("Đã gửi báo mèo!");
+      console.log("Inserted pet:", insertedData);
+
+      // về trang chính, list + map sẽ tự cập nhật realtime
+      alert("Đã tạo báo cáo thành công!");
       navigate("/");
+    } catch (err) {
+      console.error(err);
+      alert("Lỗi khi lưu báo mèo, mở console để xem chi tiết.");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="pb-16">
-      <button
-        onClick={() => {
-          document
-            .getElementById("report-form")
-            ?.scrollIntoView({ behavior: "smooth" });
-        }}
-        className="fixed bottom-20 right-4 bg-orange-500 text-white px-4 py-2 rounded-full shadow-lg animate-pulse z-[99999]"
-      >
-        Điền thông tin ↓
-      </button>
-      {/* BACK BTN */}
-      <div className="p-4">
-        <button
-          onClick={() => navigate("/")}
-          className="text-blue-600 text-sm flex items-center gap-1 hover:underline"
-        >
-          ← Quay lại
-        </button>
+    <div style={{ paddingBottom: 80 }}>
+      <div style={{ padding: 10 }}>
+        <button onClick={() => navigate("/")}>← Back</button>
       </div>
 
-      {/* MAP CARD */}
-      <div className="px-4 lg:px-32">
-        <div className="bg-white shadow-md rounded-xl p-4 md:p-6">
-          <PetMap
-            fullscreen
-            reportMode
-            onSelectPosition={(latlng) => setPosition(latlng)}
-          />
-        </div>
-      </div>
+      {/* Bản đồ full screen, bật chế độ chọn vị trí */}
+      <PetMap
+        fullscreen
+        reportMode
+        onSelectPosition={(latlng) => setPosition(latlng)}
+      />
 
-      {/* FORM */}
-      <form
-        id="report-form"
-        onSubmit={handleSubmit}
-        className="p-4 max-w-xl mx-auto mt-6 bg-white shadow-lg rounded-xl p-6"
-      >
-        <h3 className="text-2xl font-bold mb-6 text-gray-800">
-          Báo mèo thất lạc / cần giúp
-        </h3>
+      <form onSubmit={handleSubmit} style={{ padding: 16 }}>
+        <h3>Báo mèo thất lạc / cần giúp</h3>
 
-        {/* NAME */}
-        <div className="mb-5">
-          <label className="text-sm font-medium">Tên mèo</label>
+        <div style={{ marginBottom: 8 }}>
+          <label>Tên mèo</label>
+          <br />
           <input
             name="name"
             value={form.name}
             onChange={handleChange}
-            className="w-full mt-1 border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
-            placeholder="VD: Miu, Mun, Cam..."
+            style={{ width: "100%", padding: 6 }}
           />
         </div>
 
-        {/* STATUS */}
-        <div className="mb-5">
-          <label className="text-sm font-medium">Trạng thái</label>
+        <div style={{ marginBottom: 8 }}>
+          <label>Trạng thái</label>
+          <br />
           <select
             name="status"
             value={form.status}
             onChange={handleChange}
-            className="w-full mt-1 border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+            style={{ width: "100%", padding: 6 }}
           >
-            <option value="Lost">Lost (Thất lạc)</option>
-            <option value="Found">Found (Đã thấy)</option>
-            <option value="Abandoned">Abandoned (Bị bỏ rơi)</option>
+            <option value="Lost">Lost</option>
+            <option value="Found">Found</option>
+            <option value="Abandoned">Abandoned</option>
           </select>
         </div>
 
-        {/* DISTRICT */}
-        <div className="mb-5">
-          <label className="text-sm font-medium">Khu vực</label>
+        <div style={{ marginBottom: 8 }}>
+          <label>Khu vực (Quận / khu chợ / hẻm)</label>
+          <br />
           <input
             name="district"
             value={form.district}
             onChange={handleChange}
-            className="w-full mt-1 border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
-            placeholder="VD: Quận 5 • Chợ Lớn • Hẻm 284"
+            style={{ width: "100%", padding: 6 }}
           />
         </div>
 
-        {/* LINK IMAGE */}
-        <div className="mb-5">
-          <label className="text-sm font-medium">Link hình mèo (nếu có)</label>
+        <div style={{ marginBottom: 8 }}>
+          <label>Link hình mèo (ảnh online)</label>
+          <br />
           <input
             name="imageUrl"
             value={form.imageUrl}
             onChange={handleChange}
-            className="w-full mt-1 border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
-            placeholder="https://..."
+            style={{ width: "100%", padding: 6 }}
           />
         </div>
 
-        {/* THUMBNAIL PREVIEW */}
-        <div className="mb-5">
-          <label className="text-sm font-medium block mb-1">
-            Thumb preview
-          </label>
-
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            className="block"
-          />
-
+        <div style={{ marginBottom: 8 }}>
+          <label>Ảnh mèo (chỉ test nội bộ)</label>
+          <br />
+          <input type="file" accept="image/*" onChange={handleImageChange} />
           {imageThumb && (
-            <img
-              src={imageThumb}
-              className="mt-3 w-24 h-24 object-cover rounded-lg border"
-            />
+            <div style={{ marginTop: 8 }}>
+              <small>Preview:</small>
+              <br />
+              <img
+                src={imageThumb}
+                alt="preview"
+                style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8 }}
+              />
+            </div>
           )}
         </div>
 
-        {/* UPLOAD REAL */}
-        <div className="mb-5">
-          <label className="text-sm font-medium block mb-1">
-            Upload ảnh lên Supabase
-          </label>
-
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="block"
-          />
-
-          {file && <p className="text-xs mt-2 text-gray-600">{file.name}</p>}
+        <div style={{ marginBottom: 8 }}>
+          <label>Upload ảnh lên Supabase</label>
+          <br />
+          <input type="file" accept="image/*" onChange={handleFileChange} />
+          {file && <small style={{ marginTop: 4, display: "block" }}>File chọn: {file.name}</small>}
         </div>
 
-        {/* DESCRIPTION */}
-        <div className="mb-5">
-          <label className="text-sm font-medium">Mô tả</label>
+        <div style={{ marginBottom: 8 }}>
+          <label>Mô tả ngắn</label>
+          <br />
           <textarea
             name="description"
-            rows={3}
             value={form.description}
             onChange={handleChange}
-            className="w-full mt-1 border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
-            placeholder="Thông tin thêm về mèo..."
+            rows={3}
+            style={{ width: "100%", padding: 6 }}
           />
         </div>
 
-        {/* POSITION */}
-        <div className="mb-5">
-          <label className="text-sm font-medium">Vị trí</label>
-          <p className="text-sm text-gray-600 mt-1">
+        <div style={{ marginBottom: 8 }}>
+          <label>Vị trí đã chọn</label>
+          <br />
+          <small>
             {position
               ? `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}`
-              : "Chưa chọn vị trí trên bản đồ"}
-          </p>
+              : "Nhấn vào bản đồ để chọn"}
+          </small>
         </div>
 
-        {/* SUBMIT */}
         <button
           type="submit"
           disabled={saving}
-          className="w-full py-3 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition disabled:opacity-50 mt-4"
+          style={{
+            width: "100%",
+            padding: 10,
+            borderRadius: 8,
+            border: "none",
+            background: "#ff7f32",
+            color: "#fff",
+            fontWeight: "bold",
+          }}
         >
-          {saving ? "Đang xử lý..." : "Gửi báo mèo"}
+          {saving ? "Đang lưu..." : "Gửi báo mèo"}
         </button>
       </form>
     </div>

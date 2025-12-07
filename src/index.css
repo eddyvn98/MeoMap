@@ -1,7 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap");
-/* :root { */
-/* font-family: "Quicksand", sans-serif; */
-/* line-height: 1.5;
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
@@ -11,18 +10,10 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale; */
-/* } */
-
-* {
-  font-family: "Quicksand", sans-serif;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* a {
+a {
   font-weight: 500;
   color: #646cff;
   text-decoration: inherit;
@@ -74,4 +65,4 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
-} */
+}

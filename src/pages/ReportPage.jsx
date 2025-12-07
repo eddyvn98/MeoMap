@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import PetMap from "../components/PetMap";
 
+console.log("ReportPage module loaded, supabase:", supabase ? "✅ OK" : "❌ undefined");
+
 export default function ReportPage() {
   const navigate = useNavigate();
 
@@ -14,6 +16,8 @@ export default function ReportPage() {
   const [file, setFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  console.log("ReportPage component rendered");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,9 +33,11 @@ export default function ReportPage() {
     }
 
     setSubmitting(true);
+
     let imageUrl = null;
 
     try {
+      // 1) Upload ảnh nếu có
       if (file) {
         const ext = file.name.split(".").pop();
         const filePath = `pets/${Date.now()}.${ext}`;
@@ -41,6 +47,7 @@ export default function ReportPage() {
           .upload(filePath, file);
 
         if (uploadError) {
+          console.error(uploadError);
           setError("Upload ảnh lỗi.");
           setSubmitting(false);
           return;
@@ -53,6 +60,7 @@ export default function ReportPage() {
         imageUrl = publicData?.publicUrl || null;
       }
 
+      // 2) Ghi bản ghi vào bảng pets (insert trả về row mới bằng .select())
       const petData = {
         name,
         status,
@@ -64,153 +72,132 @@ export default function ReportPage() {
         created_at: new Date().toISOString(),
       };
 
-      const { error: insertError } = await supabase
+      console.log("Attempting to insert pet:", petData);
+
+      const { data: insertedData, error: insertError } = await supabase
         .from("pets")
-        .insert([petData]);
+        .insert([petData])
+        .select();
+
+      console.log("Insert response - data:", insertedData, "error:", insertError);
 
       if (insertError) {
-        setError("Có lỗi khi lưu báo cáo.");
+        console.error("Insert pet error (full):", {
+          message: insertError.message,
+          code: insertError.code,
+          details: insertError.details,
+          hint: insertError.hint,
+        });
+        setError(
+          "Lưu thú cưng bị lỗi: " +
+            (insertError.details || insertError.message || insertError)
+        );
         setSubmitting(false);
         return;
       }
 
-      alert("Đã gửi báo cáo thành công!");
+      console.log("Inserted pet successfully:", insertedData);
+      alert("Đã báo mèo thành công.");
       navigate("/");
     } catch (err) {
       console.error(err);
-      setError("Có lỗi không xác định.");
+      setError("Có lỗi bất ngờ.");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="pb-24">
-      {/* Back */}
-      <div className="p-4">
-        <button
-          onClick={() => navigate("/")}
-          className="text-blue-600 text-sm flex items-center gap-1 hover:underline"
-        >
-          ← Quay lại
-        </button>
-      </div>
+    <div style={{ paddingBottom: 80 }}>
+      <div style={{ padding: 20 }}>
+        <h2>Báo mèo / chó thất lạc</h2>
 
-      {/* Map Card */}
-      <div className="px-4 lg:px-32">
-        <div className="bg-white shadow-md rounded-xl p-3 md:p-5">
-          <PetMap
-            fullscreen
-            reportMode
-            onSelectPosition={setPosition}
-            pets={[]}
-          />
-        </div>
+        <PetMap
+          pets={[]}
+          fullscreen={true}
+          reportMode={true}
+          onSelectPosition={setPosition}
+        />
 
-        <p className="text-xs text-gray-500 mt-2 ml-1">
+        <p style={{ marginTop: 8, fontSize: 12 }}>
           Chạm vào bản đồ để chọn vị trí thú cưng được thấy lần cuối.
         </p>
-      </div>
 
-      {/* Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="mt-6 p-5 bg-white shadow-lg rounded-xl max-w-xl mx-auto"
-      >
-        <h2 className="text-2xl font-bold mb-4 text-gray-800">
-          Báo mèo / chó thất lạc
-        </h2>
+        <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
+          <div style={{ marginBottom: 10 }}>
+            <label>Tên thú cưng</label>
+            <input
+              style={{ width: "100%", padding: 8 }}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
 
-        {/* Tên */}
-        <div className="mb-4">
-          <label className="text-sm font-medium">Tên thú cưng</label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-orange-400 outline-none"
-            placeholder="VD: Miu, Vàng, Đen..."
-          />
-        </div>
+          <div style={{ marginBottom: 10 }}>
+            <label>Trạng thái</label>
+            <select
+              style={{ width: "100%", padding: 8 }}
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="Lost">Lost</option>
+              <option value="Found">Found</option>
+              <option value="Abandoned">Abandoned</option>
+            </select>
+          </div>
 
-        {/* Trạng thái */}
-        <div className="mb-4">
-          <label className="text-sm font-medium">Trạng thái</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-orange-400 outline-none"
+          <div style={{ marginBottom: 10 }}>
+            <label>Quận / Khu vực</label>
+            <input
+              style={{ width: "100%", padding: 8 }}
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+              placeholder="VD: Bình Thạnh"
+            />
+          </div>
+
+          <div style={{ marginBottom: 10 }}>
+            <label>Mô tả ngắn</label>
+            <textarea
+              style={{ width: "100%", padding: 8 }}
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Đặc điểm nhận dạng, thời điểm, thông tin liên hệ..."
+            />
+          </div>
+
+          <div style={{ marginBottom: 10 }}>
+            <label>Ảnh thú cưng (tuỳ chọn)</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+            />
+          </div>
+
+          {error && (
+            <div style={{ color: "red", marginBottom: 10 }}>{error}</div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            style={{
+              width: "100%",
+              padding: 12,
+              background: "#ff7f32",
+              border: "none",
+              color: "#fff",
+              borderRadius: 10,
+              fontSize: 16,
+              fontWeight: "bold",
+            }}
           >
-            <option value="Lost">Lost (Thất lạc)</option>
-            <option value="Found">Found (Đã tìm thấy)</option>
-            <option value="Abandoned">Abandoned (Bị bỏ rơi)</option>
-          </select>
-        </div>
-
-        {/* Quận */}
-        <div className="mb-4">
-          <label className="text-sm font-medium">Khu vực</label>
-          <input
-            value={district}
-            onChange={(e) => setDistrict(e.target.value)}
-            className="w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-orange-400 outline-none"
-            placeholder="VD: Quận 5, Bình Thạnh..."
-          />
-        </div>
-
-        {/* Mô tả */}
-        <div className="mb-4">
-          <label className="text-sm font-medium">Mô tả</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className="w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-orange-400 outline-none"
-            placeholder="Đặc điểm nhận dạng, màu lông, thời điểm..."
-          />
-        </div>
-
-        {/* Ảnh */}
-        <div className="mb-4">
-          <label className="text-sm font-medium">Ảnh thú cưng (tuỳ chọn)</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="mt-1"
-          />
-          {file && <p className="text-xs text-gray-600 mt-1">{file.name}</p>}
-        </div>
-
-        {/* Error message */}
-        {error && (
-          <p className="text-red-500 text-sm mb-4 bg-red-50 p-3 rounded-lg">
-            {error}
-          </p>
-        )}
-
-        {/* Submit */}
-        <button
-          disabled={submitting}
-          className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold transition disabled:opacity-50"
-        >
-          {submitting ? "Đang gửi..." : "Gửi báo cáo"}
-        </button>
-      </form>
-
-      {/* Floating Scroll-to-form */}
-      {!submitting && (
-        <button
-          onClick={() =>
-            window.scrollTo({
-              top: document.body.scrollHeight,
-              behavior: "smooth",
-            })
-          }
-          className="fixed bottom-20 right-4 bg-orange-500 text-white px-4 py-2 rounded-full shadow-lg animate-pulse z-[99999]"
-        >
-          Điền thông tin ↓
-        </button>
-      )}
+            {submitting ? "Đang gửi..." : "Gửi báo cáo"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

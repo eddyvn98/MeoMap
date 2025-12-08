@@ -343,41 +343,24 @@ export default function App() {
   };
 
   const handleBoundsChange = (b) => {
-  setBounds((prev) => {
-    if (
-      prev &&
-      prev.north === b.north &&
-      prev.south === b.south &&
-      prev.east === b.east &&
-      prev.west === b.west
-    ) return prev;
-    return b;
-  });
-};
+    setBounds((prev) => {
+      if (
+        prev &&
+        prev.north === b.north &&
+        prev.south === b.south &&
+        prev.east === b.east &&
+        prev.west === b.west
+      ) return prev;
+      return b;
+    });
+  };
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Header setAuthModalOpen={setAuthModalOpen} setReportModalOpen={setReportModalOpen} />
       {/* Compact Header */}
-      
 
-      {/* Filter Button */}
-      <MapFilters filters={filters} setFilters={setFilters} />
-
-      {/* Full Screen Map */}
-      <div style={{ flex: 1, position: "relative" }}>
-        <PetMap
-          ref={mapRef}
-          pets={pets}
-          onBoundsChange={handleBoundsChange}
-          selectedPetId={selectedPetId}
-          onSelectPet={setSelectedPetId}
-          onSelectPetDetail={setSelectedPet}
-          height="100%"
-        />
-
-        {/* Compact Popup */}
-        {selectedPet && (
+      {selectedPet && (
           <div
             style={{
               position: "absolute",
@@ -447,6 +430,25 @@ export default function App() {
             </div>
           </div>
         )}
+
+
+      {/* Filter Button */}
+      <MapFilters filters={filters} setFilters={setFilters} />
+
+      {/* Full Screen Map */}
+      <div style={{ flex: 1, position: "relative", zIndex: 0 }}>
+        <PetMap
+          ref={mapRef}
+          pets={pets}
+          onBoundsChange={handleBoundsChange}
+          selectedPetId={selectedPetId}
+          onSelectPet={setSelectedPetId}
+          onSelectPetDetail={setSelectedPet}
+          height="100%"
+        />
+
+        {/* Compact Popup */}
+        
 
         {/* Bottom Pet Deck */}
         {pets.length > 0 && (

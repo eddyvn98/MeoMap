@@ -59,7 +59,7 @@ export default function Header({ setAuthModalOpen, setReportModalOpen }) {
       </div>
 
       {/* Right section */}
-      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }} >
         {user ? (
           <>
             {/* Navigation buttons */}

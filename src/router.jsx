@@ -15,6 +15,7 @@ import ProfilePage from "./pages/ProfilePage";
 import UserReportPage from "./pages/UserReportPage";
 import AdminReportsPage from "./pages/AdminReportsPage";
 import WalletPage from "./pages/WalletPage";
+import UserDashboard from "./pages/UserDashboard";
 
 export default function Router() {
   return (
@@ -37,6 +38,7 @@ export default function Router() {
         <Route path="/report-user/:depositId" element={<UserReportPage />} />
         <Route path="/admin/reports" element={<AdminReportsPage />} />
         <Route path="/wallet" element={<WalletPage />} />
+        <Route path="/account" element={<UserDashboard />} />
       </Routes>
     </BrowserRouter>
   );

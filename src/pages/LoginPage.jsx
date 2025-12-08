@@ -22,8 +22,8 @@ export default function LoginPage() {
         setError(error.message || "Login failed");
         return;
       }
-      // logged in
-      navigate("/");
+      // logged in → redirect to /account
+      navigate("/account");
     } catch (err) {
       setError(err.message || String(err));
     } finally {

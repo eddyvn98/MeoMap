@@ -176,7 +176,7 @@ export default function App() {
   const [pets, setPets] = useState([]);
   const [recentPets, setRecentPets] = useState([]);
   const [filters, setFilters] = useState({
-    status: "open",
+    status: "available",
     category: location.state?.filters?.category || "all",
     color: location.state?.filters?.color || "all",
     animal: location.state?.filters?.animal || "all",
@@ -205,9 +205,9 @@ export default function App() {
     let query = supabase.from("pets").select("*");
 
     // Filter status - check for both 'open' and 'Lost' (legacy)
-    if (filters.status === "open") {
+    if (filters.status === "available") {
       // Include Lost, Found, Abandoned as "open" cases
-      query = query.in("status", ["open", "Lost", "Found", "Abandoned"]);
+      query = query.in("status", ["available", "Lost", "Found", "Abandoned"]);
     }
 
     // TODO: Add category column to database first
@@ -325,8 +325,8 @@ export default function App() {
           lng: formData.lng,
           description: formData.description,
           image_url: imageUrl,
-          status: "open",
-          user_id: userData.user.id,
+          status: "available",
+          owner_id: userData.user.id,
           created_at: new Date().toISOString(),
         },
       ]);
@@ -342,6 +342,19 @@ export default function App() {
     }
   };
 
+  const handleBoundsChange = (b) => {
+  setBounds((prev) => {
+    if (
+      prev &&
+      prev.north === b.north &&
+      prev.south === b.south &&
+      prev.east === b.east &&
+      prev.west === b.west
+    ) return prev;
+    return b;
+  });
+};
+
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Header setAuthModalOpen={setAuthModalOpen} setReportModalOpen={setReportModalOpen} />
@@ -356,7 +369,7 @@ export default function App() {
         <PetMap
           ref={mapRef}
           pets={pets}
-          onBoundsChange={setBounds}
+          onBoundsChange={handleBoundsChange}
           selectedPetId={selectedPetId}
           onSelectPet={setSelectedPetId}
           onSelectPetDetail={setSelectedPet}

@@ -44,9 +44,9 @@ export default function UserDashboard() {
         .from("pets")
         .select("*")
         .eq("owner_id", user.id)
-        .eq("category", "adopt")
         .order("created_at", { ascending: false });
-
+      console.log(data);
+      
       if (error) {
         setError("Không tải được danh sách bài đăng.");
         setPosts([]);

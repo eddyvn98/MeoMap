@@ -527,6 +527,19 @@ export default function PetDetailPage() {
 
       if (error) throw error;
 
+      const { error: depositError } = await supabase
+        .from("deposits")
+        .insert({
+          pet_id: pet.id,
+          receiver_id: currentUser.id,
+          owner_id: pet.owner_id || pet.user_id,
+          amount: 0,
+          status: 'pending',
+          delivery_token: randomToken()
+        });
+
+      if (depositError) throw depositError;
+
       alert("✅ Đã gửi yêu cầu! Chờ chủ bài chấp nhận.");
       setMyRequest({ 
         status: 'pending',
@@ -536,6 +549,10 @@ export default function PetDetailPage() {
     } catch (err) {
       alert("Lỗi: " + err.message);
     }
+  };
+
+  const randomToken = () => {
+    return Math.random().toString(36).substring(2, 10).toUpperCase();
   };
 
   const handleReceiverConfirmMeet = async () => {

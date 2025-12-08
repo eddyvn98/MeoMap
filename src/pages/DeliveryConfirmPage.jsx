@@ -31,8 +31,8 @@ export default function DeliveryConfirmPage() {
           .select(`
             *,
             pets:pet_id(id, name, owner_id, image_url),
-            receiver:receiver_id(id, full_name, email, phone),
-            owner:owner_id(id, full_name, email)
+            receiver:receiver_id(id, display_name, email, phone),
+            owner:owner_id(id, display_name, email)
           `)
           .eq("delivery_token", token)
           .maybeSingle();

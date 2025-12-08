@@ -344,54 +344,9 @@ export default function App() {
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <Header setAuthModalOpen={setAuthModalOpen} setReportModalOpen={setReportModalOpen} />
       {/* Compact Header */}
-      <div
-        style={{
-          height: 60,
-          background: "#fff",
-          borderBottom: "1px solid #e5e7eb",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 20px",
-          zIndex: 100,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Pet Rescue</h1>
-        </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <button
-            onClick={() => setAuthModalOpen(true)}
-            style={{
-              fontSize: 13,
-              color: "#374151",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              fontWeight: 500,
-              textDecoration: "none",
-            }}
-          >
-            Đăng nhập
-          </button>
-          <button
-            onClick={() => setReportModalOpen(true)}
-            style={{
-              padding: "8px 16px",
-              background: "#ff7f32",
-              color: "#fff",
-              border: "none",
-              borderRadius: 6,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            + Báo mèo
-          </button>
-        </div>
-      </div>
+      
 
       {/* Filter Button */}
       <MapFilters filters={filters} setFilters={setFilters} />

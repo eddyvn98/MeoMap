@@ -343,5 +343,5 @@ const amount = calculation.amount; // Tự động điều chỉnh
 
 ---
 
-**Last Updated:** December 7, 2025
+**Last Updated:** December 8, 2025
 **Version:** 2.0 - No Minimum Deposit

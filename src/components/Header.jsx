@@ -98,6 +98,23 @@ export default function Header({ setAuthModalOpen, setReportModalOpen }) {
                   Cọc đang chờ
                 </button>
               </Link>
+              <Link to="/account">
+                <button
+                  style={{
+                    ...buttonStyle,
+                    background: "#f0f0f0",
+                    color: "#333",
+                  }}
+                  onMouseOver={(e) =>
+                    (e.currentTarget.style.background = "#e0e0e0")
+                  }
+                  onMouseOut={(e) =>
+                    (e.currentTarget.style.background = "#f0f0f0")
+                  }
+                >
+                  Trang cá nhân
+                </button>
+              </Link>
               <Link to="/wallet">
                 <button
                   style={{

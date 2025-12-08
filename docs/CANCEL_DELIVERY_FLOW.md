@@ -230,3 +230,5 @@ Tiền cọc 50,000 đ đã được hoàn về ví người nhận.
 - Tiền luôn hoàn về `receiver_id` (người đặt cọc), không phải người bấm hủy
 - Pet status phải reset về `'available'` để người khác có thể đặt cọc lại
 - `delivery_status` là trường riêng, khác với `status` (pending/confirmed/cancelled)
+
+**Last Updated:** December 8, 2025

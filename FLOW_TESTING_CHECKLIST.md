@@ -150,12 +150,8 @@ LIMIT 1;
 - [ ] Nếu lỗi khi submit rating → Message: "Không lưu được đánh giá..."
 
 ## Summary
-
 Khi hoàn tất toàn bộ flow:
-
-✅ Người nhận đặt cọc (pending) → upload proof → status = pending  
-✅ Admin confirm → status = confirmed, delivery_token sinh ra  
-✅ Người nhận quét QR → /deliver/:token  
+**Last Updated:** December 8, 2025
 ✅ DeliverPage xác nhận owner, update delivery_status = delivered  
 ✅ Form đánh giá hiện, owner chọn OK/Không OK + ghi chú  
 ✅ Submit → Lưu vào adoption_ratings  

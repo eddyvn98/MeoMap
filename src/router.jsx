@@ -10,12 +10,15 @@ import ScanTicketPage from "./pages/ScanTicketPage";
 import AdoptionListPage from "./pages/AdoptionListPage";
 import DepositListPage from "./pages/DepositListPage";
 import AdminDepositsPage from "./pages/AdminDepositsPage";
-import DeliverPage from "./pages/DeliverPage";
+import DeliveryConfirmPage from "./pages/DeliveryConfirmPage";
 import ProfilePage from "./pages/ProfilePage";
 import UserReportPage from "./pages/UserReportPage";
 import AdminReportsPage from "./pages/AdminReportsPage";
 import WalletPage from "./pages/WalletPage";
 import UserDashboard from "./pages/UserDashboard";
+import AdoptApplicantsPage from "./pages/AdoptApplicantsPage";
+import DepositTicketPage from "./pages/DepositTicketPage";
+import EditPetPage from "./pages/EditPetPage";
 
 export default function Router() {
   return (
@@ -33,12 +36,15 @@ export default function Router() {
         <Route path="/adoptions" element={<AdoptionListPage />} />
         <Route path="/deposits" element={<DepositListPage />} />
         <Route path="/admin/deposits" element={<AdminDepositsPage />} />
-        <Route path="/deliver/:token" element={<DeliverPage />} />
+        <Route path="/deliver/:token" element={<DeliveryConfirmPage />} />
         <Route path="/profile/:userId" element={<ProfilePage />} />
         <Route path="/report-user/:depositId" element={<UserReportPage />} />
         <Route path="/admin/reports" element={<AdminReportsPage />} />
         <Route path="/wallet" element={<WalletPage />} />
         <Route path="/account" element={<UserDashboard />} />
+        <Route path="/account/adopt/:petId/applicants" element={<AdoptApplicantsPage />} />
+        <Route path="/deposit/:id/ticket" element={<DepositTicketPage />} />
+        <Route path="/edit-pet/:id" element={<EditPetPage />} />
       </Routes>
     </BrowserRouter>
   );

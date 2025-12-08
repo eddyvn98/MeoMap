@@ -1,0 +1,329 @@
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { supabase } from "../supabaseClient";
+
+export default function EditPetPage() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+
+  const [user, setUser] = useState(null);
+  const [pet, setPet] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  // Form fields
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("adopt");
+  const [status, setStatus] = useState("available");
+  const [file, setFile] = useState(null);
+  const [existingImageUrl, setExistingImageUrl] = useState("");
+
+  // Optional deposit amount (owner can set suggested deposit)
+  const [suggestedDeposit, setSuggestedDeposit] = useState("");
+
+  useEffect(() => {
+    const loadUserAndPet = async () => {
+      // 1. Get current user
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
+        navigate("/login");
+        return;
+      }
+      setUser(userData.user);
+
+      // 2. Load pet
+      const { data: petData, error: petError } = await supabase
+        .from("pets")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (petError || !petData) {
+        setError("Không tìm thấy bài đăng.");
+        setLoading(false);
+        return;
+      }
+
+      // 3. Check ownership
+      if (petData.owner_id !== userData.user.id) {
+        setError("Bạn không phải chủ bài đăng này.");
+        setLoading(false);
+        return;
+      }
+
+      setPet(petData);
+      setName(petData.name || "");
+      setDescription(petData.description || "");
+      setCategory(petData.category || "adopt");
+      setStatus(petData.status || "available");
+      setExistingImageUrl(petData.image_url || "");
+      setSuggestedDeposit(petData.max_deposit ? String(petData.max_deposit) : "");
+
+      setLoading(false);
+    };
+
+    loadUserAndPet();
+  }, [id, navigate]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!name.trim()) {
+      setError("Tên thú cưng không được để trống.");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      let imageUrl = existingImageUrl;
+
+      // Upload new image if selected
+      if (file) {
+        const ext = file.name.split(".").pop();
+        const filePath = `pets/${Date.now()}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("pet-images")
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error(uploadError);
+          setError("Upload ảnh lỗi.");
+          setSubmitting(false);
+          return;
+        }
+
+        const { data: publicData } = supabase.storage
+          .from("pet-images")
+          .getPublicUrl(filePath);
+
+        imageUrl = publicData?.publicUrl || existingImageUrl;
+      }
+
+      // Update pet
+      const updateData = {
+        name,
+        description,
+        category,
+        status,
+        image_url: imageUrl,
+        max_deposit: suggestedDeposit ? Number(suggestedDeposit) : null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: updateError } = await supabase
+        .from("pets")
+        .update(updateData)
+        .eq("id", id);
+
+      if (updateError) {
+        console.error("Update error:", updateError);
+        setError("Cập nhật bài đăng lỗi: " + updateError.message);
+        setSubmitting(false);
+        return;
+      }
+
+      alert("Đã cập nhật bài đăng thành công!");
+      navigate("/account");
+    } catch (err) {
+      console.error(err);
+      setError("Có lỗi bất ngờ.");
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Bạn có chắc muốn XÓA bài đăng này? Hành động không thể hoàn tác.")) {
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const { error: deleteError } = await supabase
+        .from("pets")
+        .delete()
+        .eq("id", id);
+
+      if (deleteError) {
+        console.error("Delete error:", deleteError);
+        setError("Xóa bài đăng lỗi: " + deleteError.message);
+        setSubmitting(false);
+        return;
+      }
+
+      alert("Đã xóa bài đăng.");
+      navigate("/account");
+    } catch (err) {
+      console.error(err);
+      setError("Có lỗi bất ngờ.");
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto p-4 text-sm">
+        Đang tải bài đăng...
+      </div>
+    );
+  }
+
+  if (error && !pet) {
+    return (
+      <div className="max-w-2xl mx-auto p-4">
+        <div className="text-red-600 text-sm mb-4">{error}</div>
+        <button
+          className="px-4 py-2 border rounded text-sm"
+          onClick={() => navigate("/account")}
+        >
+          Quay lại
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto p-4 pb-20">
+      <header className="flex items-center justify-between border-b pb-2 mb-4">
+        <h1 className="font-bold text-lg">Chỉnh sửa bài đăng</h1>
+        <button
+          className="text-sm px-3 py-1 border rounded"
+          onClick={() => navigate("/account")}
+        >
+          Quay lại
+        </button>
+      </header>
+
+      <form onSubmit={handleSubmit} className="space-y-4 text-sm">
+        {/* Pet Name */}
+        <div>
+          <label className="block font-semibold mb-1">Tên thú cưng *</label>
+          <input
+            type="text"
+            className="w-full border rounded px-3 py-2"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ví dụ: Mèo cam mập mờm"
+          />
+        </div>
+
+        {/* Category */}
+        <div>
+          <label className="block font-semibold mb-1">Loại bài đăng</label>
+          <select
+            className="w-full border rounded px-3 py-2"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option value="adopt">Nhận nuôi</option>
+            <option value="lost">Đi lạc</option>
+            <option value="rescue">Cứu hộ</option>
+          </select>
+        </div>
+
+        {/* Status */}
+        <div>
+          <label className="block font-semibold mb-1">Trạng thái</label>
+          <select
+            className="w-full border rounded px-3 py-2"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="available">available</option>
+            <option value="reserved">reserved</option>
+            <option value="delivered">delivered</option>
+          </select>
+          <p className="text-xs text-gray-600 mt-1">
+            (Chỉ admin/hệ thống tự động thay đổi. Để mặc định "available" nếu không chắc.)
+          </p>
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="block font-semibold mb-1">Mô tả</label>
+          <textarea
+            className="w-full border rounded px-3 py-2"
+            rows={4}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Mô tả chi tiết về thú cưng, tính cách, yêu cầu nhận nuôi..."
+          />
+        </div>
+
+        {/* Image Upload */}
+        <div>
+          <label className="block font-semibold mb-1">Ảnh thú cưng</label>
+          {existingImageUrl && (
+            <div className="mb-2">
+              <img
+                src={existingImageUrl}
+                alt="Current"
+                className="w-32 h-32 object-cover rounded border"
+              />
+              <p className="text-xs text-gray-600 mt-1">Ảnh hiện tại</p>
+            </div>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            className="text-sm"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+          />
+          <p className="text-xs text-gray-600 mt-1">
+            Chọn ảnh mới nếu muốn thay đổi. Để trống nếu giữ ảnh cũ.
+          </p>
+        </div>
+
+        {/* Suggested Deposit (optional) */}
+        <div className="border-t pt-4">
+          <label className="block font-semibold mb-1">
+            Tiền cọc gợi ý (tuỳ chọn)
+          </label>
+          <input
+            type="number"
+            step="10000"
+            min="0"
+            className="w-full border rounded px-3 py-2"
+            value={suggestedDeposit}
+            onChange={(e) => setSuggestedDeposit(e.target.value)}
+            placeholder="Ví dụ: 50000"
+          />
+          <p className="text-xs text-gray-600 mt-1">
+            Để trống nếu không yêu cầu tiền cọc. Người nhận vẫn có thể tự nhập số tiền khác khi đặt cọc.
+          </p>
+        </div>
+
+        {error && (
+          <div className="text-red-600 text-sm bg-red-50 border border-red-300 rounded p-2">
+            {error}
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="flex-1 bg-blue-600 text-white px-4 py-2 rounded font-semibold disabled:opacity-50"
+          >
+            {submitting ? "Đang lưu..." : "Lưu thay đổi"}
+          </button>
+
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={handleDelete}
+            className="px-4 py-2 bg-red-600 text-white rounded font-semibold disabled:opacity-50"
+          >
+            Xóa bài
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}

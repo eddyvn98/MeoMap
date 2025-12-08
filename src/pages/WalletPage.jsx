@@ -11,56 +11,129 @@ export default function WalletPage() {
   const [transactions, setTransactions] = useState([]);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setError("");
+  // Hàm reload dữ liệu
+  const reloadData = async () => {
+    setLoading(true);
+    setError("");
 
-      // 1. Get current user
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
-      if (authErr || !authData.user) {
-        setError("Bạn cần đăng nhập.");
-        setLoading(false);
-        return;
-      }
-
-      setUser(authData.user);
-
-      // 2. Get wallet credit
-      const { data: profile, error: profErr } = await supabase
-        .from("profiles")
-        .select("wallet_credit")
-        .eq("id", authData.user.id)
-        .single();
-
-      if (profErr) {
-        setError("Không tải được thông tin ví.");
-        setLoading(false);
-        return;
-      }
-
-      setWalletCredit(profile?.wallet_credit || 0);
-
-      // 3. Get wallet transactions (loại refund_deposit)
-      const { data: txs, error: txErr } = await supabase
-        .from("wallet_transactions")
-        .select("id, type, amount, deposit_id, note, created_at")
-        .eq("user_id", authData.user.id)
-        .eq("type", "refund_deposit")
-        .order("created_at", { ascending: false });
-
-      if (txErr) {
-        setError("Không tải được lịch sử giao dịch.");
-        setLoading(false);
-        return;
-      }
-
-      setTransactions(txs || []);
+    // 1. Get current user
+    const { data: authData, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !authData.user) {
+      setError("Bạn cần đăng nhập.");
       setLoading(false);
-    };
+      return;
+    }
 
-    load();
+    setUser(authData.user);
+
+    // 2. Get wallet credit
+    const { data: profile, error: profErr } = await supabase
+      .from("profiles")
+      .select("wallet_credit")
+      .eq("id", authData.user.id)
+      .maybeSingle();
+
+    if (profErr) {
+      console.error("Profile error:", profErr);
+    }
+
+    // Nếu chưa có profile, tạo mới
+    if (!profile) {
+      const { error: insertErr } = await supabase
+        .from("profiles")
+        .insert({
+          id: authData.user.id,
+          email: authData.user.email,
+          wallet_credit: 0,
+          display_name: authData.user.email?.split("@")[0] || "User"
+        });
+
+      if (insertErr) {
+        console.error("Insert profile error:", insertErr);
+      }
+    }
+
+    setWalletCredit(profile?.wallet_credit || 0);
+
+    // 3. Get wallet transactions (tất cả loại)
+    const { data: txs, error: txErr } = await supabase
+      .from("wallet_transactions")
+      .select("id, type, amount, deposit_id, note, created_at")
+      .eq("user_id", authData.user.id)
+      .order("created_at", { ascending: false });
+
+    if (txErr) {
+      setError("Không tải được lịch sử giao dịch.");
+      setLoading(false);
+      return;
+    }
+
+    setTransactions(txs || []);
+    setLoading(false);
+  };
+
+  // Load dữ liệu khi component mount
+  useEffect(() => {
+    reloadData();
   }, []);
+
+  const handleTestDeposit = async () => {
+    if (!user) return;
+    
+    const amount = prompt("Nạp bao nhiêu tiền test? (VD: 500000)");
+    if (!amount || isNaN(amount)) return;
+
+    const numAmount = Number(amount);
+
+    // Cập nhật trực tiếp wallet_credit
+    const { error: updateErr } = await supabase
+      .from("profiles")
+      .update({ wallet_credit: walletCredit + numAmount })
+      .eq("id", user.id);
+
+    if (updateErr) {
+      alert("Lỗi: " + updateErr.message);
+      return;
+    }
+
+    // Insert transaction record
+    const { error: txErr } = await supabase
+      .from("wallet_transactions")
+      .insert({
+        user_id: user.id,
+        type: "test_deposit",
+        amount: numAmount,
+        note: "Nạp tiền test vào ví"
+      });
+
+    if (txErr) {
+      console.error("Transaction record error:", txErr);
+    }
+
+    // Cập nhật state trực tiếp thay vì reload
+    setWalletCredit(walletCredit + numAmount);
+    
+    // Load lại transactions mới nhất
+    const { data: newTxs } = await supabase
+      .from("wallet_transactions")
+      .select("id, type, amount, deposit_id, note, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    
+    if (newTxs) setTransactions(newTxs);
+
+    alert("Nạp thành công " + numAmount.toLocaleString() + " đ!");
+  };
+
+  const getTransactionLabel = (type) => {
+    switch(type) {
+      case "refund_deposit": return { label: "💸 Hoàn cọc", color: "#16a34a" };
+      case "use_for_deposit": return { label: "💳 Dùng để cọc", color: "#dc2626" };
+      case "withdrawal": return { label: "🏦 Rút tiền", color: "#dc2626" };
+      case "test_deposit": return { label: "🧪 Nạp test", color: "#3b82f6" };
+      default: return { label: type, color: "#6b7280" };
+    }
+  };
 
   if (loading) {
     return <div style={{ padding: 20 }}>Đang tải...</div>;
@@ -110,9 +183,26 @@ export default function WalletPage() {
 
       {/* Transaction History */}
       <div style={{ marginTop: 32 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>
-          📋 Lịch sử hoàn cọc
-        </h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>
+            📋 Lịch sử giao dịch ({transactions.length})
+          </h2>
+          <button
+            onClick={handleTestDeposit}
+            style={{
+              padding: "6px 12px",
+              background: "#fef3c7",
+              color: "#92400e",
+              border: "1px solid #fcd34d",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            🧪 Nạp tiền test
+          </button>
+        </div>
 
         {transactions.length === 0 ? (
           <div
@@ -125,24 +215,26 @@ export default function WalletPage() {
               fontSize: 14,
             }}
           >
-            Chưa có giao dịch hoàn cọc nào.
+            Chưa có giao dịch nào.
           </div>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
-            {transactions.map((tx) => (
+            {transactions.map((tx) => {
+              const txInfo = getTransactionLabel(tx.type);
+              return (
               <div
                 key={tx.id}
                 style={{
                   padding: 16,
                   border: "1px solid #e5e7eb",
                   borderRadius: 8,
-                  background: "#f9fafb",
+                  background: "#fff",
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div style={{ flex: 1 }}>
                     <p style={{ margin: "0 0 4px 0", fontSize: 14, fontWeight: 600 }}>
-                      Hoàn cọc
+                      {txInfo.label}
                     </p>
                     {tx.note && (
                       <p style={{ margin: "0 0 4px 0", fontSize: 12, color: "#6b7280" }}>
@@ -154,13 +246,14 @@ export default function WalletPage() {
                     </p>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#16a34a" }}>
-                      +{tx.amount.toLocaleString("vi-VN")} đ
+                    <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: txInfo.color }}>
+                      {tx.amount > 0 ? "+" : ""}{tx.amount.toLocaleString("vi-VN")} đ
                     </p>
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -180,9 +273,10 @@ export default function WalletPage() {
       >
         <strong>ℹ️ Thông tin:</strong>
         <ul style={{ margin: "8px 0 0 0", paddingLeft: 20 }}>
-          <li>Tiền trong ví là credit hoàn cọc từ các giao dịch bị hủy.</li>
-          <li>Credit này có thể dùng để rút về tài khoản ngân hàng (tính năng sắp tới).</li>
-          <li>Không có hạn sử dụng, credit sẽ luôn nằm trong ví cho đến khi bạn rút.</li>
+          <li>💸 Tiền hoàn cọc từ các giao dịch bị hủy sẽ vào ví tự động.</li>
+          <li>💳 Dùng tiền ví để đặt cọc mèo, tiết kiệm chuyển khoản.</li>
+          <li>🧪 Nút "Nạp tiền test" giúp test chức năng (chỉ dùng để demo).</li>
+          <li>🏦 Rút tiền về ngân hàng (tính năng sắp có).</li>
         </ul>
       </div>
 

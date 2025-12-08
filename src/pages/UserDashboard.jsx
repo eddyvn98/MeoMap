@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../AuthContext";
@@ -44,6 +44,7 @@ export default function UserDashboard() {
         .from("pets")
         .select("*")
         .eq("owner_id", user.id)
+        .eq("category", "adopt")
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -68,8 +69,9 @@ export default function UserDashboard() {
 
       const { data, error } = await supabase
         .from("deposits")
-        .select("*, pets(name, image_url, category)")
+        .select("*, pets!inner(name, image_url, category)")
         .eq("receiver_id", user.id)
+        .eq("pets.category", "adopt")
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -159,6 +161,42 @@ export default function UserDashboard() {
     return null;
   }
 
+  const mapPetStatus = (status) => {
+    switch (status) {
+      case "available":
+        return { label: "Đang tìm người nhận", color: "bg-green-100 text-green-700" };
+      case "reserved":
+        return { label: "Đã có cọc", color: "bg-yellow-100 text-yellow-700" };
+      case "delivered":
+        return { label: "Đã giao", color: "bg-blue-100 text-blue-700" };
+      case "closed":
+        return { label: "Đã đóng", color: "bg-gray-100 text-gray-600" };
+      default:
+        return { label: status || "Không rõ", color: "bg-gray-100 text-gray-600" };
+    }
+  };
+
+  const groupedDeposits = useMemo(() => {
+    const waitingPayment = [];
+    const waitingDelivery = [];
+    const history = [];
+
+    deposits.forEach((d) => {
+      const isWaitingPayment = (d.status === "pending" || d.status === "locked") && d.payment_status === "pending";
+      const isWaitingDelivery = d.status === "confirmed" && d.delivery_status !== "delivered";
+
+      if (isWaitingPayment) {
+        waitingPayment.push(d);
+      } else if (isWaitingDelivery) {
+        waitingDelivery.push(d);
+      } else {
+        history.push(d);
+      }
+    });
+
+    return { waitingPayment, waitingDelivery, history };
+  }, [deposits]);
+
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-4">
       {/* HEADER */}
@@ -230,7 +268,9 @@ export default function UserDashboard() {
           )}
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {posts.map((pet) => (
+            {posts.map((pet) => {
+              const statusInfo = mapPetStatus(pet.status);
+              return (
               <article
                 key={pet.id}
                 className="border rounded-lg overflow-hidden text-xs bg-white shadow-sm hover:shadow-md transition"
@@ -248,19 +288,13 @@ export default function UserDashboard() {
                     {pet.name || "Không đặt tên"}
                   </div>
 
-                  <div className="text-gray-600">
-                    Loại:{" "}
-                    {pet.category === "lost"
-                      ? "🔴 Mèo đi lạc"
-                      : pet.category === "adopt"
-                      ? "🟢 Nhận nuôi"
-                      : pet.category === "rescue"
-                      ? "🟠 Cứu hộ"
-                      : "Khác"}
-                  </div>
+                  <div className="text-gray-600">Loại: 🟢 Nhận nuôi</div>
 
-                  <div className="text-gray-600">
-                    Trạng thái: {pet.status || "unknown"}
+                  <div className="text-gray-600 flex items-center gap-2">
+                    <span>Trạng thái:</span>
+                    <span className={`px-2 py-1 rounded text-[11px] font-medium ${statusInfo.color}`}>
+                      {statusInfo.label}
+                    </span>
                   </div>
 
                   <div className="text-[11px] text-gray-500">
@@ -282,10 +316,17 @@ export default function UserDashboard() {
                     >
                       Sửa
                     </button>
+                    <button
+                      className="flex-1 border rounded py-1 hover:bg-orange-50"
+                      onClick={() => navigate(`/account/adopt/${pet.id}/applicants`)}
+                    >
+                      Người đăng ký nhận
+                    </button>
                   </div>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}
@@ -303,45 +344,47 @@ export default function UserDashboard() {
             </div>
           )}
 
-          <div className="space-y-2">
-            {deposits.map((deposit) => (
-              <div
-                key={deposit.id}
-                className="border rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition text-xs"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div className="font-semibold">
-                    {deposit.pets?.name || "Mèo"} (#{deposit.id.slice(0, 6)})
+          <div className="space-y-4">
+            {[
+              { title: "Cọc đang chờ xác nhận tiền", list: groupedDeposits.waitingPayment },
+              { title: "Đang chờ giao mèo", list: groupedDeposits.waitingDelivery },
+              { title: "Lịch sử cọc", list: groupedDeposits.history },
+            ].map((section) => (
+              <div key={section.title} className="space-y-2">
+                <div className="text-[11px] font-semibold text-gray-700">{section.title}</div>
+                {section.list.length === 0 ? (
+                  <div className="text-[11px] text-gray-500 bg-gray-50 border rounded p-2">Chưa có mục nào.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {section.list.map((deposit) => (
+                      <div
+                        key={deposit.id}
+                        className="border rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition text-xs"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="font-semibold">
+                            {deposit.pets?.name || "Mèo"} (#{deposit.id.slice(0, 6)})
+                          </div>
+                          <span className="px-2 py-1 rounded text-[11px] font-medium bg-blue-100 text-blue-800">
+                            {deposit.status} / {deposit.payment_status || "payment?"}
+                          </span>
+                        </div>
+                        <div className="space-y-1 text-gray-600">
+                          <div>Số tiền: {(deposit.amount || 0).toLocaleString()} đ</div>
+                          <div>Trạng thái giao: {deposit.delivery_status || "Chưa giao"}</div>
+                        </div>
+                        {section.title === "Đang chờ giao mèo" && (
+                          <button
+                            className="mt-2 text-blue-600 hover:text-blue-800 text-xs font-medium"
+                            onClick={() => navigate(`/deposit/${deposit.id}/ticket`)}
+                          >
+                            Xem QR giao mèo →
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <span
-                    className={`px-2 py-1 rounded text-[11px] font-medium ${
-                      deposit.status === "locked"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : deposit.status === "pending"
-                        ? "bg-blue-100 text-blue-800"
-                        : "bg-green-100 text-green-800"
-                    }`}
-                  >
-                    {deposit.status === "locked"
-                      ? "Chờ admin"
-                      : deposit.status === "pending"
-                      ? "Chờ xác nhận"
-                      : "Đã xác nhận"}
-                  </span>
-                </div>
-                <div className="space-y-1 text-gray-600">
-                  <div>Số tiền: {(deposit.amount || 0).toLocaleString()} đ</div>
-                  <div>
-                    Trạng thái giao:{" "}
-                    {deposit.delivery_status || "Chưa giao"}
-                  </div>
-                </div>
-                <button
-                  className="mt-2 text-blue-600 hover:text-blue-800 text-xs font-medium"
-                  onClick={() => navigate(`/deposits`)}
-                >
-                  Xem chi tiết →
-                </button>
+                )}
               </div>
             ))}
           </div>

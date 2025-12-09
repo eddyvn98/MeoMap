@@ -1,0 +1,230 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
+
+export default function OwnerDashboard() {
+  const navigate = useNavigate();
+
+  const [user, setUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  const [posts, setPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [error, setError] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all"); // 'all', 'adopt', 'lost', 'rescue'
+
+  // 1) Lấy user hiện tại
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        // chưa đăng nhập → đá về trang login
+        navigate("/login");
+        return;
+      }
+      setUser(data.user);
+      setLoadingUser(false);
+    };
+    loadUser();
+  }, [navigate]);
+
+  // 2) Lấy danh sách bài đăng của user từ bảng pets
+  useEffect(() => {
+    if (!user) return;
+
+    const loadPosts = async () => {
+      setLoadingPosts(true);
+      setError("");
+
+      const { data, error } = await supabase
+        .from("pets")
+        .select("*")
+        .eq("owner_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Lỗi load posts:", error);
+        setError("Không tải được danh sách bài đăng.");
+        setPosts([]);
+      } else {
+        setPosts(data || []);
+      }
+
+      setLoadingPosts(false);
+    };
+
+    loadPosts();
+  }, [user]);
+
+  if (loadingUser) {
+    return <div className="p-4 text-sm">Đang kiểm tra đăng nhập…</div>;
+  }
+
+  // Lọc posts theo category
+  const filteredPosts = categoryFilter === "all" 
+    ? posts 
+    : posts.filter(p => p.category === categoryFilter);
+
+  return (
+    <div className="max-w-5xl mx-auto p-4 space-y-4">
+      {/* HEADER */}
+      <header className="flex items-center justify-between border-b pb-2 mb-2">
+        <div>
+          <div className="font-bold text-lg">Bảng điều khiển người đăng</div>
+          <div className="text-xs text-gray-600">
+            Tài khoản: {user?.email}
+          </div>
+        </div>
+        <div className="flex gap-2 text-xs">
+          <button
+            className="px-3 py-1 border rounded"
+            onClick={() => navigate("/")}
+          >
+            Về trang chủ
+          </button>
+          <button
+            className="px-3 py-1 border rounded"
+            onClick={() => navigate("/report")}
+          >
+            Đăng bài mới
+          </button>
+        </div>
+      </header>
+
+      {/* NAV TABS - Filter bài đăng theo category */}
+      <div className="flex gap-2 text-xs mb-2 border-b pb-2">
+        <button
+          onClick={() => setCategoryFilter("all")}
+          className={`px-3 py-1 rounded font-semibold transition ${
+            categoryFilter === "all"
+              ? "bg-orange-500 text-white"
+              : "border text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          Tất cả ({posts.length})
+        </button>
+        <button
+          onClick={() => setCategoryFilter("adopt")}
+          className={`px-3 py-1 rounded font-semibold transition ${
+            categoryFilter === "adopt"
+              ? "bg-blue-500 text-white"
+              : "border text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          👶 Nhận nuôi ({posts.filter(p => p.category === "adopt").length})
+        </button>
+        <button
+          onClick={() => setCategoryFilter("lost")}
+          className={`px-3 py-1 rounded font-semibold transition ${
+            categoryFilter === "lost"
+              ? "bg-red-500 text-white"
+              : "border text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          🔴 Thất lạc ({posts.filter(p => p.category === "lost").length})
+        </button>
+        <button
+          onClick={() => setCategoryFilter("rescue")}
+          className={`px-3 py-1 rounded font-semibold transition ${
+            categoryFilter === "rescue"
+              ? "bg-green-500 text-white"
+              : "border text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          🆘 Cứu hộ ({posts.filter(p => p.category === "rescue").length})
+        </button>
+      </div>
+
+      {/* KHỐI 1: BÀI ĐĂNG CỦA TÔI */}
+      <section>
+        <h2 className="font-semibold text-sm mb-2">
+          {categoryFilter === "all" && "Bài đăng của tôi"}
+          {categoryFilter === "adopt" && "👶 Bài nhận nuôi"}
+          {categoryFilter === "lost" && "🔴 Bài thất lạc"}
+          {categoryFilter === "rescue" && "🆘 Bài cứu hộ"}
+        </h2>
+
+        {loadingPosts && (
+          <div className="text-xs text-gray-600">Đang tải danh sách…</div>
+        )}
+
+        {error && (
+          <div className="text-xs text-red-600 mb-2">
+            {error}
+          </div>
+        )}
+
+        {!loadingPosts && filteredPosts.length === 0 && (
+          <div className="text-xs text-gray-500">
+            Không có bài đăng nào trong danh mục này.
+          </div>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          {filteredPosts.map((pet) => (
+            <article
+              key={pet.id}
+              className="border rounded-lg overflow-hidden text-xs bg-white shadow-sm"
+            >
+              {pet.image_url && (
+                <img
+                  src={pet.image_url}
+                  alt={pet.name || "pet"}
+                  className="w-full h-32 object-cover"
+                />
+              )}
+
+              <div className="p-2 space-y-1">
+                <div className="font-semibold text-sm truncate">
+                  {pet.name || "Không đặt tên"}
+                </div>
+
+                <div className="text-gray-600">
+                  Loại:{" "}
+                  {pet.category === "lost"
+                    ? "Mèo đi lạc"
+                    : pet.category === "adopt"
+                    ? "Nhận nuôi"
+                    : pet.category === "rescue"
+                    ? "Cứu hộ"
+                    : "Khác"}
+                </div>
+
+                <div className="text-gray-600">
+                  Trạng thái: {pet.status || "unknown"}
+                </div>
+
+                <div className="text-[11px] text-gray-500">
+                  Đăng lúc:{" "}
+                  {pet.created_at
+                    ? new Date(pet.created_at).toLocaleString("vi-VN")
+                    : "N/A"}
+                </div>
+
+                <div className="flex gap-1 mt-2">
+                  <button
+                    className="flex-1 border rounded py-1"
+                    onClick={() => navigate(`/pet/${pet.id}`)}
+                  >
+                    Xem chi tiết
+                  </button>
+                  <button
+                    className="flex-1 border rounded py-1"
+                    onClick={() => navigate(`/edit-pet/${pet.id}`)}
+                  >
+                    Sửa
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* FOOTER ĐIỀU HƯỚNG ĐƠN GIẢN */}
+      <footer className="pt-4 border-t mt-4 text-center text-[11px] text-gray-500">
+        Pet Rescue Dashboard · Người đăng
+      </footer>
+    </div>
+  );
+}

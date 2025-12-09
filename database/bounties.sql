@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.bounties (
   user_id uuid NULL, -- nullable cho treo thưởng ẩn danh
   amount integer NOT NULL, -- số tiền (VND)
   status text NOT NULL DEFAULT 'available' CHECK (status IN ('available', 'accepted', 'rejected', 'refunded', 'transferred')),
+  token text NOT NULL DEFAULT substring(md5(gen_random_uuid()::text) for 6), -- mã tham chiếu 6 ký tự để phân biệt khoản treo thưởng
   -- available: đang treo, chưa ai nhận
   -- accepted: người cứu đã nhận
   -- rejected: người cứu từ chối
@@ -27,6 +28,7 @@ CREATE INDEX IF NOT EXISTS bounties_case_id_idx ON public.bounties(case_id);
 CREATE INDEX IF NOT EXISTS bounties_user_id_idx ON public.bounties(user_id);
 CREATE INDEX IF NOT EXISTS bounties_status_idx ON public.bounties(status);
 CREATE INDEX IF NOT EXISTS bounties_created_at_idx ON public.bounties(created_at DESC);
+CREATE INDEX IF NOT EXISTS bounties_token_idx ON public.bounties(token);
 
 -- ================================================================
 -- ENABLE RLS

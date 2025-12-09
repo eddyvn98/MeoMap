@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.donations (
   method text NOT NULL CHECK (method IN ('direct', 'system')), -- 'direct' = chuyển thẳng, 'system' = qua hệ thống
   receipt_url text NULL, -- URL ảnh biên lai (nếu chuyển thẳng)
   note text NULL, -- ghi chú từ người góp
+  token text NOT NULL DEFAULT substring(md5(gen_random_uuid()::text) for 6), -- mã tham chiếu 6 ký tự để phân luồng tiền
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   
   CONSTRAINT donations_pkey PRIMARY KEY (id),
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS public.donations (
 CREATE INDEX IF NOT EXISTS donations_case_id_idx ON public.donations(case_id);
 CREATE INDEX IF NOT EXISTS donations_user_id_idx ON public.donations(user_id);
 CREATE INDEX IF NOT EXISTS donations_created_at_idx ON public.donations(created_at DESC);
+CREATE INDEX IF NOT EXISTS donations_token_idx ON public.donations(token);
 
 -- ================================================================
 -- ENABLE RLS

@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
-export default function Header({ setAuthModalOpen, setReportModalOpen }) {
+export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenProfilePanel }) {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  const profileBtnRef = useRef(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data?.user || null));
@@ -35,6 +36,18 @@ export default function Header({ setAuthModalOpen, setReportModalOpen }) {
     fontSize: 14,
     fontWeight: 500,
     transition: "all 0.2s",
+  };
+
+  const handleOpenProfile = () => {
+    if (!user) {
+      setAuthModalOpen?.(true);
+      return;
+    }
+    if (onOpenProfilePanel) {
+      onOpenProfilePanel(profileBtnRef);
+    } else {
+      navigate("/account");
+    }
   };
 
   return (
@@ -98,7 +111,7 @@ export default function Header({ setAuthModalOpen, setReportModalOpen }) {
                   Cọc đang chờ
                 </button>
               </Link>
-              <Link to="/account">
+              <Link to="/my-adoption-requests">
                 <button
                   style={{
                     ...buttonStyle,
@@ -112,9 +125,26 @@ export default function Header({ setAuthModalOpen, setReportModalOpen }) {
                     (e.currentTarget.style.background = "#f0f0f0")
                   }
                 >
-                  Trang cá nhân
+                  🐾 Mèo đang nhận
                 </button>
               </Link>
+              <button
+                ref={profileBtnRef}
+                onClick={handleOpenProfile}
+                style={{
+                  ...buttonStyle,
+                  background: "#f0f0f0",
+                  color: "#333",
+                }}
+                onMouseOver={(e) =>
+                  (e.currentTarget.style.background = "#e0e0e0")
+                }
+                onMouseOut={(e) =>
+                  (e.currentTarget.style.background = "#f0f0f0")
+                }
+              >
+                Trang cá nhân
+              </button>
               <Link to="/wallet">
                 <button
                   style={{

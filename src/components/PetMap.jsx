@@ -8,6 +8,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
+import { supabase } from '../supabaseClient';
 
 const defaultCenter = { lat: 10.8019, lng: 106.7147 };
 
@@ -153,6 +154,38 @@ export default forwardRef(function PetMap({
   const [center] = useState(defaultCenter);
   const [selectedPos, setSelectedPos] = useState(null);
   const [map, setMap] = useState(null);
+  const [adoptRequests, setAdoptRequests] = useState({});
+
+  useEffect(() => {
+    if (!pets || pets.length === 0) return;
+    const adoptPets = pets.filter(p => p.category === 'adopt');
+    if (adoptPets.length === 0) return;
+
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('adoption_requests')
+        .select('pet_id, status, receiver_confirmed_checkin, checkin_required_at')
+        .in('pet_id', adoptPets.map(p => p.id || p.pet_id))
+        .eq('status', 'delivered');
+
+      if (error) { console.error(error); return; }
+      const map = {};
+      (data || []).forEach(r => {
+        map[r.pet_id] = r;
+      });
+      setAdoptRequests(map);
+    };
+    load();
+  }, [pets]);
+
+  const computeBadge = (request) => {
+    if (!request) return null;
+    const due = request.checkin_required_at ? new Date(request.checkin_required_at) : null;
+    const now = new Date();
+    if (due && now > due) return { label: '🟥', bg: '#fee2e2' };
+    if (request.receiver_confirmed_checkin) return { label: '🟨', bg: '#fef3c7' };
+    return { label: '🟧', bg: '#fef3c7' };
+  };
 
   useImperativeHandle(ref, () => map);
 
@@ -234,7 +267,34 @@ export default forwardRef(function PetMap({
           const petId = p.id || p.pet_id;
           console.log("Map marker:", { name: p.name, id: p.id, pet_id: p.pet_id, petId });
 
-          const markerIcon = makeStatusIcon(p.status, p.category, p.image_url);
+          const req = adoptRequests[petId];
+          const badge = req ? computeBadge(req) : null;
+
+          let markerIcon = makeStatusIcon(p.status, p.category, p.image_url);
+
+          // If adopt pet with follow-up badge, overlay badge on marker
+          if (badge) {
+            const imgSrc = p.image_url || "https://cdn-icons-png.flaticon.com/512/2127/2127645.png";
+            markerIcon = L.divIcon({
+              className: "pet-marker-icon",
+              html: `
+                <div style="position:relative;width:56px;height:56px;">
+                  <div style="width:56px;height:56px;border-radius:50%;overflow:hidden;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.2);background:#fff;">
+                    <img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;" />
+                  </div>
+                  <div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+                    Adopt
+                  </div>
+                  <div style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:${badge.bg};display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+                    ${badge.label}
+                  </div>
+                </div>
+              `,
+              iconSize: [56, 70],
+              iconAnchor: [28, 70],
+              popupAnchor: [0, -70],
+            });
+          }
 
           return (
             <Marker

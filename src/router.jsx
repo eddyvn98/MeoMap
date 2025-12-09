@@ -19,6 +19,7 @@ import UserDashboard from "./pages/UserDashboard";
 import AdoptApplicantsPage from "./pages/AdoptApplicantsPage";
 import DepositTicketPage from "./pages/DepositTicketPage";
 import EditPetPage from "./pages/EditPetPage";
+import MyAdoptionRequestsPage from "./pages/MyAdoptionRequestsPage";
 
 export default function Router() {
   return (
@@ -45,6 +46,7 @@ export default function Router() {
         <Route path="/account/adopt/:petId/applicants" element={<AdoptApplicantsPage />} />
         <Route path="/deposit/:id/ticket" element={<DepositTicketPage />} />
         <Route path="/edit-pet/:id" element={<EditPetPage />} />
+        <Route path="/my-adoption-requests" element={<MyAdoptionRequestsPage />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import debounce from "lodash.debounce";
 import { supabase } from "./supabaseClient";
 import PetMap from "./components/PetMap";
 import Header from "./components/Header";
@@ -7,6 +8,8 @@ import BottomNav from "./components/BottomNav";
 import PetList from "./components/PetList";
 import ReportPetModal from "./components/ReportPetModal";
 import AuthModal from "./components/AuthModal";
+import ProfileDrawer from "./components/ProfileDrawer";
+import { useReminderScheduler } from "./hooks/useReminderScheduler";
 
 function MapFilters({ filters, setFilters }) {
   const [expanded, setExpanded] = useState(false);
@@ -14,18 +17,19 @@ function MapFilters({ filters, setFilters }) {
   return (
     <div
       style={{
-        position: "fixed",
-        top: 80,
-        right: 20,
-        zIndex: 9999,
+        position: "absolute",
+        top: 12,
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 1200,
         background: "#fff",
         border: "1px solid #e5e7eb",
-        borderRadius: 10,
-        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-        maxHeight: expanded ? 500 : 50,
+        borderRadius: 12,
+        boxShadow: "0 8px 30px rgba(0,0,0,0.16)",
+        maxHeight: expanded ? 520 : 56,
         overflow: "hidden",
-        transition: "max-height 0.3s ease",
-        width: 280,
+        transition: "max-height 0.3s ease, box-shadow 0.2s ease",
+        width: 320,
       }}
     >
       <div
@@ -190,6 +194,13 @@ export default function App() {
   const [error, setError] = useState("");
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileWidthMode, setProfileWidthMode] = useState("normal");
+  const [mapBbox, setMapBbox] = useState(null);
+  const profileTriggerRef = useRef(null);
+
+  // Run reminder scheduler periodically (every hour)
+  useReminderScheduler(60 * 60 * 1000);
 
   const loadPets = useCallback(async () => {
     if (!bounds) {
@@ -342,6 +353,15 @@ export default function App() {
     }
   };
 
+  // Debounced bbox update for ProfileDrawer posts filtering
+  const updateMapBbox = useRef(
+    debounce((bounds) => {
+      if (!bounds) return;
+      const bbox = [bounds.west, bounds.south, bounds.east, bounds.north];
+      setMapBbox(bbox);
+    }, 400)
+  ).current;
+
   const handleBoundsChange = (b) => {
     setBounds((prev) => {
       if (
@@ -351,92 +371,138 @@ export default function App() {
         prev.east === b.east &&
         prev.west === b.west
       ) return prev;
+      
+      // Update bbox for ProfileDrawer
+      updateMapBbox(b);
       return b;
     });
   };
 
+  // Profile drawer: sync with URL param ?panel=profile
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setIsProfileOpen(params.get("panel") === "profile");
+  }, [location.search]);
+
+  // Handle browser back/forward button for profile panel
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      setIsProfileOpen(params.get("panel") === "profile");
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const openProfilePanel = (triggerRef) => {
+    if (triggerRef?.current) {
+      profileTriggerRef.current = triggerRef.current;
+    }
+    const params = new URLSearchParams(location.search);
+    if (params.get("panel") !== "profile") {
+      params.set("panel", "profile");
+      const search = params.toString();
+      navigate({ pathname: location.pathname, search: `?${search}` }, { replace: false });
+    }
+    setIsProfileOpen(true);
+  };
+
+  const closeProfilePanel = () => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("panel") === "profile") {
+      params.delete("panel");
+      const search = params.toString();
+      navigate({ pathname: location.pathname, search: search ? `?${search}` : "" }, { replace: true });
+    }
+    setIsProfileOpen(false);
+  };
+
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <Header setAuthModalOpen={setAuthModalOpen} setReportModalOpen={setReportModalOpen} />
+      <Header
+        setAuthModalOpen={setAuthModalOpen}
+        setReportModalOpen={setReportModalOpen}
+        onOpenProfilePanel={openProfilePanel}
+      />
       {/* Compact Header */}
 
       {selectedPet && (
-          <div
-            style={{
-              position: "absolute",
-              top: 80,
-              left: "50%",
-              transform: "translateX(-50%)",
-              background: "#fff",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
-              borderRadius: 12,
-              zIndex: 200,
-              width: 200,
-              overflow: "hidden",
-            }}
-          >
-            {selectedPet.image_url && (
-              <img
-                src={selectedPet.image_url}
-                alt={selectedPet.name}
-                style={{
-                  width: "100%",
-                  height: 100,
-                  objectFit: "cover",
-                }}
-              />
-            )}
-            <div style={{ padding: 10 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>
-                {selectedPet.name || "Mèo chưa đặt tên"}
-              </div>
-              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 8, textTransform: "capitalize" }}>
-                {selectedPet.status}
-              </div>
-              <button
-                onClick={() => {
-                  navigate(`/pet/${selectedPet.id || selectedPet.pet_id}`);
-                  setSelectedPet(null);
-                }}
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  background: "#ff7f32",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 6,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  marginBottom: 4,
-                }}
-              >
-                Xem chi tiết
-              </button>
-              <button
-                onClick={() => setSelectedPet(null)}
-                style={{
-                  width: "100%",
-                  padding: 6,
-                  background: "transparent",
-                  color: "#6b7280",
-                  border: "none",
-                  fontSize: 11,
-                  cursor: "pointer",
-                }}
-              >
-                Đóng
-              </button>
+        <div
+          style={{
+            position: "absolute",
+            top: 80,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "#fff",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+            borderRadius: 12,
+            zIndex: 200,
+            width: 200,
+            overflow: "hidden",
+          }}
+        >
+          {selectedPet.image_url && (
+            <img
+              src={selectedPet.image_url}
+              alt={selectedPet.name}
+              style={{
+                width: "100%",
+                height: 100,
+                objectFit: "cover",
+              }}
+            />
+          )}
+          <div style={{ padding: 10 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>
+              {selectedPet.name || "Mèo chưa đặt tên"}
             </div>
+            <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 8, textTransform: "capitalize" }}>
+              {selectedPet.status}
+            </div>
+            <button
+              onClick={() => {
+                navigate(`/pet/${selectedPet.id || selectedPet.pet_id}`);
+                setSelectedPet(null);
+              }}
+              style={{
+                width: "100%",
+                padding: 8,
+                background: "#ff7f32",
+                color: "#fff",
+                border: "none",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                marginBottom: 4,
+              }}
+            >
+              Xem chi tiết
+            </button>
+            <button
+              onClick={() => setSelectedPet(null)}
+              style={{
+                width: "100%",
+                padding: 6,
+                background: "transparent",
+                color: "#6b7280",
+                border: "none",
+                fontSize: 11,
+                cursor: "pointer",
+              }}
+            >
+              Đóng
+            </button>
           </div>
-        )}
-
-
-      {/* Filter Button */}
-      <MapFilters filters={filters} setFilters={setFilters} />
+        </div>
+      )}
 
       {/* Full Screen Map */}
       <div style={{ flex: 1, position: "relative", zIndex: 0 }}>
+        {/* Search inside map, aligned with profile top */}
+        <MapFilters filters={filters} setFilters={setFilters} />
+
         <PetMap
           ref={mapRef}
           pets={pets}
@@ -566,6 +632,17 @@ export default function App() {
             Lỗi: {error}
           </div>
         )}
+
+        {/* Profile Drawer / Modal (inline within map to keep map interactive) */}
+        <ProfileDrawer
+          isOpen={isProfileOpen}
+          onClose={closeProfilePanel}
+          widthMode={profileWidthMode}
+          onChangeWidth={setProfileWidthMode}
+          triggerRef={profileTriggerRef}
+          mapBbox={mapBbox}
+          inlineWithinMap
+        />
       </div>
 
       {/* Report Modal */}

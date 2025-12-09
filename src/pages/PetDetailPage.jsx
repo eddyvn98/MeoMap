@@ -4,6 +4,7 @@ import { supabase } from "../supabaseClient";
 import { QRCodeCanvas } from "qrcode.react";
 import { createDepositAndTicket } from "../deposit";
 import LostPetDetail from "../components/LostPetDetail";
+import RescuePetDetail from "../components/RescuePetDetail";
 
 // Tính mã số 6 chữ số từ pet_id
 function getShortNumericCode(input) {
@@ -756,6 +757,22 @@ export default function PetDetailPage() {
           onMarkAsFound={handleLostPetMarkAsFound}
           onDelete={handleLostPetDelete}
           onEdit={handleLostPetEdit}
+        />
+      </div>
+    );
+  }
+
+  // Nếu category là 'rescue' → render Rescue Pet UI (quyên góp)
+  if (pet.category === "rescue") {
+    return (
+      <div style={{ padding: 20, paddingBottom: 80 }}>
+        <button onClick={() => navigate(-1)} style={{ marginBottom: 10, padding: "8px 12px", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer" }}>
+          ← Quay lại
+        </button>
+        <RescuePetDetail
+          pet={pet}
+          user={currentUser}
+          isOwner={isOwner}
         />
       </div>
     );

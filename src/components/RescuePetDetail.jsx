@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { closeRescueCase } from "../donation";
+import { finalizeBounties } from "../bounty";
+import BountyWidget from "./BountyWidget";
 import DonationWidget from "./DonationWidget";
 import DonorList from "./DonorList";
 
 /**
  * Chi tiết bài đăng cứu hộ (rescue category)
- * Hiển thị:
- * 1. Donation widget (tình trạng + tổng tiền + nút góp)
- * 2. Danh sách người góp
- * 3. Thông tin chi tiết về vụ cứu hộ
- * 4. Timeline hoạt động (check-in, báo cáo, ảnh, hóa đơn)
+ * 
+ * Hiển thị 2 dòng tiền rõ ràng:
+ * 1. BOUNTY WIDGET - Tiền treo thưởng / hỗ trợ ban đầu (để thu hút người cứu)
+ * 2. DONATION WIDGET - Tiền hỗ trợ chi phí cứu hộ (để giúp chi phí điều trị)
+ * 3. Timeline hoạt động (check-in, báo cáo, ảnh, hóa đơn)
  */
 export default function RescuePetDetail({ pet, user, isOwner }) {
   const navigate = useNavigate();
@@ -21,18 +23,28 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
   const handleCloseCase = async () => {
     if (
       !confirm(
-        "Bạn có chắc muốn kết thúc ca cứu hộ? Toàn bộ tiền trong ví sẽ được chuyển cho bạn."
+        "Bạn có chắc muốn kết thúc ca cứu hộ? Toàn bộ tiền trong ví + tiền thưởng đã nhận sẽ được chuyển cho bạn."
       )
     )
       return;
 
     setLoading(true);
     try {
-      const { success, error } = await closeRescueCase(pet.id, pet.owner_id);
-      if (!success) throw new Error(error);
+      // 1. Finalize bounties (mark accepted as transferred, reject unaccepted)
+      const { success: bountySuccess, error: bountyError } = await finalizeBounties(
+        pet.id,
+        pet.owner_id
+      );
+      if (!bountySuccess) console.warn("Warning: Could not finalize bounties", bountyError);
 
-      alert("✅ Đã kết thúc ca cứu hộ. Tiền đã được chuyển.");
-      // Reload page hoặc navigate
+      // 2. Close rescue case (transfer wallet balance)
+      const { success: caseSuccess, error: caseError } = await closeRescueCase(
+        pet.id,
+        pet.owner_id
+      );
+      if (!caseSuccess) throw new Error(caseError);
+
+      alert("✅ Đã kết thúc ca cứu hộ. Toàn bộ tiền đã được chuyển.");
       window.location.reload();
     } catch (err) {
       alert("Lỗi: " + err.message);
@@ -87,7 +99,18 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
         </div>
       </section>
 
-      {/* DONATION WIDGET (chỉ khi chưa đóng) */}
+      {/* ===== KHỐI 1: TIỀN TREO THƯỞNG (Ban đầu) ===== */}
+      {!isClosed && (
+        <BountyWidget
+          caseId={pet.id}
+          isRescuer={isOwner}
+          onBountiesAccepted={() => {
+            // Refresh page hoặc reload bounties
+          }}
+        />
+      )}
+
+      {/* ===== KHỐI 2: TIỀN HỖ TRỢ CHI PHÍ (Quá trình) ===== */}
       {!isClosed && (
         <DonationWidget
           caseId={pet.id}

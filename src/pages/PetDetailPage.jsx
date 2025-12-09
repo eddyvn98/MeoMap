@@ -736,13 +736,6 @@ export default function PetDetailPage() {
     navigate(`/edit-pet/${id}`);
   };
 
-  // Debug log
-  useEffect(() => {
-    if (pet) {
-      console.log("🐱 Pet loaded:", { id: pet.id, name: pet.name, category: pet.category, isOwner });
-    }
-  }, [pet, isOwner]);
-
   // Nếu category là 'lost' → render Lost Pet UI
   if (pet.category === "lost") {
     return (

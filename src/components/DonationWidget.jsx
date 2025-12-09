@@ -30,7 +30,6 @@ export default function DonationWidget({ caseId, isOwner, onCaseClosed }) {
 
   // Refresh sau khi có donation mới
   const handleDonationSuccess = () => {
-    setShowModal(false);
     // Reload stats
     const load = async () => {
       const { stats: s } = await getDonationStats(caseId);

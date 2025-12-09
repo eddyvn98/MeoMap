@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { QRCodeCanvas } from "qrcode.react";
 import { supabase } from "../supabaseClient";
 import { addDonation, uploadReceiptImage } from "../donation";
 
@@ -21,6 +22,8 @@ export default function DonationModal({ caseId, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
+  const [createdToken, setCreatedToken] = useState(null);
+  const [createdAmount, setCreatedAmount] = useState(null);
 
   // Load user
   useState(() => {
@@ -70,7 +73,7 @@ export default function DonationModal({ caseId, onClose, onSuccess }) {
 
       // Thêm donation
       const userId = anonymous ? null : currentUser?.id;
-      const { success, error: donationError } = await addDonation({
+      const { success, donation, error: donationError } = await addDonation({
         caseId,
         amount: parseInt(amount),
         method,
@@ -81,7 +84,9 @@ export default function DonationModal({ caseId, onClose, onSuccess }) {
 
       if (!success) throw new Error(donationError);
 
-      alert(`✅ Cảm ơn bạn đã góp ${parseInt(amount).toLocaleString()}đ!`);
+      setCreatedToken(donation?.token || null);
+      setCreatedAmount(parseInt(amount));
+      alert(`✅ Cảm ơn bạn đã góp ${parseInt(amount).toLocaleString()}đ!\nMã tham chiếu: ${donation?.token || "(đang tạo)"}`);
       onSuccess?.();
     } catch (err) {
       setError(err.message);
@@ -228,6 +233,20 @@ export default function DonationModal({ caseId, onClose, onSuccess }) {
             </button>
           </div>
         </form>
+
+        {createdToken && (
+          <div className="mt-4 p-3 border rounded bg-orange-50 text-center space-y-2">
+            <p className="text-sm font-semibold text-orange-800">Mã tham chiếu của bạn</p>
+            <p className="text-lg font-bold text-orange-700">MEO-{createdToken}</p>
+            <p className="text-xs text-gray-600">Dán mã này vào nội dung chuyển khoản để phân luồng đúng ca.</p>
+            <div className="flex justify-center">
+              <QRCodeCanvas value={`MEO-${createdToken}`} size={140} includeMargin={true} />
+            </div>
+            {createdAmount && (
+              <p className="text-xs text-gray-700">Số tiền: {createdAmount.toLocaleString()}đ</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

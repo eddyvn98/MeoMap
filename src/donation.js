@@ -128,10 +128,11 @@ export async function getCaseWalletBalance(caseId) {
       .from("case_wallet")
       .select("balance")
       .eq("case_id", caseId)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
 
+    // If wallet row chưa tồn tại, trả về 0 thay vì lỗi
     return { success: true, balance: wallet?.balance || 0 };
   } catch (error) {
     console.error("Error fetching wallet balance:", error);

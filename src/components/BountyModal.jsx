@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { QRCodeCanvas } from "qrcode.react";
 import { supabase } from "../supabaseClient";
 import { createBounty } from "../bounty";
 
@@ -15,9 +16,11 @@ export default function BountyModal({ caseId, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
+  const [createdToken, setCreatedToken] = useState(null);
+  const [createdAmount, setCreatedAmount] = useState(null);
 
   // Load user
-  useState(() => {
+  useEffect(() => {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
       setCurrentUser(data.user);
@@ -42,7 +45,7 @@ export default function BountyModal({ caseId, onClose, onSuccess }) {
 
       // Create bounty
       const userId = anonymous ? null : currentUser?.id;
-      const { success, error: bountyError } = await createBounty({
+      const { success, bounty, error: bountyError } = await createBounty({
         caseId,
         amount: parseInt(amount),
         userId,
@@ -50,7 +53,9 @@ export default function BountyModal({ caseId, onClose, onSuccess }) {
 
       if (!success) throw new Error(bountyError);
 
-      alert(`✅ Bạn đã treo thưởng ${parseInt(amount).toLocaleString()}đ!`);
+      setCreatedToken(bounty?.token || null);
+      setCreatedAmount(parseInt(amount));
+      alert(`✅ Bạn đã treo thưởng ${parseInt(amount).toLocaleString()}đ!\nMã tham chiếu: ${bounty?.token || "(đang tạo)"}`);
       onSuccess?.();
     } catch (err) {
       setError(err.message);
@@ -136,6 +141,30 @@ export default function BountyModal({ caseId, onClose, onSuccess }) {
               Hủy
             </button>
           </div>
+
+          {createdToken && (
+            <div className="mt-4 rounded border border-dashed border-orange-300 bg-orange-50 p-4 text-center">
+              <h4 className="text-orange-700 font-semibold">Mã tham chiếu: {createdToken}</h4>
+              <p className="text-sm text-orange-600 mt-1">
+                Chia sẻ mã này cho người cứu hộ để xác nhận thưởng.
+              </p>
+              <div className="mt-3 flex justify-center">
+                <div className="bg-white p-2 rounded shadow">
+                  <QRCodeCanvas
+                    value={JSON.stringify({ type: "bounty", token: createdToken, amount: createdAmount })}
+                    size={150}
+                    level="M"
+                    includeMargin
+                  />
+                </div>
+              </div>
+              {createdAmount ? (
+                <p className="mt-2 text-sm text-orange-700">
+                  Giá trị treo thưởng: {createdAmount.toLocaleString()}đ
+                </p>
+              ) : null}
+            </div>
+          )}
         </form>
       </div>
     </div>

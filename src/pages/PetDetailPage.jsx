@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { QRCodeCanvas } from "qrcode.react";
 import { createDepositAndTicket } from "../deposit";
+import LostPetDetail from "../components/LostPetDetail";
 
 // Tính mã số 6 chữ số từ pet_id
 function getShortNumericCode(input) {
@@ -694,6 +695,73 @@ export default function PetDetailPage() {
     );
   }
 
+  // Handlers cho Lost Pet
+  const handleLostPetMarkAsFound = async () => {
+    if (!confirm("Bạn có chắc muốn đánh dấu bài này là 'Đã tìm thấy'?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("pets")
+        .update({ status: "delivered" })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setPet({ ...pet, status: "delivered" });
+      alert("Đã cập nhật trạng thái. Cảm ơn cộng đồng đã giúp đỡ! 🎉");
+    } catch (err) {
+      console.error(err);
+      alert("Lỗi: " + err.message);
+    }
+  };
+
+  const handleLostPetDelete = async () => {
+    if (!confirm("Bạn có chắc muốn XÓA bài đăng này?")) return;
+
+    try {
+      const { error } = await supabase.from("pets").delete().eq("id", id);
+
+      if (error) throw error;
+
+      alert("Đã xóa bài đăng.");
+      navigate("/");
+    } catch (err) {
+      console.error(err);
+      alert("Lỗi: " + err.message);
+    }
+  };
+
+  const handleLostPetEdit = () => {
+    navigate(`/edit-pet/${id}`);
+  };
+
+  // Debug log
+  useEffect(() => {
+    if (pet) {
+      console.log("🐱 Pet loaded:", { id: pet.id, name: pet.name, category: pet.category, isOwner });
+    }
+  }, [pet, isOwner]);
+
+  // Nếu category là 'lost' → render Lost Pet UI
+  if (pet.category === "lost") {
+    return (
+      <div style={{ padding: 20, paddingBottom: 80 }}>
+        <button onClick={() => navigate(-1)} style={{ marginBottom: 10, padding: "8px 12px", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer" }}>
+          ← Quay lại
+        </button>
+        <LostPetDetail
+          pet={pet}
+          user={currentUser}
+          isOwner={isOwner}
+          onMarkAsFound={handleLostPetMarkAsFound}
+          onDelete={handleLostPetDelete}
+          onEdit={handleLostPetEdit}
+        />
+      </div>
+    );
+  }
+
+  // Nếu category là 'adopt' → render Adopt Pet UI (UI cũ)
   return (
     <div style={{ padding: 20, paddingBottom: 80 }}>
       <button onClick={() => navigate(-1)} style={{ marginBottom: 10 }}>

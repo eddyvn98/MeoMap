@@ -11,6 +11,7 @@ export default function OwnerDashboard() {
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [error, setError] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all"); // 'all', 'adopt', 'lost', 'rescue'
 
   // 1) Lấy user hiện tại
   useEffect(() => {
@@ -59,6 +60,11 @@ export default function OwnerDashboard() {
     return <div className="p-4 text-sm">Đang kiểm tra đăng nhập…</div>;
   }
 
+  // Lọc posts theo category
+  const filteredPosts = categoryFilter === "all" 
+    ? posts 
+    : posts.filter(p => p.category === categoryFilter);
+
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-4">
       {/* HEADER */}
@@ -85,20 +91,58 @@ export default function OwnerDashboard() {
         </div>
       </header>
 
-      {/* NAV TABS GIẢ LẬP (sau này sẽ thêm nội dung các tab khác) */}
-      <div className="flex gap-2 text-xs mb-2">
-        <button className="px-3 py-1 rounded bg-orange-500 text-white">
-          Bài đăng của tôi
+      {/* NAV TABS - Filter bài đăng theo category */}
+      <div className="flex gap-2 text-xs mb-2 border-b pb-2">
+        <button
+          onClick={() => setCategoryFilter("all")}
+          className={`px-3 py-1 rounded font-semibold transition ${
+            categoryFilter === "all"
+              ? "bg-orange-500 text-white"
+              : "border text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          Tất cả ({posts.length})
         </button>
-        <button className="px-3 py-1 rounded border">Cọc & giao dịch</button>
-        <button className="px-3 py-1 rounded border">Giao mèo</button>
-        <button className="px-3 py-1 rounded border">Đánh giá người nhận</button>
-        <button className="px-3 py-1 rounded border">Check-in</button>
+        <button
+          onClick={() => setCategoryFilter("adopt")}
+          className={`px-3 py-1 rounded font-semibold transition ${
+            categoryFilter === "adopt"
+              ? "bg-blue-500 text-white"
+              : "border text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          👶 Nhận nuôi ({posts.filter(p => p.category === "adopt").length})
+        </button>
+        <button
+          onClick={() => setCategoryFilter("lost")}
+          className={`px-3 py-1 rounded font-semibold transition ${
+            categoryFilter === "lost"
+              ? "bg-red-500 text-white"
+              : "border text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          🔴 Thất lạc ({posts.filter(p => p.category === "lost").length})
+        </button>
+        <button
+          onClick={() => setCategoryFilter("rescue")}
+          className={`px-3 py-1 rounded font-semibold transition ${
+            categoryFilter === "rescue"
+              ? "bg-green-500 text-white"
+              : "border text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          🆘 Cứu hộ ({posts.filter(p => p.category === "rescue").length})
+        </button>
       </div>
 
       {/* KHỐI 1: BÀI ĐĂNG CỦA TÔI */}
       <section>
-        <h2 className="font-semibold text-sm mb-2">Bài đăng của tôi</h2>
+        <h2 className="font-semibold text-sm mb-2">
+          {categoryFilter === "all" && "Bài đăng của tôi"}
+          {categoryFilter === "adopt" && "👶 Bài nhận nuôi"}
+          {categoryFilter === "lost" && "🔴 Bài thất lạc"}
+          {categoryFilter === "rescue" && "🆘 Bài cứu hộ"}
+        </h2>
 
         {loadingPosts && (
           <div className="text-xs text-gray-600">Đang tải danh sách…</div>
@@ -110,14 +154,14 @@ export default function OwnerDashboard() {
           </div>
         )}
 
-        {!loadingPosts && posts.length === 0 && (
+        {!loadingPosts && filteredPosts.length === 0 && (
           <div className="text-xs text-gray-500">
-            Bạn chưa có bài đăng nào. Hãy bấm “Đăng bài mới”.
+            Không có bài đăng nào trong danh mục này.
           </div>
         )}
 
         <div className="grid gap-3 sm:grid-cols-2">
-          {posts.map((pet) => (
+          {filteredPosts.map((pet) => (
             <article
               key={pet.id}
               className="border rounded-lg overflow-hidden text-xs bg-white shadow-sm"

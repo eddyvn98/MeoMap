@@ -312,17 +312,18 @@ export default function App() {
       }
 
       let imageUrl = null;
+      
       if (formData.photo) {
         const fileName = `${Date.now()}-${formData.photo.name}`;
         const { error: uploadError } = await supabase.storage
-          .from("pets")
+          .from("pet-images")
           .upload(`reports/${fileName}`, formData.photo);
 
         if (uploadError) {
           console.error("Lỗi upload ảnh:", uploadError);
         } else {
           const { data } = supabase.storage
-            .from("pets")
+            .from("pet-images")
             .getPublicUrl(`reports/${fileName}`);
           imageUrl = data.publicUrl;
         }

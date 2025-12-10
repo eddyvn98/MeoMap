@@ -4,6 +4,11 @@
 import { supabase } from '../supabaseClient';
 import { sendReminderEmail } from './emailService';
 
+// If the target table is missing in the current Supabase project, we disable
+// further scheduler calls to avoid repeated 404 spam. This auto-resets on
+// reload once the table exists.
+let schedulerDisabled = false;
+
 /**
  * Calculate days since delivery
  */
@@ -36,6 +41,10 @@ function shouldSendReminder(adoptionRequest, dayMilestone) {
  * Should be called periodically (e.g., every hour or via cron job)
  */
 export async function processPendingReminders() {
+  if (schedulerDisabled) {
+    return { success: false, disabled: true, reason: 'schema-missing' };
+  }
+
   try {
     console.log('[REMINDER SCHEDULER] Starting reminder processing...');
 
@@ -57,6 +66,13 @@ export async function processPendingReminders() {
       .gte('delivered_at', new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString()); // Last 35 days
 
     if (fetchErr) {
+      // If the table is not present in this environment, stop trying until reload
+      if (fetchErr.code === 'PGRST205') {
+        schedulerDisabled = true;
+        console.warn('[REMINDER SCHEDULER] adoption_requests table unavailable; disabling scheduler for this session.');
+        return { success: false, disabled: true, reason: 'schema-missing' };
+      }
+
       console.error('[REMINDER SCHEDULER] Error fetching adoptions:', fetchErr);
       return { success: false, error: fetchErr.message };
     }

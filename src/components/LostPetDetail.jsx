@@ -41,11 +41,21 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
   // Load sightings
   useEffect(() => {
     const loadSightings = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("adoption_activities")
         .select("*")
         .eq("adoption_request_id", pet.id)
         .order("created_at", { ascending: false });
+      
+      if (error) {
+        if (error.code === 'PGRST205') {
+          console.warn('[LostPetDetail] adoption_activities table not found; skipping sightings');
+          setSightings([]);
+        } else {
+          console.error('Load sightings error:', error);
+        }
+        return;
+      }
       setSightings(data || []);
     };
     loadSightings();
@@ -86,6 +96,12 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
           image_url: imageUrl,
         },
         created_at: new Date().toISOString(),
+      }).then(({ error }) => {
+        if (error && error.code === 'PGRST205') {
+          console.warn('[LostPetDetail] adoption_activities table not found; skipping insert');
+        } else if (error) {
+          throw error;
+        }
       });
 
       alert("Cảm ơn bạn đã báo nhìn thấy! 🙏");
@@ -95,12 +111,15 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
       setShowSightingForm(false);
 
       // Reload sightings
-      const { data: updatedSightings } = await supabase
+      const { data: updatedSightings, error: reloadError } = await supabase
         .from("adoption_activities")
         .select("*")
         .eq("adoption_request_id", pet.id)
         .order("created_at", { ascending: false });
 
+      if (reloadError && reloadError.code !== 'PGRST205') {
+        console.error('Reload sightings error:', reloadError);
+      }
       setSightings(updatedSightings || []);
     } catch (err) {
       console.error(err);
@@ -139,7 +158,7 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
   // Verify or reject sighting (owner only)
   const handleVerifySighting = async (sightingId, isValid) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from("adoption_activities")
         .update({
           metadata: {
@@ -149,6 +168,10 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
           }
         })
         .eq("id", sightingId);
+
+      if (error && error.code !== 'PGRST205') {
+        throw error;
+      }
 
       setSightingVerifications({
         ...sightingVerifications,

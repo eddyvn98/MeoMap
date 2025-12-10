@@ -123,6 +123,19 @@ export default function PetDetailPage() {
           return;
         }
         
+        // Đảm bảo pet.category được set chính xác
+        // Nếu không có category, default là 'adopt' (vì đa số pets là adoption)
+        if (!data.category) {
+          data.category = 'adopt';
+        }
+        
+        console.log("🐾 Loaded pet from DB:", {
+          id: data.id,
+          name: data.name,
+          category: data.category,
+          status: data.status
+        });
+        
         setPet(data || null);
         const petId = data.id;
         
@@ -182,11 +195,15 @@ export default function PetDetailPage() {
           setCurrentUserReputation(userRep || null);
 
           // Load wallet credit
-          const { data: profile } = await supabase
+          const { data: profile, error: profileErr } = await supabase
             .from("profiles")
             .select("wallet_credit")
             .eq("id", user.id)
-            .single();
+            .maybeSingle();
+          
+          if (profileErr) {
+            console.error("Error loading profile wallet_credit:", profileErr);
+          }
           
           setWalletCredit(profile?.wallet_credit || 0);
 
@@ -466,8 +483,20 @@ export default function PetDetailPage() {
           throw new Error("Có lỗi khi trừ tiền trong ví. Vui lòng liên hệ admin.");
         }
         
-        // Cập nhật wallet credit local
-        setWalletCredit(walletCredit - walletUsed);
+        // Re-fetch wallet credit từ DB để đảm bảo đồng bộ
+        const { data: updatedProfile, error: walletReloadErr } = await supabase
+          .from("profiles")
+          .select("wallet_credit")
+          .eq("id", currentUser.id)
+          .single();
+
+        if (walletReloadErr) {
+          console.error("Lỗi reload wallet_credit:", walletReloadErr);
+          // Fallback: cập nhật local state (RPC đã thành công)
+          setWalletCredit(walletCredit - walletUsed);
+        } else {
+          setWalletCredit(updatedProfile?.wallet_credit || 0);
+        }
       }
 
       // Load lại deposit từ DB để update state
@@ -736,6 +765,7 @@ export default function PetDetailPage() {
 
   // Nếu category là 'lost' → render Lost Pet UI
   if (pet.category === "lost") {
+    console.log("🔍 Rendering LOST pet:", pet.name);
     return (
       <div style={{ padding: 20, paddingBottom: 80 }}>
         <button onClick={() => navigate(-1)} style={{ marginBottom: 10, padding: "8px 12px", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer" }}>
@@ -755,6 +785,7 @@ export default function PetDetailPage() {
 
   // Nếu category là 'rescue' → render Rescue Pet UI (quyên góp)
   if (pet.category === "rescue") {
+    console.log("🚒 Rendering RESCUE pet:", pet.name);
     return (
       <div style={{ padding: 20, paddingBottom: 80 }}>
         <button onClick={() => navigate(-1)} style={{ marginBottom: 10, padding: "8px 12px", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer" }}>
@@ -770,6 +801,7 @@ export default function PetDetailPage() {
   }
 
   // Nếu category là 'adopt' → render Adopt Pet UI (UI cũ)
+  console.log("👶 Rendering ADOPTION pet:", pet.name, "- category:", pet.category);
   return (
     <div style={{ padding: 20, paddingBottom: 80 }}>
       <button onClick={() => navigate(-1)} style={{ marginBottom: 10 }}>

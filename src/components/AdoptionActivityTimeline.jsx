@@ -20,10 +20,19 @@ export default function AdoptionActivityTimeline({ adoptionRequestId }) {
           .eq('adoption_request_id', adoptionRequestId)
           .order('created_at', { ascending: true });
 
-        if (error) throw error;
+        if (error) {
+          // If table doesn't exist (404 PGRST205), silently skip
+          if (error.code === 'PGRST205') {
+            console.warn('[AdoptionActivityTimeline] adoption_activities table not found; skipping');
+            setActivities([]);
+          } else {
+            console.error('Load activities failed:', error);
+          }
+          return;
+        }
         setActivities(data || []);
       } catch (err) {
-        console.error('Load activities failed:', err);
+        console.error('Load activities exception:', err);
       } finally {
         setLoading(false);
       }

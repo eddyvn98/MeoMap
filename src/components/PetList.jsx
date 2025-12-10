@@ -16,10 +16,10 @@ export default function PetList({
 
     const load = async () => {
       const { data, error } = await supabase
-        .from('adoption_requests')
-        .select('pet_id, status, receiver_confirmed_checkin, checkin_required_at')
+        .from('deposits')
+        .select('pet_id, status, confirmed_at')
         .in('pet_id', adoptPets.map(p => p.id || p.pet_id))
-        .eq('status', 'delivered');
+        .eq('status', 'confirmed');
 
       if (error) { console.error(error); return; }
       const map = {};
@@ -32,12 +32,7 @@ export default function PetList({
   }, [pets]);
 
   const computeBadge = (request) => {
-    if (!request) return null;
-    const due = request.checkin_required_at ? new Date(request.checkin_required_at) : null;
-    const now = new Date();
-    if (due && now > due) return { label: '🟥 Quá hạn', bg: '#fee2e2', color: '#991b1b' };
-    if (request.receiver_confirmed_checkin) return { label: '🟨 Chờ chủ', bg: '#fef3c7', color: '#92400e' };
-    return { label: '🟧 Chờ xác nhận', bg: '#fef3c7', color: '#92400e' };
+    return null;
   };
 
   if (!pets || pets.length === 0) {

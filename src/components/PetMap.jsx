@@ -163,10 +163,10 @@ export default forwardRef(function PetMap({
 
     const load = async () => {
       const { data, error } = await supabase
-        .from('adoption_requests')
-        .select('pet_id, status, receiver_confirmed_checkin, checkin_required_at')
+        .from('deposits')
+        .select('pet_id, status, confirmed_at')
         .in('pet_id', adoptPets.map(p => p.id || p.pet_id))
-        .eq('status', 'delivered');
+        .eq('status', 'confirmed');
 
       if (error) { console.error(error); return; }
       const map = {};
@@ -179,12 +179,7 @@ export default forwardRef(function PetMap({
   }, [pets]);
 
   const computeBadge = (request) => {
-    if (!request) return null;
-    const due = request.checkin_required_at ? new Date(request.checkin_required_at) : null;
-    const now = new Date();
-    if (due && now > due) return { label: '🟥', bg: '#fee2e2' };
-    if (request.receiver_confirmed_checkin) return { label: '🟨', bg: '#fef3c7' };
-    return { label: '🟧', bg: '#fef3c7' };
+    return null;
   };
 
   useImperativeHandle(ref, () => map);

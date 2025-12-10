@@ -32,13 +32,13 @@ export default function MyAdoptionRequestsPage() {
 
         // 2. Lấy danh sách adoption request của người nhận
         const { data: adoptionRequests, error: requestsErr } = await supabase
-          .from("adoption_requests")
+          .from("deposits")
           .select(`
             *,
             pet:pets(id, name, category, district, status, created_at, owner_id),
             owner:profiles!owner_id(id, display_name, avatar_url, email, phone, zalo)
           `)
-          .eq("requester_id", requesterId)
+          .eq("receiver_id", requesterId)
           .order("created_at", { ascending: false });
 
         if (requestsErr) {
@@ -64,16 +64,12 @@ export default function MyAdoptionRequestsPage() {
     switch (status) {
       case "pending":
         return { bg: "#fef3c7", text: "#92400e", label: "⏳ Chờ chấp nhận" };
-      case "accepted":
-        return { bg: "#dcfce7", text: "#166534", label: "✅ Đã chấp nhận" };
-      case "ready_to_deliver":
-        return { bg: "#dbeafe", text: "#1e40af", label: "📦 Sẵn sàng giao" };
-      case "delivered":
-        return { bg: "#e0e7ff", text: "#4338ca", label: "🎉 Đã giao" };
-      case "rejected":
-        return { bg: "#fee2e2", text: "#991b1b", label: "❌ Từ chối" };
+      case "confirmed":
+        return { bg: "#dcfce7", text: "#166534", label: "✅ Đã xác nhận giao" };
       case "cancelled":
         return { bg: "#f3f4f6", text: "#6b7280", label: "⛔ Đã hủy" };
+      case "refunded":
+        return { bg: "#e5e7eb", text: "#4b5563", label: "💸 Đã hoàn cọc" };
       default:
         return { bg: "#f9fafb", text: "#374151", label: status };
     }

@@ -5,6 +5,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { createDepositAndTicket } from "../deposit";
 import LostPetDetail from "../components/LostPetDetail";
 import RescuePetDetail from "../components/RescuePetDetail";
+import UserQRCode from "../components/UserQRCode";
 
 // Tính mã số 6 chữ số từ pet_id
 function getShortNumericCode(input) {
@@ -288,35 +289,35 @@ export default function PetDetailPage() {
     loadAdoption();
   }, [isOwner, pet]);
 
-  // Load adoption requests (flow mới)
+  // Load deposits (flow mới - thay thế adoption_requests)
   useEffect(() => {
     if (!pet) return;
 
     const loadRequests = async () => {
       setLoadingRequests(true);
 
-      // Owner: Load tất cả requests cho pet này
+      // Owner: Load tất cả deposits cho pet này
       if (isOwner) {
         const { data } = await supabase
-          .from("adoption_requests")
+          .from("deposits")
           .select(`
             *,
-            profiles:requester_id(id, display_name, email, phone)
+            profiles:receiver_id(id, display_name, email, phone)
           `)
           .eq("pet_id", pet.id)
           .order("created_at", { ascending: false });
 
-        console.log("[Owner] Adoption requests loaded:", data);
+        console.log("[Owner] Deposits loaded:", data);
         setRequests(data || []);
       }
 
-      // Receiver: Load request của user hiện tại
+      // Receiver: Load deposit của user hiện tại
       if (!isOwner && currentUser) {
         const { data } = await supabase
-          .from("adoption_requests")
+          .from("deposits")
           .select("*")
           .eq("pet_id", pet.id)
-          .eq("requester_id", currentUser.id)
+          .eq("receiver_id", currentUser.id)
           .maybeSingle();
 
         setMyRequest(data || null);
@@ -512,23 +513,14 @@ export default function PetDetailPage() {
     }
   };
 
-  // ============ ADOPTION REQUESTS HANDLERS (Flow mới) ============
+  // ============ SIMPLIFIED: Chỉ giữ lại contact request ============
+  // Các hàm confirm/reject cũ đã được thay thế bằng QR code scanning
 
   const handleSendContactRequest = async () => {
     if (!confirm("Bạn muốn liên hệ với chủ để nhận mèo này?")) return;
     
     try {
-      const { error } = await supabase
-        .from("adoption_requests")
-        .insert({
-          pet_id: pet.id,
-          requester_id: currentUser.id,
-          owner_id: pet.owner_id || pet.user_id,
-          status: 'pending'
-        });
-
-      if (error) throw error;
-
+      // Chỉ tạo deposit (đã thay thế adoption_requests)
       const { error: depositError } = await supabase
         .from("deposits")
         .insert({
@@ -536,147 +528,15 @@ export default function PetDetailPage() {
           receiver_id: currentUser.id,
           owner_id: pet.owner_id || pet.user_id,
           amount: 0,
-          status: 'pending',
-          delivery_token: randomToken()
+          status: 'pending'
         });
 
       if (depositError) throw depositError;
 
       alert("✅ Đã gửi yêu cầu! Chờ chủ bài chấp nhận.");
       setMyRequest({ 
-        status: 'pending',
-        receiver_confirmed_meet: false,
-        owner_confirmed_meet: false
+        status: 'pending'
       });
-    } catch (err) {
-      alert("Lỗi: " + err.message);
-    }
-  };
-
-  const randomToken = () => {
-    return Math.random().toString(36).substring(2, 10).toUpperCase();
-  };
-
-  const handleReceiverConfirmMeet = async () => {
-    if (!myRequest) return;
-
-    try {
-      const payload = {
-        receiver_confirmed_meet: true,
-        receiver_confirmed_at: new Date().toISOString()
-      };
-
-      // Nếu owner cũng confirm → sinh token tự động
-      if (myRequest.owner_confirmed_meet) {
-        const token = Math.random().toString(36).substring(2, 10).toUpperCase();
-        payload.delivery_token = token;
-        payload.status = 'ready_to_deliver';
-        payload.token_generated_at = new Date().toISOString();
-      }
-
-      const { data: updated, error } = await supabase
-        .from("adoption_requests")
-        .update(payload)
-        .eq("id", myRequest.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setMyRequest(updated);
-      alert(myRequest.owner_confirmed_meet ? "✅ Đã sinh mã giao mèo!" : "✅ Đã xác nhận. Chờ chủ bài xác nhận...");
-    } catch (err) {
-      alert("Lỗi: " + err.message);
-    }
-  };
-
-  const handleOwnerAcceptRequest = async (requestId) => {
-    if (!confirm("Chấp nhận người này?")) return;
-
-    try {
-      // Accept request này
-      const { error: acceptErr } = await supabase
-        .from("adoption_requests")
-        .update({ 
-          status: 'accepted', 
-          accepted_at: new Date().toISOString() 
-        })
-        .eq("id", requestId);
-
-      if (acceptErr) throw acceptErr;
-
-      // Reject các request khác
-      await supabase
-        .from("adoption_requests")
-        .update({ 
-          status: 'rejected', 
-          rejected_at: new Date().toISOString() 
-        })
-        .eq("pet_id", pet.id)
-        .eq("status", "pending")
-        .neq("id", requestId);
-
-      // Update pet status
-      await supabase
-        .from("pets")
-        .update({ status: 'in_contact' })
-        .eq("id", pet.id);
-
-      alert("✅ Đã chấp nhận!");
-      
-      // Reload requests
-      const { data } = await supabase
-        .from("adoption_requests")
-        .select(`
-          *,
-          profiles:requester_id(id, display_name, email, phone)
-        `)
-        .eq("pet_id", pet.id)
-        .order("created_at", { ascending: false });
-
-      setRequests(data || []);
-    } catch (err) {
-      alert("Lỗi: " + err.message);
-    }
-  };
-
-  const handleOwnerConfirmMeet = async (request) => {
-    try {
-      const payload = {
-        owner_confirmed_meet: true,
-        owner_confirmed_at: new Date().toISOString()
-      };
-
-      // Nếu receiver cũng đã confirm → sinh token
-      if (request.receiver_confirmed_meet) {
-        const token = Math.random().toString(36).substring(2, 10).toUpperCase();
-        payload.delivery_token = token;
-        payload.status = 'ready_to_deliver';
-        payload.token_generated_at = new Date().toISOString();
-      }
-
-      const { error } = await supabase
-        .from("adoption_requests")
-        .update(payload)
-        .eq("id", request.id);
-
-      if (error) throw error;
-
-      alert(request.receiver_confirmed_meet 
-        ? "✅ Đã sinh mã giao mèo!" 
-        : "✅ Đã xác nhận. Chờ người nhận xác nhận...");
-
-      // Reload requests
-      const { data } = await supabase
-        .from("adoption_requests")
-        .select(`
-          *,
-          profiles:requester_id(id, display_name, email, phone)
-        `)
-        .eq("pet_id", pet.id)
-        .order("created_at", { ascending: false });
-
-      setRequests(data || []);
     } catch (err) {
       alert("Lỗi: " + err.message);
     }
@@ -1433,6 +1293,55 @@ export default function PetDetailPage() {
             ℹ️ Chưa có ai đăng ký nhận mèo này
           </div>
         )}
+
+        {/* OWNER - Nút xem danh sách người cọc */}
+        {isOwner && pet && (
+          <div style={{ marginBottom: 20 }}>
+            <button
+              onClick={() => navigate(`/account/adopt/${pet.id}/applicants`)}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 15,
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8
+              }}
+            >
+              <span style={{ fontSize: 18 }}>📋</span>
+              Quản lý người đặt cọc
+              {applicants.length > 0 && (
+                <span style={{
+                  background: '#fff',
+                  color: '#8b5cf6',
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  fontSize: 13,
+                  fontWeight: 'bold'
+                }}>
+                  {applicants.length}
+                </span>
+              )}
+            </button>
+            <p style={{ 
+              fontSize: 12, 
+              color: '#6b7280', 
+              marginTop: 8,
+              textAlign: 'center'
+            }}>
+              💡 Tại đây bạn có thể quét QR hoặc chọn người để xác nhận giao mèo
+            </p>
+          </div>
+        )}
+
         <div style={{ marginBottom: 8, fontSize: 14 }}>
           {maxDeposit != null ? (
             <>
@@ -1445,12 +1354,12 @@ export default function PetDetailPage() {
               </div>
             </>
           ) : (
-            <div>
-              Chưa có ai cọc. {" "}
-              <span style={{ color: "#6b7280", fontSize: 12 }}>
+            <>
+              <div>Chưa có ai cọc.</div>
+              <div style={{ color: "#6b7280", fontSize: 12, marginTop: 4 }}>
                 (Gợi ý: {(pet.deposit_amount || 50000).toLocaleString()} đ)
-              </span>
-            </div>
+              </div>
+            </>
           )}
         </div>
 
@@ -1619,6 +1528,53 @@ export default function PetDetailPage() {
       )}
 
       {/* Hiển thị QR + token nếu đã có deposit */}
+      
+      {/* QR CỐ ĐỊNH CỦA USER - Để owner quét khi giao mèo */}
+      {currentDeposit && currentDeposit.status === 'pending' && currentUser && (
+        <div style={{
+          marginTop: 16,
+          padding: 16,
+          border: "2px solid #8b5cf6",
+          borderRadius: 8,
+          maxWidth: 400,
+          background: "#faf5ff",
+        }}>
+          <h3 style={{ marginTop: 0, color: "#6b21a8", marginBottom: 8 }}>
+            🎫 Mã QR của bạn
+          </h3>
+          <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>
+            Khi gặp chủ bài, cho họ quét mã này để xác nhận giao mèo.
+            Sau khi quét, tiền cọc sẽ bị khóa trong 3 ngày chờ đánh giá.
+          </p>
+          
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center',
+            marginBottom: 12
+          }}>
+            <UserQRCode userId={currentUser.id} size={220} />
+          </div>
+
+          <div style={{
+            padding: 12,
+            background: '#ede9fe',
+            borderRadius: 6,
+            fontSize: 12,
+            color: '#5b21b6'
+          }}>
+            <p style={{ margin: 0, fontWeight: 'bold', marginBottom: 4 }}>
+              💡 Lưu ý:
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              <li>QR này là mã cố định của bạn</li>
+              <li>Chủ bài sẽ quét hoặc chọn bạn từ danh sách</li>
+              <li>Sau khi xác nhận, cọc sẽ khóa 3 ngày</li>
+              <li>Nếu tốt → voucher cho bạn</li>
+              <li>Nếu xấu → voucher cho chủ bài</li>
+            </ul>
+          </div>
+        </div>
+      )}
       
       {/* BLOCK 1: QR CHUYỂN TIỀN (hiện ngay sau đặt cọc) */}
       {currentDeposit && (

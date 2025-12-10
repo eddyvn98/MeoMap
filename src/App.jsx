@@ -382,7 +382,7 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     setIsProfileOpen(params.get("panel") === "profile");
-  }, [location.search]);
+  }, [location]);
 
   // Handle browser back/forward button for profile panel
   useEffect(() => {

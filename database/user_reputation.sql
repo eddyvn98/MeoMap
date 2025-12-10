@@ -1,11 +1,12 @@
 -- View: Thống kê uy tín của người dùng
--- Tổng hợp số lượng giao dịch và đánh giá tốt/xấu
+-- Nguồn dữ liệu: deposits (owner_rating)
 
-CREATE VIEW public.user_reputation AS
-SELECT
-  target_id AS user_id,
+CREATE OR REPLACE VIEW public.user_reputation AS
+SELECT 
+  receiver_id AS user_id,
   COUNT(*)::integer AS total_trades,
-  COUNT(*) FILTER (WHERE score = 1)::integer AS ok_trades,
-  COUNT(*) FILTER (WHERE score = 0)::integer AS bad_trades
-FROM adoption_ratings
-GROUP BY target_id;
+  COUNT(*) FILTER (WHERE owner_rating = 'good')::integer AS ok_trades,
+  COUNT(*) FILTER (WHERE owner_rating = 'bad')::integer AS bad_trades
+FROM public.deposits
+WHERE confirmed_at IS NOT NULL
+GROUP BY receiver_id;

@@ -26,13 +26,18 @@ export function AuthProvider({ children }) {
 
     // Simple auth state change listener
     try {
-      const { data } = supabase.auth.onAuthStateChanged((session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (session?.user) {
           setUser(session.user);
         } else {
           setUser(null);
         }
       });
+
+      // Cleanup subscription on unmount
+      return () => {
+        subscription?.unsubscribe();
+      };
     } catch (err) {
       console.warn("Auth listener not available:", err);
     }

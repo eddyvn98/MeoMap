@@ -22,6 +22,38 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
   const now = new Date();
   const daysAgo = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
 
+  const getCategoryName = (category) => {
+    switch (category) {
+      case "lost":
+        return "Mèo đi lạc";
+      case "found":
+        return "Mèo nhặt được";
+      case "adoption":
+        return "Mèo cần nhận nuôi";
+      default:
+        return "Thú cưng đi lạc";
+    }
+  };
+
+  const getStatusName = (status) => {
+    switch (status) {
+      case "available":
+        return "Có sẵn";
+      case "in_contact":
+        return "Đang liên hệ";
+      case "delivered":
+        return "Đã tìm thấy";
+      case "cancelled":
+        return "Đã huỷ";
+      case "pending":
+        return "Đang chờ xử lý";
+      case "confirmed":
+        return "Đã xác nhận";
+      default:
+        return "Trạng thái không xác định";
+    }
+  };
+
   // Load owner info
   useEffect(() => {
     const loadOwner = async () => {
@@ -244,14 +276,14 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
                   : "bg-red-500 animate-pulse"
               }`}
             >
-              {isFound ? "✅ Đã tìm thấy" : "🔴 Đang thất lạc"}
+              {getStatusName(pet.status)}
             </div>
           </div>
 
           {/* Badge category */}
           <div className="absolute top-4 left-4">
             <div className="px-3 py-1 rounded-full bg-blue-500 text-white text-xs font-semibold">
-              Mèo đi lạc
+              {getCategoryName(pet.category)}
             </div>
           </div>
         </div>

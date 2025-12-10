@@ -162,18 +162,31 @@ export default forwardRef(function PetMap({
     if (adoptPets.length === 0) return;
 
     const load = async () => {
-      const { data, error } = await supabase
-        .from('adoption_requests')
-        .select('pet_id, status, receiver_confirmed_checkin, checkin_required_at')
-        .in('pet_id', adoptPets.map(p => p.id || p.pet_id))
-        .eq('status', 'delivered');
+      try {
+        const { data, error } = await supabase
+          .from('adoption_requests')
+          .select('pet_id, status, receiver_confirmed_checkin, checkin_required_at')
+          .in('pet_id', adoptPets.map(p => p.id || p.pet_id))
+          .eq('status', 'delivered');
 
-      if (error) { console.error(error); return; }
-      const map = {};
-      (data || []).forEach(r => {
-        map[r.pet_id] = r;
-      });
-      setAdoptRequests(map);
+        // If table doesn't exist (404 PGRST205), silently skip
+        if (error) {
+          if (error.code === 'PGRST205') {
+            console.warn('[PetMap] adoption_requests table not found; skipping badge load');
+            return;
+          }
+          console.error('[PetMap] Error loading adoption requests:', error);
+          return;
+        }
+
+        const map = {};
+        (data || []).forEach(r => {
+          map[r.pet_id] = r;
+        });
+        setAdoptRequests(map);
+      } catch (err) {
+        console.warn('[PetMap] Exception loading adoptions:', err.message);
+      }
     };
     load();
   }, [pets]);

@@ -529,26 +529,19 @@ export default function PetDetailPage() {
 
       if (error) throw error;
 
-      const { error: depositError } = await supabase
-        .from("deposits")
-        .insert({
-          pet_id: pet.id,
-          receiver_id: currentUser.id,
-          owner_id: pet.owner_id || pet.user_id,
-          amount: 0,
-          status: 'pending',
-          delivery_token: randomToken()
-        });
+      // Reload data từ server để đồng bộ
+      const { data: refreshed } = await supabase
+        .from("adoption_requests")
+        .select("*")
+        .eq("pet_id", pet.id)
+        .eq("requester_id", currentUser.id)
+        .maybeSingle();
 
-      if (depositError) throw depositError;
+      setMyRequest(refreshed || null);
 
       alert("✅ Đã gửi yêu cầu! Chờ chủ bài chấp nhận.");
-      setMyRequest({ 
-        status: 'pending',
-        receiver_confirmed_meet: false,
-        owner_confirmed_meet: false
-      });
     } catch (err) {
+      console.error("[handleSendContactRequest] Error:", err);
       alert("Lỗi: " + err.message);
     }
   };
@@ -594,12 +587,17 @@ export default function PetDetailPage() {
     if (!confirm("Chấp nhận người này?")) return;
 
     try {
-      // Accept request này
+      // Tạo mã QR token
+      const deliveryToken = Math.random().toString(36).substr(2, 9).toUpperCase();
+
+      // Accept request này và tạo mã ngay
       const { error: acceptErr } = await supabase
         .from("adoption_requests")
         .update({ 
-          status: 'accepted', 
-          accepted_at: new Date().toISOString() 
+          status: 'ready_to_deliver',
+          accepted_at: new Date().toISOString(),
+          delivery_token: deliveryToken,
+          token_generated_at: new Date().toISOString()
         })
         .eq("id", requestId);
 
@@ -622,7 +620,7 @@ export default function PetDetailPage() {
         .update({ status: 'in_contact' })
         .eq("id", pet.id);
 
-      alert("✅ Đã chấp nhận!");
+      alert("✅ Đã chấp nhận! Mã quét đã được tạo.");
       
       // Reload requests
       const { data } = await supabase

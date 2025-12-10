@@ -366,7 +366,6 @@ export default forwardRef(function PetMap({
           if (!p.lat || !p.lng) return null;
 
           const petId = p.id || p.pet_id;
-          console.log("Map marker:", { name: p.name, id: p.id, pet_id: p.pet_id, petId });
 
           const req = adoptRequests[petId];
           const badge = req ? computeBadge(req) : null;
@@ -426,9 +425,9 @@ export default forwardRef(function PetMap({
                 },
               }}
             >
-              <Popup closeButton={false} autoPan={true} minWidth={200} maxWidth={260}>
+              {/* <Popup closeButton={false} autoPan={true} minWidth={200} maxWidth={260}>
                 {renderPopover(p)}
-              </Popup>
+              </Popup> */}
             </Marker>
           );
         })}

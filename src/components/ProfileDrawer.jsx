@@ -172,6 +172,33 @@ export default function ProfileDrawer({
     loadMyRequests();
   }, [user?.id]);
 
+  useEffect(() => {
+    const handleSelectMyPost = async (e) => {
+      const petId = e.detail?.petId;
+      if (!petId || !user?.id) return;
+
+      setActiveTab('posts');
+
+      try {
+        const { data: pet, error } = await supabase
+          .from('pets')
+          .select('*')
+          .eq('id', petId)
+          .single();
+
+        if (error) throw error;
+        if (pet) {
+          setSelectedPost(pet);
+        }
+      } catch (err) {
+        console.error('[handleSelectMyPost] Error:', err);
+      }
+    };
+
+    window.addEventListener('selectMyPost', handleSelectMyPost);
+    return () => window.removeEventListener('selectMyPost', handleSelectMyPost);
+  }, [user?.id]);
+
   const renderOverviewTab = () => {
     // Find the first ready_to_deliver request with QR code
     const readyRequest = myAllAdoptionRequests.find(

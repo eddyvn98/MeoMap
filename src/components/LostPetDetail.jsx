@@ -17,7 +17,7 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
   const [activities, setActivities] = useState([]);
   const [sightingVerifications, setSightingVerifications] = useState({});
 
-  const isFound = pet.status === "delivered";
+  const isFound = pet.category === "delivered";
   const createdDate = new Date(pet.created_at);
   const now = new Date();
   const daysAgo = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
@@ -25,11 +25,11 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
   const getCategoryName = (category) => {
     switch (category) {
       case "lost":
-        return "Mèo đi lạc";
-      case "found":
-        return "Mèo nhặt được";
-      case "adoption":
-        return "Mèo cần nhận nuôi";
+        return "Thú cưng của tôi đi lạc";
+      case "rescue":
+        return "Thú cưng cần cứu hộ";
+      case "adopt":
+        return "Thú cưng cần nhận nuôi";
       default:
         return "Thú cưng đi lạc";
     }

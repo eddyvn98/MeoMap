@@ -28,7 +28,6 @@
 
 .profile-layer.inline .profile-drawer {
   position: absolute;
-  top: 12px;
   right: 0;
   height: calc(100% - 24px);
   pointer-events: auto;

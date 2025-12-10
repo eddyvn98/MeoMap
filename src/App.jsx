@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef, use } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import debounce from "lodash.debounce";
 import { supabase } from "./supabaseClient";
@@ -11,6 +11,7 @@ import AuthModal from "./components/AuthModal";
 import ProfileDrawer from "./components/ProfileDrawer";
 import RescuePetDetail from "./components/RescuePetDetail";
 import LostPetDetail from "./components/LostPetDetail";
+import AdoptPetDetail from "./components/AdoptPetDetail";
 import { useReminderScheduler } from "./hooks/useReminderScheduler";
 
 function MapFilters({ filters, setFilters }) {
@@ -201,6 +202,15 @@ export default function App() {
   const [profileWidthMode, setProfileWidthMode] = useState("normal");
   const [mapBbox, setMapBbox] = useState(null);
   const profileTriggerRef = useRef(null);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      setUser(userData.user);
+    };
+    fetchUser();
+  }, []);
 
   // Run reminder scheduler periodically (every hour)
   useReminderScheduler(60 * 60 * 1000);
@@ -210,8 +220,6 @@ export default function App() {
       console.log("No bounds yet, skipping load");
       return;
     }
-
-    console.log("Loading pets with bounds:", bounds, "filters:", filters);
 
     setLoading(true);
     setError("");
@@ -252,8 +260,6 @@ export default function App() {
       .lte("lng", bounds.east);
 
     const { data, error } = await query;
-
-    console.log("Query result:", { data, error, count: data?.length });
 
     if (error) {
       console.error("Lỗi load pets theo bounds:", error);
@@ -454,6 +460,7 @@ export default function App() {
     setIsProfileOpen(false);
   };
 
+
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Header
@@ -485,102 +492,78 @@ export default function App() {
         {/* Left Detail Panel */}
         {selectedPetId && pets.length > 0 && (() => {
           const pet = selectedPetFull || pets.find((p) => (p.id || p.pet_id) === selectedPetId);
+
           if (!pet) return null;
 
+          if (pet.owner_id == user?.id) {
+            if (!isProfileOpen) {
+              openProfilePanel(null);
+            }
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('selectMyPost', { detail: { petId: pet.id || pet.pet_id } }));
+            }, 100);
+            return null;
+          }
+
           return (
-            <div
-              style={{
-                position: "absolute",
-                top: 72,
-                left: 0,
-                bottom: 0,
-                width: "clamp(320px, 33vw, 560px)",
-                background: "#fff",
-                boxShadow: "2px 4px 16px rgba(0,0,0,0.15)",
-                zIndex: 2000,
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden",
-              }}
-            >
-              {/* Header */}
-              <div
-                style={{
-                  padding: "12px 16px",
-                  borderBottom: "1px solid #e5e7eb",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Chi tiết</h3>
+            <>
+              {/* Backdrop overlay */}
+              <div 
+                className="absolute inset-0 bg-black/20 z-[1999]"
+                onClick={() => setSelectedPetId(null)}
+              />
+              
+              {/* Panel */}
+              <div className="absolute top-0 left-0 h-full w-[clamp(320px,33vw,560px)] bg-white shadow-[2px_4px_16px_rgba(0,0,0,0.15)] z-[2000] flex flex-col overflow-hidden">
+                {/* Header */}
+              <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between shrink-0">
+                <h3 className="m-0 text-base font-bold">Chi tiết</h3>
                 <button
                   onClick={() => setSelectedPetId(null)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    fontSize: 24,
-                    cursor: "pointer",
-                    padding: "0 8px",
-                  }}
+                  className="bg-transparent border-none text-2xl cursor-pointer px-2 hover:text-gray-600"
                 >
                   ×
                 </button>
               </div>
 
               {/* Content */}
-              <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-                {/* Rescue Pet Detail Widget */}
+              <div className="flex-1 overflow-y-auto p-4">
+                {/* Category-specific detail widgets */}
                 {pet.category === "rescue" ? (
-                  <RescuePetDetail pet={pet} user={null} isOwner={false} />
-                ) : pet.category === "lost" || pet.category === "adopt" ? (
-                  <LostPetDetail pet={pet} user={null} isOwner={false} />
+                  <RescuePetDetail pet={pet} user={user} isOwner={false} />
+                ) : pet.category === "adopt" ? (
+                  <AdoptPetDetail pet={pet} user={user} isOwner={false} />
+                ) : pet.category === "lost" ? (
+                  <LostPetDetail pet={pet} user={user} isOwner={false} />
                 ) : (
                   <>
                     {/* Fallback simple view for other categories */}
                     {/* Image Gallery */}
-                    <div style={{ marginBottom: 16 }}>
+                    <div className="mb-4">
                       {pet.image_url && (
                         <img
                           src={pet.image_url}
                           alt={pet.name}
-                          style={{
-                            width: "100%",
-                            height: 200,
-                            objectFit: "cover",
-                            borderRadius: 12,
-                            marginBottom: 8,
-                          }}
+                          className="w-full h-[200px] object-cover rounded-xl mb-2"
                         />
                       )}
                     </div>
 
                     {/* Title & Status */}
-                    <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 8px 0" }}>
+                    <h2 className="text-xl font-bold m-0 mb-2">
                       {pet.name || "Chưa đặt tên"}
                     </h2>
-                    <div
-                      style={{
-                        display: "inline-block",
-                        padding: "6px 12px",
-                        borderRadius: 6,
-                        background: "#dbeafe",
-                        color: "#0369a1",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        marginBottom: 12,
-                      }}
-                    >
+                    <div className="inline-block px-3 py-1.5 rounded-md bg-blue-50 text-sky-700 text-xs font-semibold mb-3">
                       {pet.status || "Unknown"}
                     </div>
 
                     {/* Description */}
                     {pet.description && (
-                      <div style={{ marginBottom: 12 }}>
-                        <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4, fontWeight: 600 }}>
+                      <div className="mb-3">
+                        <div className="text-xs text-gray-500 mb-1 font-semibold">
                           📝 Mô tả
                         </div>
-                        <div style={{ fontSize: 14, color: "#374151", lineHeight: 1.6 }}>
+                        <div className="text-sm text-gray-700 leading-relaxed">
                           {pet.description}
                         </div>
                       </div>
@@ -589,17 +572,7 @@ export default function App() {
                     {/* Xem đầy đủ button */}
                     <button
                       onClick={() => navigate(`/pet/${pet.id || pet.pet_id}`)}
-                      style={{
-                        width: "100%",
-                        padding: "12px 16px",
-                        background: "#3b82f6",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: 8,
-                        fontWeight: 700,
-                        fontSize: 14,
-                        cursor: "pointer",
-                      }}
+                      className="w-full px-4 py-3 bg-blue-500 text-white border-none rounded-lg font-bold text-sm cursor-pointer hover:bg-blue-600 transition-colors"
                     >
                       Xem đầy đủ
                     </button>
@@ -607,6 +580,7 @@ export default function App() {
                 )}
               </div>
             </div>
+            </>
           );
         })()}
 

@@ -77,57 +77,6 @@ export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenPro
           <>
             {/* Navigation buttons */}
             <div style={{ display: "flex", gap: 8 }}>
-              <Link to="/adoptions">
-                <button
-                  style={{
-                    ...buttonStyle,
-                    background: "#f0f0f0",
-                    color: "#333",
-                  }}
-                  onMouseOver={(e) =>
-                    (e.currentTarget.style.background = "#e0e0e0")
-                  }
-                  onMouseOut={(e) =>
-                    (e.currentTarget.style.background = "#f0f0f0")
-                  }
-                >
-                  Mèo đã giao / Đánh giá
-                </button>
-              </Link>
-              <Link to="/deposits">
-                <button
-                  style={{
-                    ...buttonStyle,
-                    background: "#f0f0f0",
-                    color: "#333",
-                  }}
-                  onMouseOver={(e) =>
-                    (e.currentTarget.style.background = "#e0e0e0")
-                  }
-                  onMouseOut={(e) =>
-                    (e.currentTarget.style.background = "#f0f0f0")
-                  }
-                >
-                  Cọc đang chờ
-                </button>
-              </Link>
-              <Link to="/my-adoption-requests">
-                <button
-                  style={{
-                    ...buttonStyle,
-                    background: "#f0f0f0",
-                    color: "#333",
-                  }}
-                  onMouseOver={(e) =>
-                    (e.currentTarget.style.background = "#e0e0e0")
-                  }
-                  onMouseOut={(e) =>
-                    (e.currentTarget.style.background = "#f0f0f0")
-                  }
-                >
-                  🐾 Mèo đang nhận
-                </button>
-              </Link>
               <button
                 ref={profileBtnRef}
                 onClick={handleOpenProfile}

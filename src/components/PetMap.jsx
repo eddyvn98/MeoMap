@@ -12,6 +12,22 @@ import { supabase } from '../supabaseClient';
 
 const defaultCenter = { lat: 10.8019, lng: 106.7147 };
 
+// Haversine distance in km between two lat/lng points
+function getDistanceKm(a, b) {
+  if (!a || !b) return null;
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLon = ((b.lng - a.lng) * Math.PI) / 180;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLon = Math.sin(dLon / 2);
+  const aCalc = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLon * sinDLon;
+  const c = 2 * Math.atan2(Math.sqrt(aCalc), Math.sqrt(1 - aCalc));
+  return R * c;
+}
+
 function ReportClickHandler({ onSelect }) {
   useMapEvents({
     click(e) {
@@ -155,6 +171,79 @@ export default forwardRef(function PetMap({
   const [selectedPos, setSelectedPos] = useState(null);
   const [map, setMap] = useState(null);
   const [adoptRequests, setAdoptRequests] = useState({});
+  const [openPopupMarkerRef, setOpenPopupMarkerRef] = useState(null);
+
+  const renderPopover = (p) => {
+    const petId = p.id || p.pet_id;
+    const statusText = (p.category || p.status || "").toLowerCase();
+    const statusLabel = statusText === 'lost' ? 'Lost' : statusText === 'adopt' ? 'Available' : statusText === 'adopted' ? 'Adopted' : p.status || 'Unknown';
+    const badgeColor = statusText === 'lost' ? '#ef4444' : statusText === 'adopt' ? '#10b981' : statusText === 'adopted' ? '#3b82f6' : '#6b7280';
+    const distanceKm = userPos ? getDistanceKm(userPos, { lat: p.lat, lng: p.lng }) : null;
+    const distanceLabel = distanceKm ? `${distanceKm.toFixed(distanceKm >= 10 ? 0 : 1)} km` : '—';
+
+    const actionLabel = statusText === 'lost' ? 'Report Found' : 'Adopt';
+
+    return (
+      <div style={{ width: 220 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', background: '#f3f4f6' }}>
+            {p.image_url ? (
+              <img src={p.image_url} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#9ca3af', fontSize: 12 }}>No image</div>
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name || 'Chưa đặt tên'}</div>
+            <div style={{ margin: '4px 0', fontSize: 12, color: '#6b7280' }}>{p.district || p.area || 'Không rõ khu vực'}</div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
+              <span style={{ padding: '4px 8px', background: badgeColor, color: '#fff', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>{statusLabel}</span>
+              <span style={{ fontSize: 12, color: '#4b5563' }}>• {distanceLabel}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <button
+            style={{
+              flex: 1,
+              padding: '8px 10px',
+              background: '#2563eb',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+            onClick={() => {
+              onSelectPetDetail?.(p);
+              // Close popup by closing any open popups
+              if (openPopupMarkerRef) {
+                openPopupMarkerRef.closePopup?.();
+              }
+            }}
+          >
+            Xem chi tiết
+          </button>
+          <button
+            style={{
+              flex: 1,
+              padding: '8px 10px',
+              background: statusText === 'lost' ? '#f59e0b' : '#10b981',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+            onClick={() => onSelectPetDetail?.(p)}
+          >
+            {actionLabel}
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     if (!pets || pets.length === 0) return;
@@ -162,18 +251,31 @@ export default forwardRef(function PetMap({
     if (adoptPets.length === 0) return;
 
     const load = async () => {
-      const { data, error } = await supabase
-        .from('adoption_requests')
-        .select('pet_id, status, receiver_confirmed_checkin, checkin_required_at')
-        .in('pet_id', adoptPets.map(p => p.id || p.pet_id))
-        .eq('status', 'delivered');
+      try {
+        const { data, error } = await supabase
+          .from('adoption_requests')
+          .select('pet_id, status, receiver_confirmed_checkin, checkin_required_at')
+          .in('pet_id', adoptPets.map(p => p.id || p.pet_id))
+          .eq('status', 'delivered');
 
-      if (error) { console.error(error); return; }
-      const map = {};
-      (data || []).forEach(r => {
-        map[r.pet_id] = r;
-      });
-      setAdoptRequests(map);
+        // If table doesn't exist (404 PGRST205), silently skip
+        if (error) {
+          if (error.code === 'PGRST205') {
+            console.warn('[PetMap] adoption_requests table not found; skipping badge load');
+            return;
+          }
+          console.error('[PetMap] Error loading adoption requests:', error);
+          return;
+        }
+
+        const map = {};
+        (data || []).forEach(r => {
+          map[r.pet_id] = r;
+        });
+        setAdoptRequests(map);
+      } catch (err) {
+        console.warn('[PetMap] Exception loading adoptions:', err.message);
+      }
     };
     load();
   }, [pets]);
@@ -260,7 +362,6 @@ export default forwardRef(function PetMap({
           </>
         )}
 
-        {console.log("Rendering map with", pets.length, "pets")}
         {pets.map((p) => {
           if (!p.lat || !p.lng) return null;
 
@@ -301,31 +402,32 @@ export default forwardRef(function PetMap({
               key={petId}
               position={[p.lat, p.lng]}
               icon={markerIcon}
+              ref={(markerRef) => {
+                // Track which popup is open
+                if (markerRef) {
+                  markerRef.addEventListener?.('popupopen', () => {
+                    setOpenPopupMarkerRef(markerRef);
+                  });
+                  markerRef.addEventListener?.('popupclose', () => {
+                    setOpenPopupMarkerRef(null);
+                  });
+                }
+              }}
               eventHandlers={{
                 click: () => {
+                  // Let Popup open; also notify parent to open side panel if needed
                   onSelectPetDetail?.(p);
+                },
+                popupopen: () => {
+                  setOpenPopupMarkerRef(arguments[0].target);
+                },
+                popupclose: () => {
+                  setOpenPopupMarkerRef(null);
                 },
               }}
             >
-              <Popup>
-                <div style={{ maxWidth: 200 }}>
-                  {p.image_url && (
-                    <img
-                      src={p.image_url}
-                      alt={p.name}
-                      style={{
-                        width: "100%",
-                        borderRadius: 12,
-                        marginBottom: 8,
-                      }}
-                    />
-                  )}
-                  <strong>{p.name}</strong>
-                  <br />
-                  <span>{p.status}</span>
-                  <br />
-                  <small>{p.district}</small>
-                </div>
+              <Popup closeButton={false} autoPan={true} minWidth={200} maxWidth={260}>
+                {renderPopover(p)}
               </Popup>
             </Marker>
           );

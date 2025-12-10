@@ -9,6 +9,8 @@ import PetList from "./components/PetList";
 import ReportPetModal from "./components/ReportPetModal";
 import AuthModal from "./components/AuthModal";
 import ProfileDrawer from "./components/ProfileDrawer";
+import RescuePetDetail from "./components/RescuePetDetail";
+import LostPetDetail from "./components/LostPetDetail";
 import { useReminderScheduler } from "./hooks/useReminderScheduler";
 
 function MapFilters({ filters, setFilters }) {
@@ -189,6 +191,7 @@ export default function App() {
   const [bounds, setBounds] = useState(null);
   const [selectedPetId, setSelectedPetId] = useState(null);
   const [selectedPet, setSelectedPet] = useState(null);
+  const [selectedPetFull, setSelectedPetFull] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingRecent, setLoadingRecent] = useState(true);
   const [error, setError] = useState("");
@@ -270,11 +273,43 @@ export default function App() {
       setSelectedPetId(null);
     }
     setLoading(false);
-  }, [bounds, filters, selectedPetId]);
+  }, [bounds, filters]);
 
   useEffect(() => {
     loadPets();
   }, [loadPets]);
+
+  // Load full pet details when panel opens
+  useEffect(() => {
+    const loadPetFull = async () => {
+      if (!selectedPetId) {
+        setSelectedPetFull(null);
+        return;
+      }
+
+      const pet = pets.find((p) => (p.id || p.pet_id) === selectedPetId);
+      if (!pet) {
+        setSelectedPetFull(null);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("pets")
+          .select("*")
+          .eq("id", selectedPetId)
+          .single();
+
+        if (!error && data) {
+          setSelectedPetFull(data);
+        }
+      } catch (err) {
+        console.error("Error loading full pet:", err);
+      }
+    };
+
+    loadPetFull();
+  }, [selectedPetId]);
 
   useEffect(() => {
     const loadRecentPets = async () => {
@@ -363,7 +398,7 @@ export default function App() {
     }, 400)
   ).current;
 
-  const handleBoundsChange = (b) => {
+  const handleBoundsChange = useCallback((b) => {
     setBounds((prev) => {
       if (
         prev &&
@@ -377,7 +412,7 @@ export default function App() {
       updateMapBbox(b);
       return b;
     });
-  };
+  }, [updateMapBbox]);
 
   // Profile drawer: sync with URL param ?panel=profile
   useEffect(() => {
@@ -428,76 +463,7 @@ export default function App() {
       />
       {/* Compact Header */}
 
-      {selectedPet && (
-        <div
-          style={{
-            position: "absolute",
-            top: 80,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "#fff",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
-            borderRadius: 12,
-            zIndex: 200,
-            width: 200,
-            overflow: "hidden",
-          }}
-        >
-          {selectedPet.image_url && (
-            <img
-              src={selectedPet.image_url}
-              alt={selectedPet.name}
-              style={{
-                width: "100%",
-                height: 100,
-                objectFit: "cover",
-              }}
-            />
-          )}
-          <div style={{ padding: 10 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>
-              {selectedPet.name || "Mèo chưa đặt tên"}
-            </div>
-            <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 8, textTransform: "capitalize" }}>
-              {selectedPet.status}
-            </div>
-            <button
-              onClick={() => {
-                navigate(`/pet/${selectedPet.id || selectedPet.pet_id}`);
-                setSelectedPet(null);
-              }}
-              style={{
-                width: "100%",
-                padding: 8,
-                background: "#ff7f32",
-                color: "#fff",
-                border: "none",
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: "pointer",
-                marginBottom: 4,
-              }}
-            >
-              Xem chi tiết
-            </button>
-            <button
-              onClick={() => setSelectedPet(null)}
-              style={{
-                width: "100%",
-                padding: 6,
-                background: "transparent",
-                color: "#6b7280",
-                border: "none",
-                fontSize: 11,
-                cursor: "pointer",
-              }}
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Removed floating center card to avoid double popups; popover buttons now open detail directly */}
 
       {/* Full Screen Map */}
       <div style={{ flex: 1, position: "relative", zIndex: 0 }}>
@@ -510,12 +476,139 @@ export default function App() {
           onBoundsChange={handleBoundsChange}
           selectedPetId={selectedPetId}
           onSelectPet={setSelectedPetId}
-          onSelectPetDetail={setSelectedPet}
+          onSelectPetDetail={(pet) => {
+            setSelectedPetId(pet.id || pet.pet_id);
+          }}
           height="100%"
         />
-
-        {/* Compact Popup */}
         
+        {/* Left Detail Panel */}
+        {selectedPetId && pets.length > 0 && (() => {
+          const pet = selectedPetFull || pets.find((p) => (p.id || p.pet_id) === selectedPetId);
+          if (!pet) return null;
+
+          return (
+            <div
+              style={{
+                position: "absolute",
+                top: 72,
+                left: 0,
+                bottom: 0,
+                width: "clamp(320px, 33vw, 560px)",
+                background: "#fff",
+                boxShadow: "2px 4px 16px rgba(0,0,0,0.15)",
+                zIndex: 2000,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              }}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  padding: "12px 16px",
+                  borderBottom: "1px solid #e5e7eb",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Chi tiết</h3>
+                <button
+                  onClick={() => setSelectedPetId(null)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    fontSize: 24,
+                    cursor: "pointer",
+                    padding: "0 8px",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Content */}
+              <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+                {/* Rescue Pet Detail Widget */}
+                {pet.category === "rescue" ? (
+                  <RescuePetDetail pet={pet} user={null} isOwner={false} />
+                ) : pet.category === "lost" || pet.category === "adopt" ? (
+                  <LostPetDetail pet={pet} user={null} isOwner={false} />
+                ) : (
+                  <>
+                    {/* Fallback simple view for other categories */}
+                    {/* Image Gallery */}
+                    <div style={{ marginBottom: 16 }}>
+                      {pet.image_url && (
+                        <img
+                          src={pet.image_url}
+                          alt={pet.name}
+                          style={{
+                            width: "100%",
+                            height: 200,
+                            objectFit: "cover",
+                            borderRadius: 12,
+                            marginBottom: 8,
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    {/* Title & Status */}
+                    <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 8px 0" }}>
+                      {pet.name || "Chưa đặt tên"}
+                    </h2>
+                    <div
+                      style={{
+                        display: "inline-block",
+                        padding: "6px 12px",
+                        borderRadius: 6,
+                        background: "#dbeafe",
+                        color: "#0369a1",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        marginBottom: 12,
+                      }}
+                    >
+                      {pet.status || "Unknown"}
+                    </div>
+
+                    {/* Description */}
+                    {pet.description && (
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4, fontWeight: 600 }}>
+                          📝 Mô tả
+                        </div>
+                        <div style={{ fontSize: 14, color: "#374151", lineHeight: 1.6 }}>
+                          {pet.description}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Xem đầy đủ button */}
+                    <button
+                      onClick={() => navigate(`/pet/${pet.id || pet.pet_id}`)}
+                      style={{
+                        width: "100%",
+                        padding: "12px 16px",
+                        background: "#3b82f6",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 8,
+                        fontWeight: 700,
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Xem đầy đủ
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Bottom Pet Deck */}
         {pets.length > 0 && (
@@ -525,9 +618,10 @@ export default function App() {
               bottom: 16,
               left: 0,
               right: 0,
-              zIndex: 10000,
+              zIndex: 1500,
               paddingLeft: 16,
               paddingRight: 16,
+              pointerEvents: "auto",
             }}
           >
             <div
@@ -546,7 +640,6 @@ export default function App() {
                   <div
                     key={petId}
                     onClick={() => {
-                      setSelectedPet(pet);
                       setSelectedPetId(petId);
                     }}
                     style={{
@@ -559,6 +652,7 @@ export default function App() {
                         ? "0 4px 16px rgba(59,130,246,0.4)"
                         : "0 2px 12px rgba(0,0,0,0.15)",
                       border: isActive ? "2px solid #3b82f6" : "2px solid transparent",
+                      zIndex: 100,
                       transition: "all 0.2s",
                     }}
                   >

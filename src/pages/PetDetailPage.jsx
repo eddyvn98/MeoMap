@@ -123,6 +123,19 @@ export default function PetDetailPage() {
           return;
         }
         
+        // Đảm bảo pet.category được set chính xác
+        // Nếu không có category, default là 'adopt' (vì đa số pets là adoption)
+        if (!data.category) {
+          data.category = 'adopt';
+        }
+        
+        console.log("🐾 Loaded pet from DB:", {
+          id: data.id,
+          name: data.name,
+          category: data.category,
+          status: data.status
+        });
+        
         setPet(data || null);
         const petId = data.id;
         
@@ -182,11 +195,15 @@ export default function PetDetailPage() {
           setCurrentUserReputation(userRep || null);
 
           // Load wallet credit
-          const { data: profile } = await supabase
+          const { data: profile, error: profileErr } = await supabase
             .from("profiles")
             .select("wallet_credit")
             .eq("id", user.id)
-            .single();
+            .maybeSingle();
+          
+          if (profileErr) {
+            console.error("Error loading profile wallet_credit:", profileErr);
+          }
           
           setWalletCredit(profile?.wallet_credit || 0);
 
@@ -466,8 +483,20 @@ export default function PetDetailPage() {
           throw new Error("Có lỗi khi trừ tiền trong ví. Vui lòng liên hệ admin.");
         }
         
-        // Cập nhật wallet credit local
-        setWalletCredit(walletCredit - walletUsed);
+        // Re-fetch wallet credit từ DB để đảm bảo đồng bộ
+        const { data: updatedProfile, error: walletReloadErr } = await supabase
+          .from("profiles")
+          .select("wallet_credit")
+          .eq("id", currentUser.id)
+          .single();
+
+        if (walletReloadErr) {
+          console.error("Lỗi reload wallet_credit:", walletReloadErr);
+          // Fallback: cập nhật local state (RPC đã thành công)
+          setWalletCredit(walletCredit - walletUsed);
+        } else {
+          setWalletCredit(updatedProfile?.wallet_credit || 0);
+        }
       }
 
       // Load lại deposit từ DB để update state
@@ -529,26 +558,19 @@ export default function PetDetailPage() {
 
       if (error) throw error;
 
-      const { error: depositError } = await supabase
-        .from("deposits")
-        .insert({
-          pet_id: pet.id,
-          receiver_id: currentUser.id,
-          owner_id: pet.owner_id || pet.user_id,
-          amount: 0,
-          status: 'pending',
-          delivery_token: randomToken()
-        });
+      // Reload data từ server để đồng bộ
+      const { data: refreshed } = await supabase
+        .from("adoption_requests")
+        .select("*")
+        .eq("pet_id", pet.id)
+        .eq("requester_id", currentUser.id)
+        .maybeSingle();
 
-      if (depositError) throw depositError;
+      setMyRequest(refreshed || null);
 
       alert("✅ Đã gửi yêu cầu! Chờ chủ bài chấp nhận.");
-      setMyRequest({ 
-        status: 'pending',
-        receiver_confirmed_meet: false,
-        owner_confirmed_meet: false
-      });
     } catch (err) {
+      console.error("[handleSendContactRequest] Error:", err);
       alert("Lỗi: " + err.message);
     }
   };
@@ -594,12 +616,17 @@ export default function PetDetailPage() {
     if (!confirm("Chấp nhận người này?")) return;
 
     try {
-      // Accept request này
+      // Tạo mã QR token
+      const deliveryToken = Math.random().toString(36).substr(2, 9).toUpperCase();
+
+      // Accept request này và tạo mã ngay
       const { error: acceptErr } = await supabase
         .from("adoption_requests")
         .update({ 
-          status: 'accepted', 
-          accepted_at: new Date().toISOString() 
+          status: 'ready_to_deliver',
+          accepted_at: new Date().toISOString(),
+          delivery_token: deliveryToken,
+          token_generated_at: new Date().toISOString()
         })
         .eq("id", requestId);
 
@@ -622,7 +649,7 @@ export default function PetDetailPage() {
         .update({ status: 'in_contact' })
         .eq("id", pet.id);
 
-      alert("✅ Đã chấp nhận!");
+      alert("✅ Đã chấp nhận! Mã quét đã được tạo.");
       
       // Reload requests
       const { data } = await supabase
@@ -738,6 +765,7 @@ export default function PetDetailPage() {
 
   // Nếu category là 'lost' → render Lost Pet UI
   if (pet.category === "lost") {
+    console.log("🔍 Rendering LOST pet:", pet.name);
     return (
       <div style={{ padding: 20, paddingBottom: 80 }}>
         <button onClick={() => navigate(-1)} style={{ marginBottom: 10, padding: "8px 12px", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer" }}>
@@ -757,6 +785,7 @@ export default function PetDetailPage() {
 
   // Nếu category là 'rescue' → render Rescue Pet UI (quyên góp)
   if (pet.category === "rescue") {
+    console.log("🚒 Rendering RESCUE pet:", pet.name);
     return (
       <div style={{ padding: 20, paddingBottom: 80 }}>
         <button onClick={() => navigate(-1)} style={{ marginBottom: 10, padding: "8px 12px", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer" }}>
@@ -772,6 +801,7 @@ export default function PetDetailPage() {
   }
 
   // Nếu category là 'adopt' → render Adopt Pet UI (UI cũ)
+  console.log("👶 Rendering ADOPTION pet:", pet.name, "- category:", pet.category);
   return (
     <div style={{ padding: 20, paddingBottom: 80 }}>
       <button onClick={() => navigate(-1)} style={{ marginBottom: 10 }}>

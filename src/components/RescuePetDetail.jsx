@@ -5,6 +5,7 @@ import { finalizeBounties } from "../bounty";
 import BountyWidget from "./BountyWidget";
 import DonationWidget from "./DonationWidget";
 import DonorList from "./DonorList";
+import ContextualHelpCard from "./ContextualHelpCard";
 
 /**
  * Chi tiết bài đăng cứu hộ (rescue category)
@@ -93,6 +94,9 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
 
         <div className="p-4 bg-white border-b">
           <h3 className="text-2xl font-bold text-gray-900">{pet.name}</h3>
+          <p className="text-sm text-orange-700 mt-1">
+            Trường hợp khẩn cấp. Người cứu sẽ nhận hỗ trợ tùy theo mức thưởng.
+          </p>
           <p className="text-sm text-gray-600 mt-1">
             Người cứu hộ: Cộng đồng MeoMap
           </p>
@@ -101,18 +105,37 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
 
       {/* THƯỞNG HỖ TRỢ CỨU HỘ */}
       {pet.bounty_amount && pet.bounty_amount > 0 && (
-        <div className="p-3 bg-red-100 border-2 border-red-400 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-2xl">🔥</span>
-            <h4 className="font-bold text-red-900">Hỗ trợ cứu hộ</h4>
+        <ContextualHelpCard
+          cardId="rescue-support"
+          icon="🔥"
+          title="Tiền Hỗ Trợ Cứu Hộ"
+          content="Tiền hỗ trợ cho người cứu hộ bỏ công sức, thời gian và chi phí điều trị. Giúp tăng động lực để mọi người sẵn sàng cứu mèo/chó trong trường hợp nguy cấp."
+          position="bottom"
+        >
+          <div className="p-3 bg-red-100 border-2 border-red-400 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">🔥</span>
+              <h4 className="font-bold text-red-900">Hỗ trợ cứu hộ</h4>
+            </div>
+            <p className="text-3xl font-bold text-red-900">
+              {pet.bounty_amount.toLocaleString()}đ
+            </p>
+            <p className="text-xs text-red-800 mt-2 mb-3">
+              Người cứu hộ và hoàn thành ca này sẽ nhận được khoản hỗ trợ này
+            </p>
+            <details className="text-xs text-red-700 cursor-pointer">
+              <summary className="font-semibold hover:text-red-900">Tại sao có tiền hỗ trợ?</summary>
+              <div className="mt-2 p-2 bg-white rounded border-l-2 border-red-400">
+                <p className="leading-relaxed mb-2">
+                  <strong className="text-gray-900">Tiền hỗ trợ dành cho người cứu hộ bỏ công sức, thời gian và đôi khi chi phí điều trị.</strong>
+                </p>
+                <p className="leading-relaxed">
+                  Giúp <strong>tăng động lực để mọi người sẵn sàng cứu mèo/chó trong trường hợp nguy cấp</strong> - vì cứu hộ không phải lúc nào cũng dễ dàng, đôi khi nguy hiểm.
+                </p>
+              </div>
+            </details>
           </div>
-          <p className="text-3xl font-bold text-red-900">
-            {pet.bounty_amount.toLocaleString()}đ
-          </p>
-          <p className="text-xs text-red-800 mt-2">
-            Người cứu hộ và hoàn thành ca này sẽ nhận được khoản hỗ trợ này
-          </p>
-        </div>
+        </ContextualHelpCard>
       )}
 
       {/* ===== KHỐI 1: TIỀN TREO THƯỞNG (Ban đầu) ===== */}
@@ -203,6 +226,27 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
             className="w-full px-4 py-2 bg-blue-500 text-white rounded font-semibold text-sm hover:bg-blue-600"
           >
             ✏️ Chỉnh sửa thông tin
+          </button>
+
+          <button
+            onClick={() => {
+              const link = window.location.href;
+              const message = `🔥 CẦN CỨU HỘ KHẨN CẤP!\n\n🐱 ${pet.name}\n${pet.description ? `📝 ${pet.description.substring(0, 100)}${pet.description.length > 100 ? '...' : ''}\n` : ''}${pet.bounty_amount ? `💰 Hỗ trợ: ${pet.bounty_amount.toLocaleString()}đ\n` : ''}\n📍 Xem chi tiết: ${link}`;
+              
+              if (navigator.share) {
+                navigator.share({ 
+                  title: `🔥 Cứu hộ: ${pet.name}`,
+                  text: message,
+                  url: link 
+                });
+              } else {
+                navigator.clipboard.writeText(message);
+                alert("✅ Đã copy nội dung chia sẻ!");
+              }
+            }}
+            className="w-full px-4 py-2 bg-purple-500 text-white rounded font-semibold text-sm hover:bg-purple-600"
+          >
+            🔗 Chia sẻ bài đăng
           </button>
 
           <button

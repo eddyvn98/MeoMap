@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import AdoptionProgressBar from "./AdoptionProgressBar";
+import ContextualHelpCard from "./ContextualHelpCard";
 
 export default function AdoptPetDetail({ pet, user, isOwner }) {
   const navigate = useNavigate();
@@ -9,6 +11,10 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
   const [maxDeposit, setMaxDeposit] = useState(null);
   const [adoptionRequests, setAdoptionRequests] = useState([]);
   const [myRequest, setMyRequest] = useState(null);
+  const [showDepositForm, setShowDepositForm] = useState(false);
+  const [depositAmount, setDepositAmount] = useState(pet.required_deposit || 0);
+  const [loadingDeposit, setLoadingDeposit] = useState(false);
+  const [depositMessage, setDepositMessage] = useState("");
 
   // Load owner info
   useEffect(() => {
@@ -85,6 +91,47 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
     navigate(`/pet/${pet.id}`);
   };
 
+  const handleSubmitDeposit = async () => {
+    if (!user || !depositAmount || depositAmount <= 0) {
+      setDepositMessage("❌ Vui lòng nhập số tiền cọc hợp lệ");
+      return;
+    }
+
+    setLoadingDeposit(true);
+    try {
+      // Create deposit record
+      const { data, error } = await supabase
+        .from("deposits")
+        .insert({
+          pet_id: pet.id,
+          owner_id: pet.owner_id,
+          receiver_id: user.id,
+          amount: depositAmount,
+          status: "locked",
+        })
+        .select()
+        .single();
+
+      if (error) {
+        setDepositMessage(`❌ ${error.message}`);
+        return;
+      }
+
+      setDepositMessage("✅ Đã gửi yêu cầu cọc thành công! Đang chờ chủ bài xác nhận...");
+      setShowDepositForm(false);
+      setCurrentDeposit(data);
+      
+      // Reload data after 2 seconds
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (err) {
+      setDepositMessage(`❌ Lỗi: ${err.message}`);
+    } finally {
+      setLoadingDeposit(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header với ảnh */}
@@ -112,6 +159,9 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
 
         <div className="p-4 bg-white">
           <h3 className="text-xl font-bold text-gray-900">{pet.name}</h3>
+          <p className="text-sm text-emerald-700 mt-1">
+            Nhận nuôi miễn phí. Cọc chỉ để đảm bảo trách nhiệm, không phải mua bán.
+          </p>
           <p className="text-sm text-gray-600 mt-1">
             Đăng bởi: {owner?.display_name || "Người dùng"}
           </p>
@@ -120,6 +170,16 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
 
       {/* Thông tin cơ bản */}
       <section className="p-4 border rounded-lg bg-white">
+        {/* Progress Bar */}
+        <AdoptionProgressBar 
+          currentStep={
+            !myRequest ? 0 :
+            myRequest.status === "pending" ? 1 :
+            myRequest.status === "ready_to_deliver" ? 3 :
+            myRequest.status === "delivered" ? 4 : 1
+          }
+        />
+
         <h3 className="font-bold text-gray-900 mb-3">📝 Thông tin</h3>
         
         <div className="space-y-2 text-sm">
@@ -143,12 +203,26 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
             </div>
           )}
 
-          {pet.deposit_amount && (
+          {pet.required_deposit && pet.required_deposit > 0 && (
             <div className="flex items-start gap-2">
-              <span>💰</span>
+              <span>🔐</span>
               <div>
-                <p className="font-semibold">Tiền cọc đề xuất</p>
-                <p className="text-gray-700">{pet.deposit_amount.toLocaleString()}đ</p>
+                <p className="font-semibold">Tiền cọc</p>
+                <p className="text-gray-700">{pet.required_deposit.toLocaleString()}đ</p>
+                <details className="mt-2 text-xs text-gray-600 cursor-pointer">
+                  <summary className="font-semibold text-gray-700 hover:text-gray-900">Tại sao cần cọc?</summary>
+                  <div className="mt-2 p-2 bg-gray-50 rounded border-l-2 border-blue-400">
+                    <p className="leading-relaxed">
+                      <strong className="text-gray-900">Tiền cọc giúp hạn chế người xấu và đảm bảo người nhận mèo thật sự nghiêm túc.</strong>
+                    </p>
+                    <p className="mt-2 leading-relaxed">
+                      Cọc được hoàn lại bằng <strong>voucher mua hàng trên web</strong> nhằm hỗ trợ duy trì hệ thống và giúp bạn có đồ tốt cho thú cưng.
+                    </p>
+                    <p className="mt-2 leading-relaxed">
+                      Nếu người nhận bị đánh giá không tốt, chủ mèo sẽ nhận khoản cọc này (dạng voucher) để bù đắp, đảm bảo hệ thống không bị giao dịch trá hình.
+                    </p>
+                  </div>
+                </details>
               </div>
             </div>
           )}
@@ -156,7 +230,7 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
       </section>
 
       {/* Thông tin liên hệ (nếu không yêu cầu cọc) */}
-      {(!pet.max_deposit || pet.max_deposit === 0) && owner && (
+      {(!pet.required_deposit || pet.required_deposit === 0) && owner && (
         <section className="p-4 border rounded-lg bg-blue-50">
           <h3 className="font-bold text-blue-900 mb-3">📞 Liên hệ trực tiếp</h3>
           <p className="text-sm text-blue-800 mb-3">
@@ -241,21 +315,84 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
         </section>
       )}
 
-      {/* Nút xem đầy đủ */}
-      <section className="sticky bottom-0 bg-white pt-3 border-t">
-        <button
-          onClick={handleViewFullPage}
-          className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-bold text-sm shadow-lg hover:shadow-xl transition-all"
-        >
-          📋 Xem đầy đủ & Đặt cọc →
-        </button>
-        
-        {!isOwner && !currentDeposit && !myRequest && user && (
-          <p className="text-xs text-center text-gray-500 mt-2">
-            Nhấn để xem chi tiết và gửi yêu cầu nhận nuôi
-          </p>
-        )}
-      </section>
+      {/* Nút xem đầy đủ - chỉ hiển thị khi có cọc */}
+      {(pet.required_deposit && pet.required_deposit > 0) && !currentDeposit && (
+        <section className="sticky bottom-0 bg-white pt-3 border-t">
+          <button
+            onClick={() => setShowDepositForm(!showDepositForm)}
+            className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-bold text-sm shadow-lg hover:shadow-xl transition-all"
+          >
+            {showDepositForm ? "▼ Đóng form" : "📋 Đặt cọc ngay"}
+          </button>
+          
+          {!isOwner && !myRequest && user && (
+            <p className="text-xs text-center text-gray-500 mt-2">
+              Nhấn để gửi yêu cầu cọc ngay trong panel này
+            </p>
+          )}
+
+          {/* Form đặt cọc */}
+          {showDepositForm && !isOwner && user && (
+            <ContextualHelpCard
+              cardId="adoption-deposit"
+              icon="💳"
+              title="Tiền Cọc Nhận Nuôi"
+              content="Tiền cọc đảm bảo bạn chăm sóc tốt cho mèo. Tiền sẽ hoàn lại 100% khi hoàn thành quá trình nhận nuôi. Bạn sẽ gửi weekly check-ins ảnh/video để xác nhận mèo khỏe mạnh."
+              position="top"
+            >
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-bold text-blue-900 mb-3">💳 Đặt cọc ngay</h4>
+              
+              <div className="mb-3">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Số tiền cọc (đ)
+                </label>
+                <input
+                  type="number"
+                  min={pet.required_deposit || 0}
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder={`Tối thiểu: ${pet.required_deposit?.toLocaleString()}đ`}
+                />
+                <p className="text-xs text-gray-600 mt-1">
+                  💡 Tối thiểu: {pet.required_deposit?.toLocaleString()}đ
+                </p>
+              </div>
+
+              {depositMessage && (
+                <div className={`mb-3 p-2 rounded text-sm ${depositMessage.includes("✅") ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                  {depositMessage}
+                </div>
+              )}
+
+              <button
+                onClick={handleSubmitDeposit}
+                disabled={loadingDeposit}
+                className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold text-sm disabled:opacity-50"
+              >
+                {loadingDeposit ? "⏳ Đang xử lý..." : "✅ Xác nhận cọc"}
+              </button>
+              </div>
+            </ContextualHelpCard>
+          )}
+        </section>
+      )}
+
+      {/* Hiển thị khi đã cọc */}
+      {currentDeposit && (
+        <section className="sticky bottom-0 bg-green-50 pt-3 border-t border-green-200">
+          <div className="p-3 bg-green-100 border-2 border-green-500 rounded-lg">
+            <h4 className="font-bold text-green-900 mb-2">✅ Bạn đã cọc</h4>
+            <p className="text-sm text-green-800 mb-2">
+              Số tiền: <strong>{currentDeposit.amount.toLocaleString()}đ</strong>
+            </p>
+            <p className="text-xs text-green-700">
+              Trạng thái: {currentDeposit.status === "confirmed" ? "✅ Đã xác nhận" : "⏳ Đang chờ xác nhận"}
+            </p>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

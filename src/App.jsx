@@ -4,10 +4,12 @@ import debounce from "lodash.debounce";
 import { supabase } from "./supabaseClient";
 import PetMap from "./components/PetMap";
 import Header from "./components/Header";
+import Footer from "./components/Footer";
 import BottomNav from "./components/BottomNav";
 import PetList from "./components/PetList";
 import ReportPetModal from "./components/ReportPetModal";
 import AuthModal from "./components/AuthModal";
+import QuickGuideModal from "./components/QuickGuideModal";
 import ProfileDrawer from "./components/ProfileDrawer";
 import RescuePetDetail from "./components/RescuePetDetail";
 import LostPetDetail from "./components/LostPetDetail";
@@ -53,6 +55,25 @@ function MapFilters({ filters, setFilters }) {
 
       {expanded && (
         <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10, maxHeight: 440, overflowY: "auto" }}>
+          {/* Tìm kiếm theo tên */}
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Tìm theo tên</label>
+            <input
+              type="text"
+              placeholder="Nhập tên thú cưng..."
+              value={filters.searchName || ""}
+              onChange={(e) => setFilters((f) => ({ ...f, searchName: e.target.value }))}
+              style={{
+                width: "100%",
+                padding: "6px 10px",
+                border: "1px solid #d1d5db",
+                borderRadius: 4,
+                fontSize: 12,
+                outline: "none",
+              }}
+            />
+          </div>
+
           {/* Nhóm bài */}
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Nhóm bài</label>
@@ -68,33 +89,13 @@ function MapFilters({ filters, setFilters }) {
               }}
             >
               <option value="all">Tất cả</option>
-              <option value="lost">Đi lạc</option>
-              <option value="adopt">Nhận nuôi</option>
-              <option value="rescue">Cứu hộ</option>
+              <option value="lost">🔍 Đi lạc – cần báo tin, có thưởng</option>
+              <option value="adopt">🤝 Nhận nuôi – miễn phí, có cọc an toàn</option>
+              <option value="rescue">🚑 Cứu hộ – khẩn cấp, có hỗ trợ</option>
             </select>
-          </div>
-
-          {/* Màu lông */}
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Màu lông</label>
-            <select
-              value={filters.color || "all"}
-              onChange={(e) => setFilters((f) => ({ ...f, color: e.target.value }))}
-              style={{
-                width: "100%",
-                padding: 6,
-                border: "1px solid #d1d5db",
-                borderRadius: 4,
-                fontSize: 12,
-              }}
-            >
-              <option value="all">Tất cả</option>
-              <option value="white">Trắng</option>
-              <option value="black">Đen</option>
-              <option value="orange">Vàng / Cam</option>
-              <option value="gray">Xám</option>
-              <option value="mixed">Nhiều màu</option>
-            </select>
+            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
+              Adopt: miễn phí, cọc chống kẻ xấu · Lost: báo tin nhận thưởng · Rescue: hỗ trợ ca khẩn cấp
+            </div>
           </div>
 
           {/* Loại */}
@@ -203,6 +204,15 @@ export default function App() {
   const [mapBbox, setMapBbox] = useState(null);
   const profileTriggerRef = useRef(null);
   const [user, setUser] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [bannerShown, setBannerShown] = useState({
+    adopt: localStorage.getItem("banner_adopt_shown") === "1",
+    lost: localStorage.getItem("banner_lost_shown") === "1",
+    rescue: localStorage.getItem("banner_rescue_shown") === "1",
+  });
+  const [showBanner, setShowBanner] = useState(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -210,6 +220,11 @@ export default function App() {
       setUser(userData.user);
     };
     fetchUser();
+  }, []);
+
+  useEffect(() => {
+    const seen = localStorage.getItem("meomap_onboarding_seen");
+    if (!seen) setShowOnboarding(true);
   }, []);
 
   // Run reminder scheduler periodically (every hour)
@@ -232,17 +247,9 @@ export default function App() {
       query = query.in("status", ["available", "Lost", "Found", "Abandoned"]);
     }
 
-    // TODO: Add category column to database first
-    // if (filters.category === "lost") {
-    //   query = query.eq("category", "lost");
-    // } else if (filters.category === "adopt") {
-    //   query = query.eq("category", "adopt");
-    // } else if (filters.category === "rescue") {
-    //   query = query.eq("category", "rescue");
-    // }
-
-    if (filters.color && filters.color !== "all") {
-      query = query.eq("color", filters.color);
+    // Filter by category
+    if (filters.category && filters.category !== "all") {
+      query = query.eq("category", filters.category);
     }
 
     if (filters.animal && filters.animal !== "all") {
@@ -269,7 +276,18 @@ export default function App() {
       return;
     }
 
-    const newPets = data || [];
+    let newPets = data || [];
+
+    // Client-side search filter by name
+    if (filters.searchName && filters.searchName.trim()) {
+      const searchTerm = filters.searchName.toLowerCase().trim();
+      newPets = newPets.filter((pet) => {
+        const name = (pet.name || "").toLowerCase();
+        const description = (pet.description || "").toLowerCase();
+        return name.includes(searchTerm) || description.includes(searchTerm);
+      });
+    }
+
     setPets(newPets);
 
     if (
@@ -342,6 +360,22 @@ export default function App() {
     if (!pet) return;
     const pid = pet.id || pet.pet_id;
     setSelectedPetId(pid);
+    
+    // Show first-click banner for category
+    const cat = (pet.category || "").toLowerCase();
+    if (cat === "adopt" && !bannerShown.adopt) {
+      setShowBanner("adopt");
+      setBannerShown((s) => ({ ...s, adopt: true }));
+      localStorage.setItem("banner_adopt_shown", "1");
+    } else if (cat === "lost" && !bannerShown.lost) {
+      setShowBanner("lost");
+      setBannerShown((s) => ({ ...s, lost: true }));
+      localStorage.setItem("banner_lost_shown", "1");
+    } else if (cat === "rescue" && !bannerShown.rescue) {
+      setShowBanner("rescue");
+      setBannerShown((s) => ({ ...s, rescue: true }));
+      localStorage.setItem("banner_rescue_shown", "1");
+    }
   };
 
   const handleReportPetSubmit = async (formData) => {
@@ -379,6 +413,16 @@ export default function App() {
           description: formData.description,
           image_url: imageUrl,
           status: "available",
+          required_deposit:
+            formData.category === "adopt" && formData.requiredDeposit
+              ? Number(formData.requiredDeposit)
+              : null,
+          allow_custom_deposit:
+            formData.category === "adopt" ? !!formData.allowCustomDeposit : true,
+          bounty_amount:
+            (formData.category === "lost" || formData.category === "rescue") && formData.bountyAmount
+              ? Number(formData.bountyAmount)
+              : null,
           owner_id: userData.user.id,
           created_at: new Date().toISOString(),
         },
@@ -392,6 +436,47 @@ export default function App() {
     } catch (err) {
       console.error("Lỗi gửi báo cáo:", err);
       alert("Gửi báo cáo thất bại: " + err.message);
+    }
+  };
+
+  const onboardingCards = [
+    {
+      title: "MeoMap dùng để làm gì?",
+      bullets: [
+        "Tìm thú cưng đi lạc",
+        "Nhận nuôi mèo/chó",
+        "Báo tin cứu hộ",
+        "Theo dõi cọc & uy tín",
+      ],
+    },
+    {
+      title: "Tiền cọc hoạt động ra sao?",
+      bullets: [
+        "Khuyến khích dùng cọc để lọc người xấu",
+        "Người nhận được hoàn cọc nếu chăm mèo tốt",
+        "Người đăng nhận cọc nếu người nhận bị đánh giá không tốt",
+      ],
+    },
+    {
+      title: "Tiền thưởng Lost & Rescue",
+      bullets: [
+        "Chủ mèo lạc treo thưởng để khuyến khích tìm kiếm",
+        "Bài cứu hộ được cộng đồng treo thưởng để tăng động lực cứu, cập nhật tình hình",
+        "Tất cả minh bạch qua hệ thống ví",
+      ],
+    },
+  ];
+
+  const closeOnboarding = (skipForever = false) => {
+    if (skipForever) localStorage.setItem("meomap_onboarding_seen", "1");
+    setShowOnboarding(false);
+  };
+
+  const goNextOnboarding = () => {
+    if (onboardingStep >= onboardingCards.length - 1) {
+      closeOnboarding(true);
+    } else {
+      setOnboardingStep((s) => s + 1);
     }
   };
 
@@ -467,6 +552,7 @@ export default function App() {
         setAuthModalOpen={setAuthModalOpen}
         setReportModalOpen={setReportModalOpen}
         onOpenProfilePanel={openProfilePanel}
+        onOpenGuide={() => setShowGuideModal(true)}
       />
       {/* Compact Header */}
 
@@ -483,9 +569,7 @@ export default function App() {
           onBoundsChange={handleBoundsChange}
           selectedPetId={selectedPetId}
           onSelectPet={setSelectedPetId}
-          onSelectPetDetail={(pet) => {
-            setSelectedPetId(pet.id || pet.pet_id);
-          }}
+          onSelectPetDetail={handleFocusPetOnMap}
           height="100%"
         />
         
@@ -722,6 +806,92 @@ export default function App() {
         onSubmit={handleReportPetSubmit}
       />
 
+      {showOnboarding && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            zIndex: 120000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 16,
+              width: "100%",
+              maxWidth: 420,
+              padding: 20,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
+                {onboardingCards[onboardingStep].title}
+              </h3>
+              <button
+                onClick={() => closeOnboarding(true)}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  fontSize: 18,
+                  cursor: "pointer",
+                  color: "#6b7280",
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <ul style={{ paddingLeft: 18, margin: "0 0 16px", color: "#374151", lineHeight: 1.6, fontSize: 14 }}>
+              {onboardingCards[onboardingStep].bullets.map((b, idx) => (
+                <li key={idx}>{b}</li>
+              ))}
+            </ul>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <button
+                onClick={() => closeOnboarding(true)}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  color: "#6b7280",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  textDecoration: "underline",
+                }}
+              >
+                Đừng hiện lại
+              </button>
+              <div style={{ fontSize: 12, color: "#6b7280" }}>
+                Bước {onboardingStep + 1}/{onboardingCards.length}
+              </div>
+            </div>
+
+            <button
+              onClick={goNextOnboarding}
+              style={{
+                width: "100%",
+                padding: 12,
+                background: "#10b981",
+                color: "white",
+                border: "none",
+                borderRadius: 10,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontSize: 15,
+              }}
+            >
+              {onboardingStep >= onboardingCards.length - 1 ? "Bắt đầu thôi" : "Tiếp tục"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Auth Modal */}
       <AuthModal
         isOpen={authModalOpen}
@@ -731,6 +901,92 @@ export default function App() {
           window.location.reload();
         }}
       />
+
+      {/* Quick Guide Modal */}
+      <QuickGuideModal isOpen={showGuideModal} onClose={() => setShowGuideModal(false)} />
+
+      {/* First-Click Banner */}
+      {showBanner && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 120,
+            left: 16,
+            right: 16,
+            maxWidth: 400,
+            background: showBanner === "adopt" ? "#d1fae5" : showBanner === "lost" ? "#fee2e2" : "#fef3c7",
+            border: `2px solid ${showBanner === "adopt" ? "#10b981" : showBanner === "lost" ? "#ef4444" : "#fcd34d"}`,
+            borderRadius: 12,
+            padding: 16,
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            zIndex: 10000,
+            animation: "slideUp 0.3s ease-out",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              {showBanner === "adopt" && (
+                <>
+                  <h4 style={{ margin: "0 0 6px", color: "#065f46", fontSize: 14, fontWeight: 700 }}>
+                    🤝 Nhận nuôi miễn phí
+                  </h4>
+                  <p style={{ margin: 0, color: "#047857", fontSize: 13, lineHeight: 1.4 }}>
+                    Tiền cọc không phải mua bán. Nó dùng để đảm bảo trách nhiệm và sẽ hoàn lại bằng voucher nếu bạn chăm mèo tốt.
+                  </p>
+                </>
+              )}
+              {showBanner === "lost" && (
+                <>
+                  <h4 style={{ margin: "0 0 6px", color: "#7f1d1d", fontSize: 14, fontWeight: 700 }}>
+                    🔍 Mèo đi lạc – cần báo tin
+                  </h4>
+                  <p style={{ margin: 0, color: "#b91c1c", fontSize: 13, lineHeight: 1.4 }}>
+                    Bạn có thể báo tin nếu thấy mèo. Chủ mèo sẽ gửi thưởng nếu xác minh đúng.
+                  </p>
+                </>
+              )}
+              {showBanner === "rescue" && (
+                <>
+                  <h4 style={{ margin: "0 0 6px", color: "#92400e", fontSize: 14, fontWeight: 700 }}>
+                    🚑 Trường hợp khẩn cấp
+                  </h4>
+                  <p style={{ margin: 0, color: "#b45309", fontSize: 13, lineHeight: 1.4 }}>
+                    Người cứu hộ sẽ nhận hỗ trợ và thưởng. Bạn cũng có thể quyên góp để giúp.
+                  </p>
+                </>
+              )}
+            </div>
+            <button
+              onClick={() => setShowBanner(null)}
+              style={{
+                border: "none",
+                background: "transparent",
+                fontSize: 18,
+                cursor: "pointer",
+                color: showBanner === "adopt" ? "#047857" : showBanner === "lost" ? "#b91c1c" : "#b45309",
+                padding: 0,
+                marginTop: -4,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideUp {
+          from {
+            transform: translateY(100px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
+      <Footer />
     </div>
   );
 }

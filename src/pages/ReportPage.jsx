@@ -185,9 +185,12 @@ export default function ReportPage() {
           {/* ADOPTION: Deposit fields */}
           {category === "adopt" && (
             <>
-              <div style={{ marginBottom: 10, padding: 12, background: "#fff7ed", border: "1px solid #fb923c", borderRadius: 6 }}>
-                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, color: "#c2410c" }}>
-                  💰 Thiết lập cọc
+              <div style={{ marginBottom: 10, padding: 12, background: "#fff7ed", border: "2px solid #fb923c", borderRadius: 6 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: "#c2410c" }}>
+                  💰 Thiết lập cọc (Rất được khuyến khích!)
+                </div>
+                <div style={{ fontSize: 12, color: "#c2410c", marginBottom: 8, fontWeight: 500 }}>
+                  Cọc giúp chắc chắn người nhận nuôi thật sự nghiêm túc & hạn chế giao dịch trá hình
                 </div>
                 
                 <div style={{ marginBottom: 8 }}>
@@ -201,7 +204,7 @@ export default function ReportPage() {
                     min="0"
                   />
                   <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
-                    Để trống nếu bạn cho nhận nuôi miễn phí
+                    💡 Gợi ý: Cọc 50k-200k rất tốt để kiểm soát chất lượng người nhận
                   </div>
                 </div>
 
@@ -225,9 +228,14 @@ export default function ReportPage() {
 
           {/* LOST/RESCUE: Bounty fields */}
           {(category === "lost" || category === "rescue") && (
-            <div style={{ marginBottom: 10, padding: 12, background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 6 }}>
-              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, color: "#b45309" }}>
-                {category === "lost" ? "🎁 Treo thưởng tìm kiếm" : "🔥 Hỗ trợ cứu hộ"}
+            <div style={{ marginBottom: 10, padding: 12, background: "#fef3c7", border: "2px solid #fcd34d", borderRadius: 6 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: "#b45309" }}>
+                {category === "lost" ? "🎁 Treo thưởng tìm kiếm (Khuyến khích!)" : "🔥 Hỗ trợ cứu hộ (Quan trọng!)"}
+              </div>
+              <div style={{ fontSize: 12, color: "#b45309", marginBottom: 8, fontWeight: 500 }}>
+                {category === "lost" 
+                  ? "Tiền thưởng sẽ khuyến khích mọi người chủ động tìm kiếm thú cưng của bạn"
+                  : "Tiền hỗ trợ giúp tăng động lực cho người cứu hộ khi thú cưng gặp nguy cấp"}
               </div>
               
               <div style={{ marginBottom: 8 }}>
@@ -243,9 +251,9 @@ export default function ReportPage() {
                   min="0"
                 />
                 <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
-                  {category === "lost" 
-                    ? "Người tìm thấy sẽ nhận thưởng này sau khi xác nhận" 
-                    : "Số tiền bạn đề nghị để hỗ trợ chi phí cứu hộ"}
+                  💡 {category === "lost" 
+                    ? "Gợi ý: 100k-1M phù hợp để tìm mèo" 
+                    : "Gợi ý: 200k-1M phù hợp để hỗ trợ cứu hộ"}
                 </div>
               </div>
             </div>

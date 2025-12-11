@@ -933,6 +933,34 @@ export default function PetDetailPage() {
               ✏️ Sửa bài
             </button>
             <button
+              onClick={() => {
+                const link = window.location.href;
+                const message = `💚 MÈO CẦN NHÀ MỚI!\n\n🐱 ${pet.name}\n${pet.description ? `📝 ${pet.description.substring(0, 100)}${pet.description.length > 100 ? '...' : ''}\n` : ''}${pet.required_deposit ? `💰 Cọc: ${pet.required_deposit.toLocaleString()}đ\n` : ''}\n📍 Xem chi tiết & đăng ký: ${link}`;
+                
+                if (navigator.share) {
+                  navigator.share({ 
+                    title: `💚 Nhận nuôi: ${pet.name}`,
+                    text: message,
+                    url: link 
+                  });
+                } else {
+                  navigator.clipboard.writeText(message);
+                  alert("✅ Đã copy nội dung chia sẻ!");
+                }
+              }}
+              style={{
+                padding: "8px 12px",
+                background: "#fff",
+                color: "#334155",
+                border: "1px solid #e2e8f0",
+                borderRadius: 6,
+                cursor: "pointer",
+                fontWeight: 500,
+              }}
+            >
+              🔗 Share
+            </button>
+            <button
               onClick={() => navigate("/")}
               style={{
                 padding: "8px 12px",

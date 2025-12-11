@@ -39,6 +39,7 @@ export default function ProfileDrawer({
   const [sortBy, setSortBy] = useState('newest'); // newest, deposit, reputation, distance
   const [pendingTasks, setPendingTasks] = useState([]);
   const [myAllAdoptionRequests, setMyAllAdoptionRequests] = useState([]);
+  const [myDeposits, setMyDeposits] = useState([]);
   const [loadingMyRequests, setLoadingMyRequests] = useState(false);
   const headerRef = useRef(null);
   const drawerRef = useRef(null);
@@ -144,12 +145,14 @@ export default function ProfileDrawer({
     const loadMyRequests = async () => {
       if (!user?.id) {
         setMyAllAdoptionRequests([]);
+        setMyDeposits([]);
         return;
       }
 
       setLoadingMyRequests(true);
       try {
-        const { data, error } = await supabase
+        // Load adoption requests
+        const { data: reqs, error: reqError } = await supabase
           .from('adoption_requests')
           .select(`
             *,
@@ -163,8 +166,27 @@ export default function ProfileDrawer({
           .eq('requester_id', user.id)
           .order('created_at', { ascending: false });
 
-        if (!error && data) {
-          setMyAllAdoptionRequests(data);
+        if (!reqError && reqs) {
+          setMyAllAdoptionRequests(reqs);
+        }
+
+        // Load deposits (bài đã cọc)
+        const { data: deposits, error: depError } = await supabase
+          .from('deposits')
+          .select(`
+            *,
+            pet:pets!pet_id(
+              id, name, image_url, category, lat, lng
+            ),
+            owner:profiles!owner_id(
+              id, display_name, avatar_url
+            )
+          `)
+          .eq('receiver_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (!depError && deposits) {
+          setMyDeposits(deposits);
         }
       } catch (err) {
         console.warn('[ProfileDrawer] Error loading my adoption requests:', err.message);
@@ -290,10 +312,13 @@ export default function ProfileDrawer({
       return <div style={{ padding: 16, textAlign: 'center' }}>Đang tải...</div>;
     }
 
-    if (!myAllAdoptionRequests.length) {
+    // Combine adoption requests and deposits
+    const totalItems = myAllAdoptionRequests.length + myDeposits.length;
+
+    if (!totalItems) {
       return (
         <div style={{ padding: 16, textAlign: 'center', color: '#6b7280' }}>
-          Bạn chưa gửi yêu cầu nhận mèo nào
+          Bạn chưa gửi yêu cầu hay cọc mèo nào
         </div>
       );
     }
@@ -304,13 +329,79 @@ export default function ProfileDrawer({
       delivered: { text: 'Đã giao', color: '#3b82f6', bg: '#dbeafe' },
       completed: { text: 'Hoàn thành', color: '#8b5cf6', bg: '#ede9fe' },
       rejected: { text: 'Từ chối', color: '#ef4444', bg: '#fee2e2' },
-      cancelled: { text: 'Đã hủy', color: '#6b7280', bg: '#f3f4f6' }
+      cancelled: { text: 'Đã hủy', color: '#6b7280', bg: '#f3f4f6' },
+      locked: { text: 'Đã cọc', color: '#3b82f6', bg: '#dbeafe' },
+      confirmed: { text: 'Xác nhận', color: '#10b981', bg: '#d1fae5' },
+      refunded: { text: 'Hoàn cọc', color: '#8b5cf6', bg: '#ede9fe' }
     };
 
     return (
       <div style={{ padding: 16 }}>
         <h3 style={{ marginBottom: 16, fontSize: 18, fontWeight: 600 }}>
-          Yêu cầu nhận mèo của bạn ({myAllAdoptionRequests.length})
+          Bài đã cọc ({myDeposits.length})
+        </h3>
+        
+        {myDeposits.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+            {myDeposits.map(dep => {
+              const status = statusLabels[dep.status] || statusLabels.locked;
+              
+              return (
+                <div
+                  key={dep.id}
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    padding: 12,
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
+                    {dep.pet?.image_url && (
+                      <img
+                        src={dep.pet.image_url}
+                        alt={dep.pet.name}
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: 8,
+                          objectFit: 'cover'
+                        }}
+                      />
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>
+                        {dep.pet?.name || 'Mèo'}
+                      </div>
+                      <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>
+                        Chủ: {dep.owner?.display_name || 'Không rõ'}
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#3b82f6', marginBottom: 4 }}>
+                        💳 Cọc: {dep.amount?.toLocaleString()}đ
+                      </div>
+                      <div
+                        style={{
+                          display: 'inline-block',
+                          padding: '4px 8px',
+                          borderRadius: 4,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: status.color,
+                          backgroundColor: status.bg
+                        }}
+                      >
+                        {status.text}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <h3 style={{ marginBottom: 16, fontSize: 18, fontWeight: 600 }}>
+          Yêu cầu nhận mèo ({myAllAdoptionRequests.length})
         </h3>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -378,7 +469,6 @@ export default function ProfileDrawer({
                     </div>
                     <div
                       style={{
-                        fontFamily: 'monospace',
                         fontSize: 16,
                         fontWeight: 700,
                         letterSpacing: 1,

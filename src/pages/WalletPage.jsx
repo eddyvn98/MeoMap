@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import ContextualHelpCard from "../components/ContextualHelpCard";
 
 export default function WalletPage() {
   const navigate = useNavigate();
@@ -161,25 +162,33 @@ export default function WalletPage() {
       </h1>
 
       {/* Wallet Balance Card */}
-      <div
-        style={{
-          padding: 24,
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          borderRadius: 12,
-          color: "#fff",
-          marginBottom: 24,
-        }}
+      <ContextualHelpCard
+        cardId="wallet-intro"
+        icon="👜"
+        title="Ví của bạn"
+        content="Ví quản lý tiền từ thưởng tìm mèo, hoàn cọc khi nhận nuôi, voucher, và dịch vụ MeoMap. Dùng tiền này để nộp cọc khi nhận nuôi mèo hoặc mua dịch vụ cao cấp."
+        position="bottom"
       >
-        <p style={{ margin: "0 0 8px 0", fontSize: 14, opacity: 0.9 }}>
-          Số dư trong ví
-        </p>
-        <h2 style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
-          {walletCredit.toLocaleString("vi-VN")} đ
-        </h2>
-        <p style={{ margin: "8px 0 0 0", fontSize: 12, opacity: 0.8 }}>
-          Tiền từ hoàn cọc
-        </p>
-      </div>
+        <div
+          style={{
+            padding: 24,
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            borderRadius: 12,
+            color: "#fff",
+            marginBottom: 24,
+          }}
+        >
+          <p style={{ margin: "0 0 8px 0", fontSize: 14, opacity: 0.9 }}>
+            Số dư trong ví
+          </p>
+          <h2 style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
+            {walletCredit.toLocaleString("vi-VN")} đ
+          </h2>
+          <p style={{ margin: "8px 0 0 0", fontSize: 12, opacity: 0.8 }}>
+            Tiền từ hoàn cọc
+          </p>
+        </div>
+      </ContextualHelpCard>
 
       {/* Transaction History */}
       <div style={{ marginTop: 32 }}>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import LostPetOwnerView from "./LostPetOwnerView";
+import ContextualHelpCard from "./ContextualHelpCard";
 
 export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDelete, onEdit }) {
   const [owner, setOwner] = useState(null);
@@ -64,6 +65,7 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
           .eq("id", pet.owner_id)
           .single();
         setOwner(data || null);
+        console.log("📞 Owner contact info:", { phone: data?.phone, email: data?.email, username: data?.username });
       }
     };
     console.log("🔍 LostPetDetail - isOwner:", isOwner, "pet.owner_id:", pet.owner_id, "user.id:", user?.id);
@@ -290,6 +292,9 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
 
         <div className="p-4 bg-white border-b">
           <h3 className="text-2xl font-bold text-gray-900">{pet.name}</h3>
+          <p className="text-sm text-red-700 mt-1">
+            Nếu bạn thấy mèo, hãy báo tin. Chủ mèo sẽ xem xét và gửi thưởng.
+          </p>
           <p className="text-sm text-gray-600 mt-1">
             Đăng bởi: {owner?.display_name || "Người dùng ẩn danh"}
           </p>
@@ -348,18 +353,37 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
       {/* 3) THƯỞNG & LIÊN HỆ */}
       <section className="p-4 bg-yellow-50 border rounded-lg">
         {pet.bounty_amount && pet.bounty_amount > 0 && (
-          <div className="mb-4 p-3 bg-amber-100 border-2 border-amber-400 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">🎁</span>
-              <h4 className="font-bold text-amber-900">Treo thưởng tìm kiếm</h4>
+          <ContextualHelpCard
+            cardId="lost-pet-bounty"
+            icon="🎁"
+            title="Tiền Thưởng Tìm Kiếm"
+            content="Khoản thưởng khuyến khích người tốt bụng báo tin nếu thấy mèo. Không phải mua bán, mà là tri ân công sức người giúp đỡ - cách nói 'Cảm ơn bạn đã mang lại hy vọng cho gia đình'."
+            position="bottom"
+          >
+            <div className="mb-4 p-3 bg-amber-100 border-2 border-amber-400 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-2xl">🎁</span>
+                <h4 className="font-bold text-amber-900">Treo thưởng tìm kiếm</h4>
+              </div>
+              <p className="text-3xl font-bold text-amber-900">
+                {pet.bounty_amount.toLocaleString()}đ
+              </p>
+              <p className="text-xs text-amber-800 mt-2 mb-3">
+                Người tìm thấy và xác nhận thành công sẽ nhận được phần thưởng này
+              </p>
+              <details className="text-xs text-amber-700 cursor-pointer">
+                <summary className="font-semibold hover:text-amber-900">Ý nghĩa của tiền thưởng?</summary>
+                <div className="mt-2 p-2 bg-white rounded border-l-2 border-amber-400">
+                  <p className="leading-relaxed mb-2">
+                    <strong className="text-gray-900">Khoản thưởng nhằm khuyến khích mọi người chủ động tìm kiếm và báo tin.</strong>
+                  </p>
+                  <p className="leading-relaxed">
+                    Không phải mua bán, mà là <strong>tri ân công sức người giúp đỡ</strong> - cách chúng tôi nói "Cảm ơn bạn đã là người tốt bụng, đã mang lại hy vọng trở lại cho gia đình!"
+                  </p>
+                </div>
+              </details>
             </div>
-            <p className="text-3xl font-bold text-amber-900">
-              {pet.bounty_amount.toLocaleString()}đ
-            </p>
-            <p className="text-xs text-amber-800 mt-2">
-              Người tìm thấy và xác nhận thành công sẽ nhận được phần thưởng này
-            </p>
-          </div>
+          </ContextualHelpCard>
         )}
         {pet.max_deposit && (
           <div className="mb-4 p-3 bg-yellow-100 rounded border-l-4 border-yellow-500">
@@ -386,8 +410,26 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
               href={`mailto:${owner.email}`}
               className="block w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-center"
             >
-              ✉️ Email
+              ✉️ Email: {owner.email}
             </a>
+          )}
+
+          {owner?.zalo && (
+            <div className="block w-full bg-sky-500 text-white font-bold py-2 px-4 rounded text-center">
+              💬 Zalo: {owner.zalo}
+            </div>
+          )}
+
+          {owner?.display_name && (
+            <div className="block w-full bg-gray-100 text-gray-800 font-semibold py-2 px-4 rounded text-center border border-gray-300">
+              👤 Chủ: {owner.display_name}
+            </div>
+          )}
+
+          {!owner?.phone && !owner?.email && !owner?.zalo && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-gray-700">
+              ⚠️ Chủ bài đăng chưa cập nhật thông tin liên hệ
+            </div>
           )}
         </div>
       </section>
@@ -537,6 +579,27 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
             className="w-full px-4 py-2 bg-blue-500 text-white rounded font-semibold text-sm"
           >
             ✏️ Chỉnh sửa
+          </button>
+
+          <button
+            onClick={() => {
+              const link = window.location.href;
+              const message = `🆘 GIÚP TÌM MÈO MẤT TÍCH!\n\n🐱 ${pet.name}\n${pet.description ? `📝 ${pet.description.substring(0, 100)}${pet.description.length > 100 ? '...' : ''}\n` : ''}${pet.bounty_amount ? `🎁 Treo thưởng: ${pet.bounty_amount.toLocaleString()}đ\n` : ''}📅 Mất từ: ${new Date(pet.created_at).toLocaleDateString('vi-VN')}\n\n📍 Chi tiết & liên hệ: ${link}`;
+              
+              if (navigator.share) {
+                navigator.share({ 
+                  title: `🆘 Tìm mèo: ${pet.name}`,
+                  text: message,
+                  url: link 
+                });
+              } else {
+                navigator.clipboard.writeText(message);
+                alert("✅ Đã copy nội dung chia sẻ!");
+              }
+            }}
+            className="w-full px-4 py-2 bg-purple-500 text-white rounded font-semibold text-sm"
+          >
+            🔗 Copy link bài đăng
           </button>
 
           {!isFound && (

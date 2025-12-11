@@ -20,6 +20,8 @@ import AdoptApplicantsPage from "./pages/AdoptApplicantsPage";
 import DepositTicketPage from "./pages/DepositTicketPage";
 import EditPetPage from "./pages/EditPetPage";
 import MyAdoptionRequestsPage from "./pages/MyAdoptionRequestsPage";
+import HowItWorks from "./components/HowItWorks";
+import FAQ from "./components/FAQ";
 
 export default function Router() {
   return (
@@ -47,6 +49,8 @@ export default function Router() {
         <Route path="/deposit/:id/ticket" element={<DepositTicketPage />} />
         <Route path="/edit-pet/:id" element={<EditPetPage />} />
         <Route path="/my-adoption-requests" element={<MyAdoptionRequestsPage />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/faq" element={<FAQ />} />
       </Routes>
     </BrowserRouter>
   );

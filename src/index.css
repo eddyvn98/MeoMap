@@ -178,6 +178,17 @@
   to { transform: translateX(0); opacity: 1; }
 }
 
+@keyframes pulse-money {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.85;
+  }
+}
+
 @media (max-width: 1023px) {
   .profile-drawer__tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));

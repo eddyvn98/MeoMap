@@ -4,6 +4,7 @@ import {
   Marker,
   Popup,
   Circle,
+  Tooltip,
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
@@ -116,57 +117,83 @@ const makeCatIcon = (imageUrl) => {
   });
 };
 
-const makeStatusIcon = (status, category, imageUrl, pet = {}) => {
+const makeStatusIcon = (status, category, imageUrl, pet = {}, currentUserId = null) => {
   const cat = (category || "lost").toLowerCase();
   
-  let badgeColor, badgeText;
+  let badgeColor, badgeText, borderColor;
   if (cat === "lost") {
     badgeColor = "#ef4444";
+    borderColor = "#ef4444";
     badgeText = "Lost";
   } else if (cat === "adopt") {
     badgeColor = "#10b981";
+    borderColor = "#10b981";
     badgeText = "Adopt";
   } else if (cat === "rescue") {
     badgeColor = "#f59e0b";
+    borderColor = "#f59e0b";
     badgeText = "Rescue";
   } else {
     badgeColor = "#3b82f6";
+    borderColor = "#3b82f6";
     badgeText = status || "Unknown";
   }
 
   const imgSrc = imageUrl || "https://cdn-icons-png.flaticon.com/512/2127/2127645.png";
 
-  // Check for deposit/bounty badges
+  // Check for deposit/bounty
   const hasDeposit = pet.required_deposit && pet.required_deposit > 0;
   const hasBounty = pet.bounty_amount && pet.bounty_amount > 0;
+  const isOwner = currentUserId && pet.owner_id === currentUserId;
   
-  // Badge icon based on category
+  // Format money (100000 -> 100k)
+  const formatMoney = (amount) => {
+    if (amount >= 1000000) return `${(amount / 1000000).toFixed(1)}tr`;
+    if (amount >= 1000) return `${Math.floor(amount / 1000)}k`;
+    return amount;
+  };
+  
+  // Money badge with amount text and pulsing animation
+  // Note: All users can see bounty amounts on lost/rescue posts
   let moneyBadge = '';
-  if (cat === 'adopt' && hasDeposit) {
-    moneyBadge = '<div style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#f97316;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">💰</div>';
-  } else if (cat === 'lost' && hasBounty) {
-    moneyBadge = '<div style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#fbbf24;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🎁</div>';
+  if (cat === 'lost' && hasBounty) {
+    moneyBadge = `<div style="position:absolute;top:-8px;right:-8px;background:#fbbf24;color:#fff;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.4);white-space:nowrap;animation:pulse-money 2s infinite;">🎁 ${formatMoney(pet.bounty_amount)}</div>`;
   } else if (cat === 'rescue' && hasBounty) {
-    moneyBadge = '<div style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🔥</div>';
+    console.log('🔥 Rescue with bounty:', { category: cat, bountyAmount: pet.bounty_amount, hasBounty });
+    moneyBadge = `<div style="position:absolute;top:-8px;right:-8px;background:#ef4444;color:#fff;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.4);white-space:nowrap;animation:pulse-money 2s infinite;">🔥 ${formatMoney(pet.bounty_amount)}</div>`;
+  } else if (cat === 'rescue') {
+    console.log('🟠 Rescue WITHOUT bounty:', { category: cat, bountyAmount: pet.bounty_amount, hasBounty });
   }
+  // Removed deposit badge for adopt category (internal info only)
+
+  // Owner badge - show "OWNER" text instead of icon
+  const ownerBadge = isOwner ? '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#8b5cf6;color:#fff;padding:3px 10px;border-radius:12px;font-size:9px;font-weight:bold;box-shadow:0 3px 8px rgba(0,0,0,0.5);white-space:nowrap;letter-spacing:0.5px;">OWNER</div>' : '';
 
   return L.divIcon({
     className: "pet-marker-icon",
     html: `
-      <div style="position:relative;width:56px;height:56px;">
-        <div style="width:56px;height:56px;border-radius:50%;overflow:hidden;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.2);background:#fff;">
+      <div style="position:relative;width:112px;height:112px;">
+        <div style="width:112px;height:112px;border-radius:50%;overflow:hidden;border:5px solid ${borderColor};box-shadow:0 4px 12px rgba(0,0,0,0.3);background:#fff;">
           <img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;" />
         </div>
-        <div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:${badgeColor};color:#fff;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+        <div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);background:${badgeColor};color:#fff;padding:4px 12px;border-radius:14px;font-size:11px;font-weight:bold;white-space:nowrap;box-shadow:0 3px 6px rgba(0,0,0,0.4);">
           ${badgeText}
         </div>
+        ${ownerBadge}
         ${moneyBadge}
       </div>
     `,
-    iconSize: [56, 70],
-    iconAnchor: [28, 70],
-    popupAnchor: [0, -70],
+    iconSize: [112, 130],
+    iconAnchor: [56, 130],
+    popupAnchor: [0, -130],
   });
+};
+
+const tooltipTextByCategory = (cat) => {
+  if (cat === "adopt") return "Nhận nuôi miễn phí, có cọc đảm bảo an toàn.";
+  if (cat === "lost") return "Mèo đi lạc – báo tin để nhận thưởng.";
+  if (cat === "rescue") return "Cứu hộ – mọi người cùng hỗ trợ.";
+  return "Bài đăng thú cưng";
 };
 
 export default forwardRef(function PetMap({
@@ -187,6 +214,16 @@ export default forwardRef(function PetMap({
   const [map, setMap] = useState(null);
   const [adoptRequests, setAdoptRequests] = useState({});
   const [openPopupMarkerRef, setOpenPopupMarkerRef] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  // Get current user ID
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setCurrentUserId(data?.user?.id || null);
+    };
+    getUser();
+  }, []);
 
   const renderPopover = (p) => {
     const petId = p.id || p.pet_id;
@@ -385,29 +422,33 @@ export default forwardRef(function PetMap({
           const req = adoptRequests[petId];
           const badge = req ? computeBadge(req) : null;
 
-          let markerIcon = makeStatusIcon(p.status, p.category, p.image_url, p);
+          let markerIcon = makeStatusIcon(p.status, p.category, p.image_url, p, currentUserId);
 
           // If adopt pet with follow-up badge, overlay badge on marker
           if (badge) {
             const imgSrc = p.image_url || "https://cdn-icons-png.flaticon.com/512/2127/2127645.png";
+            const isOwner = currentUserId && p.owner_id === currentUserId;
+            const ownerBadge = isOwner ? '<div style="position:absolute;top:-8px;left:-8px;width:24px;height:24px;border-radius:50%;background:#8b5cf6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.4);">👤</div>' : '';
+            
             markerIcon = L.divIcon({
               className: "pet-marker-icon",
               html: `
-                <div style="position:relative;width:56px;height:56px;">
-                  <div style="width:56px;height:56px;border-radius:50%;overflow:hidden;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.2);background:#fff;">
+                <div style="position:relative;width:112px;height:112px;">
+                  <div style="width:112px;height:112px;border-radius:50%;overflow:hidden;border:5px solid #10b981;box-shadow:0 4px 12px rgba(0,0,0,0.3);background:#fff;">
                     <img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;" />
                   </div>
-                  <div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+                  <div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;padding:4px 12px;border-radius:14px;font-size:11px;font-weight:bold;white-space:nowrap;box-shadow:0 3px 6px rgba(0,0,0,0.4);">
                     Adopt
                   </div>
-                  <div style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:${badge.bg};display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+                  <div style="position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;background:${badge.bg};display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
                     ${badge.label}
                   </div>
+                  ${ownerBadge}
                 </div>
               `,
-              iconSize: [56, 70],
-              iconAnchor: [28, 70],
-              popupAnchor: [0, -70],
+              iconSize: [112, 130],
+              iconAnchor: [56, 130],
+              popupAnchor: [0, -130],
             });
           }
 
@@ -416,33 +457,28 @@ export default forwardRef(function PetMap({
               key={petId}
               position={[p.lat, p.lng]}
               icon={markerIcon}
-              ref={(markerRef) => {
-                // Track which popup is open
-                if (markerRef) {
-                  markerRef.addEventListener?.('popupopen', () => {
-                    setOpenPopupMarkerRef(markerRef);
-                  });
-                  markerRef.addEventListener?.('popupclose', () => {
-                    setOpenPopupMarkerRef(null);
-                  });
-                }
-              }}
               eventHandlers={{
                 click: () => {
-                  // Let Popup open; also notify parent to open side panel if needed
-                  onSelectPetDetail?.(p);
-                },
-                popupopen: () => {
-                  setOpenPopupMarkerRef(arguments[0].target);
-                },
-                popupclose: () => {
-                  setOpenPopupMarkerRef(null);
+                  onSelectPet && onSelectPet(p);
+                  onSelectPetDetail && onSelectPetDetail(p);
                 },
               }}
             >
-              {/* <Popup closeButton={false} autoPan={true} minWidth={200} maxWidth={260}>
-                {renderPopover(p)}
-              </Popup> */}
+              <Tooltip direction="top" offset={[0, -10]} opacity={0.95} permanent={false}>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>
+                  {tooltipTextByCategory((p.category || "").toLowerCase())}
+                </div>
+              </Tooltip>
+              {badge && (
+                <Popup>
+                  <div style={{ fontWeight: 600, color: badge.color }}>
+                    {badge.text}
+                  </div>
+                  {badge.sub && (
+                    <div style={{ fontSize: 12, marginTop: 4 }}>{badge.sub}</div>
+                  )}
+                </Popup>
+              )}
             </Marker>
           );
         })}

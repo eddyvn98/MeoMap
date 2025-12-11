@@ -180,10 +180,13 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
           {/* Category-specific: Deposit for Adoption */}
           {category === "adopt" && (
             <div className="border-t pt-4 space-y-3">
-              <div className="p-3 bg-orange-50 border-2 border-orange-200 rounded-lg">
-                <h3 className="font-bold text-orange-900 mb-2 text-sm">
-                  💰 Tiền cọc nhận nuôi
+              <div className="p-3 bg-orange-50 border-2 border-orange-300 rounded-lg">
+                <h3 className="font-bold text-orange-900 mb-1 text-sm">
+                  💰 Tiền cọc nhận nuôi (Khuyến khích!)
                 </h3>
+                <p className="text-xs text-orange-800 mb-2 font-medium">
+                  Cọc giúp chắc chắn người nhận thật sự nghiêm túc
+                </p>
 
                 <div className="mb-3">
                   <label className="block font-semibold mb-1 text-xs">
@@ -199,7 +202,7 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
                     placeholder="Ví dụ: 50000"
                   />
                   <p className="text-xs text-gray-600 mt-1">
-                    Để trống = không yêu cầu cọc
+                    💡 Gợi ý: 50k-200k là tối ưu. Để trống = không yêu cầu cọc
                   </p>
                 </div>
 
@@ -226,12 +229,17 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
           {/* Category-specific: Bounty for Lost/Rescue */}
           {(category === "lost" || category === "rescue") && (
             <div className="border-t pt-4">
-              <div className="p-3 bg-amber-50 border-2 border-amber-200 rounded-lg">
-                <h3 className="font-bold text-amber-900 mb-2 text-sm">
+              <div className="p-3 bg-amber-50 border-2 border-amber-300 rounded-lg">
+                <h3 className="font-bold text-amber-900 mb-1 text-sm">
                   {category === "lost"
-                    ? "🎁 Tiền thưởng tìm kiếm"
-                    : "🔥 Hỗ trợ cứu hộ"}
+                    ? "🎁 Tiền thưởng tìm kiếm (Khuyến khích!)"
+                    : "🔥 Hỗ trợ cứu hộ (Quan trọng!)"}
                 </h3>
+                <p className="text-xs text-amber-800 mb-2 font-medium">
+                  {category === "lost"
+                    ? "Tiền thưởng sẽ khuyến khích mọi người chủ động tìm kiếm"
+                    : "Tiền hỗ trợ tăng động lực cho người cứu hộ"}
+                </p>
 
                 <div>
                   <label className="block font-semibold mb-1 text-xs">
@@ -247,9 +255,9 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
                     placeholder="Ví dụ: 1000000"
                   />
                   <p className="text-xs text-gray-600 mt-1">
-                    {category === "lost"
-                      ? "Thưởng cho người tìm thấy và xác nhận thành công"
-                      : "Hỗ trợ cho người cứu hộ khi hoàn thành"}
+                    💡 {category === "lost" 
+                      ? "Gợi ý: 100k-1M phù hợp. Để trống = không có thưởng" 
+                      : "Gợi ý: 200k-1M phù hợp. Để trống = không có hỗ trợ"}
                   </p>
                 </div>
               </div>

@@ -102,6 +102,30 @@ export default function PostCard({
             >
               🗑 Xóa
             </button>
+            <button
+              onClick={() => {
+                const link = `${window.location.origin}/pet/${post.id}`;
+                const emoji = post.category === 'adopt' ? '💚' : post.category === 'lost' ? '🆘' : '🔥';
+                const action = post.category === 'adopt' ? 'MÈO CẦN NHÀ MỚI!' : post.category === 'lost' ? 'GIÚP TÌM MÈO!' : 'CẦN CỨU HỘ!';
+                const money = post.category === 'adopt' && post.required_deposit ? `\n💰 Cọc: ${post.required_deposit.toLocaleString()}đ` : 
+                             (post.category !== 'adopt' && post.bounty_amount ? `\n🎁 Thưởng: ${post.bounty_amount.toLocaleString()}đ` : '');
+                const message = `${emoji} ${action}\n\n🐱 ${post.name}\n${post.description ? `📝 ${post.description.substring(0, 80)}...\n` : ''}${money}\n\n📍 ${link}`;
+                
+                if (navigator.share) {
+                  navigator.share({ 
+                    title: `${emoji} ${post.category === 'adopt' ? 'Nhận nuôi' : post.category === 'lost' ? 'Tìm mèo' : 'Cứu hộ'}: ${post.name}`,
+                    text: message,
+                    url: link 
+                  });
+                } else {
+                  navigator.clipboard.writeText(message);
+                  alert("✅ Đã copy nội dung chia sẻ!");
+                }
+              }}
+              className="text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
+            >
+              🔗 Share
+            </button>
             {postType === 'adopt' && (
               <button
                 onClick={() => onShowQR?.(post)}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
-export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenProfilePanel }) {
+export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenProfilePanel, onOpenGuide }) {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const profileBtnRef = useRef(null);
@@ -116,6 +116,22 @@ export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenPro
             {/* Actions buttons */}
             <div style={{ display: "flex", gap: 8 }}>
               <button
+                onClick={() => onOpenGuide?.()}
+                style={{
+                  ...buttonStyle,
+                  background: "#6366f1",
+                  color: "#fff",
+                }}
+                onMouseOver={(e) =>
+                  (e.currentTarget.style.background = "#4f46e5")
+                }
+                onMouseOut={(e) =>
+                  (e.currentTarget.style.background = "#6366f1")
+                }
+              >
+                ❓ Hướng dẫn
+              </button>
+              <button
                 onClick={handleLogout}
                 style={{
                   ...buttonStyle,
@@ -151,6 +167,22 @@ export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenPro
           </>
         ) : (
           <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => onOpenGuide?.()}
+              style={{
+                ...buttonStyle,
+                background: "#6366f1",
+                color: "#fff",
+              }}
+              onMouseOver={(e) =>
+                (e.currentTarget.style.background = "#4f46e5")
+              }
+              onMouseOut={(e) =>
+                (e.currentTarget.style.background = "#6366f1")
+              }
+            >
+              ❓ Hướng dẫn
+            </button>
             <button
               onClick={() => setAuthModalOpen(true)}
               style={{

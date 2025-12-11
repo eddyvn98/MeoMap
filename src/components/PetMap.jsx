@@ -328,8 +328,8 @@ export default forwardRef(function PetMap({
         zoomControl={true}
       >
         <TileLayer
-          attribution='Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png"
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          attribution="&copy; OpenStreetMap & CartoDB"
         />
 
         <MapInitializer setMap={setMap} setUserPos={setUserPos} />

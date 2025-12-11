@@ -11,9 +11,16 @@ export default function ReportPage() {
   const [position, setPosition] = useState(null);
   const [name, setName] = useState("");
   const [status, setStatus] = useState("Lost");
+  const [category, setCategory] = useState("lost"); // adopt, lost, rescue
   const [district, setDistrict] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState(null);
+  
+  // Deposit/Bounty fields (new)
+  const [requiredDeposit, setRequiredDeposit] = useState("");
+  const [allowCustomDeposit, setAllowCustomDeposit] = useState(true);
+  const [bountyAmount, setBountyAmount] = useState("");
+  
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -64,12 +71,18 @@ export default function ReportPage() {
       const petData = {
         name,
         status,
+        category, // adopt, lost, rescue
         district,
         description,
         lat: position.lat,
         lng: position.lng,
         image_url: imageUrl,
         created_at: new Date().toISOString(),
+        
+        // Add deposit/bounty fields based on category
+        required_deposit: category === "adopt" && requiredDeposit ? parseInt(requiredDeposit) : null,
+        allow_custom_deposit: category === "adopt" ? allowCustomDeposit : true,
+        bounty_amount: (category === "lost" || category === "rescue") && bountyAmount ? parseInt(bountyAmount) : null,
       };
 
       console.log("Attempting to insert pet:", petData);
@@ -134,15 +147,28 @@ export default function ReportPage() {
           </div>
 
           <div style={{ marginBottom: 10 }}>
+            <label>Nhóm bài</label>
+            <select
+              style={{ width: "100%", padding: 8 }}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option value="lost">🔍 Đi lạc (Lost)</option>
+              <option value="adopt">🏡 Nhận nuôi (Adoption)</option>
+              <option value="rescue">🚑 Cứu hộ (Rescue)</option>
+            </select>
+          </div>
+
+          <div style={{ marginBottom: 10 }}>
             <label>Trạng thái</label>
             <select
               style={{ width: "100%", padding: 8 }}
               value={status}
               onChange={(e) => setStatus(e.target.value)}
             >
-              <option value="Lost">Lost</option>
-              <option value="Found">Found</option>
-              <option value="Abandoned">Abandoned</option>
+              <option value="available">Có sẵn</option>
+              <option value="pending">Chờ xử lý</option>
+              <option value="in_contact">Đang liên lạc</option>
             </select>
           </div>
 
@@ -155,6 +181,75 @@ export default function ReportPage() {
               placeholder="VD: Bình Thạnh"
             />
           </div>
+
+          {/* ADOPTION: Deposit fields */}
+          {category === "adopt" && (
+            <>
+              <div style={{ marginBottom: 10, padding: 12, background: "#fff7ed", border: "1px solid #fb923c", borderRadius: 6 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, color: "#c2410c" }}>
+                  💰 Thiết lập cọc
+                </div>
+                
+                <div style={{ marginBottom: 8 }}>
+                  <label style={{ fontSize: 13 }}>Mức cọc tối thiểu (đ)</label>
+                  <input
+                    type="number"
+                    style={{ width: "100%", padding: 8, border: "1px solid #d1d5db", borderRadius: 4 }}
+                    value={requiredDeposit}
+                    onChange={(e) => setRequiredDeposit(e.target.value)}
+                    placeholder="VD: 50000 (để trống nếu không yêu cầu cọc)"
+                    min="0"
+                  />
+                  <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
+                    Để trống nếu bạn cho nhận nuôi miễn phí
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    id="allowCustomDeposit"
+                    checked={allowCustomDeposit}
+                    onChange={(e) => setAllowCustomDeposit(e.target.checked)}
+                  />
+                  <label htmlFor="allowCustomDeposit" style={{ fontSize: 13, cursor: "pointer" }}>
+                    Cho phép người nhận nhập mức cọc khác
+                  </label>
+                </div>
+                <div style={{ fontSize: 11, color: "#666", marginTop: 4, marginLeft: 28 }}>
+                  Nếu tắt, người nhận chỉ có thể đặt cọc đúng số tiền bạn yêu cầu
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* LOST/RESCUE: Bounty fields */}
+          {(category === "lost" || category === "rescue") && (
+            <div style={{ marginBottom: 10, padding: 12, background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 6 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, color: "#b45309" }}>
+                {category === "lost" ? "🎁 Treo thưởng tìm kiếm" : "🔥 Hỗ trợ cứu hộ"}
+              </div>
+              
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ fontSize: 13 }}>
+                  {category === "lost" ? "Tiền thưởng cho người tìm thấy (đ)" : "Số tiền hỗ trợ cứu hộ (đ)"}
+                </label>
+                <input
+                  type="number"
+                  style={{ width: "100%", padding: 8, border: "1px solid #d1d5db", borderRadius: 4 }}
+                  value={bountyAmount}
+                  onChange={(e) => setBountyAmount(e.target.value)}
+                  placeholder={category === "lost" ? "VD: 1000000" : "VD: 500000"}
+                  min="0"
+                />
+                <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
+                  {category === "lost" 
+                    ? "Người tìm thấy sẽ nhận thưởng này sau khi xác nhận" 
+                    : "Số tiền bạn đề nghị để hỗ trợ chi phí cứu hộ"}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ marginBottom: 10 }}>
             <label>Mô tả ngắn</label>

@@ -99,6 +99,22 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
         </div>
       </section>
 
+      {/* THƯỞNG HỖ TRỢ CỨU HỘ */}
+      {pet.bounty_amount && pet.bounty_amount > 0 && (
+        <div className="p-3 bg-red-100 border-2 border-red-400 rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-2xl">🔥</span>
+            <h4 className="font-bold text-red-900">Hỗ trợ cứu hộ</h4>
+          </div>
+          <p className="text-3xl font-bold text-red-900">
+            {pet.bounty_amount.toLocaleString()}đ
+          </p>
+          <p className="text-xs text-red-800 mt-2">
+            Người cứu hộ và hoàn thành ca này sẽ nhận được khoản hỗ trợ này
+          </p>
+        </div>
+      )}
+
       {/* ===== KHỐI 1: TIỀN TREO THƯỞNG (Ban đầu) ===== */}
       {!isClosed && (
         <BountyWidget

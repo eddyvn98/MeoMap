@@ -1,0 +1,289 @@
+import { useState, useEffect } from "react";
+import { supabase } from "../supabaseClient";
+
+export default function EditPostPanel({ post, onClose, onSuccess }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Form fields
+  const [name, setName] = useState(post.name || "");
+  const [description, setDescription] = useState(post.description || "");
+  const [category, setCategory] = useState(post.category || "adopt");
+  const [file, setFile] = useState(null);
+  const [existingImageUrl, setExistingImageUrl] = useState(post.image_url || "");
+
+  // Deposit/Bounty fields
+  const [requiredDeposit, setRequiredDeposit] = useState(
+    post.required_deposit ? String(post.required_deposit) : ""
+  );
+  const [allowCustomDeposit, setAllowCustomDeposit] = useState(
+    post.allow_custom_deposit !== false
+  );
+  const [bountyAmount, setBountyAmount] = useState(
+    post.bounty_amount ? String(post.bounty_amount) : ""
+  );
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!name.trim()) {
+      setError("Tên thú cưng không được để trống.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      let imageUrl = existingImageUrl;
+
+      // Upload new image if selected
+      if (file) {
+        const ext = file.name.split(".").pop();
+        const filePath = `pets/${Date.now()}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("pet-images")
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error(uploadError);
+          setError("Upload ảnh lỗi.");
+          setLoading(false);
+          return;
+        }
+
+        const { data: publicData } = supabase.storage
+          .from("pet-images")
+          .getPublicUrl(filePath);
+
+        imageUrl = publicData?.publicUrl || existingImageUrl;
+      }
+
+      // Update pet
+      const updateData = {
+        name,
+        description,
+        category,
+        image_url: imageUrl,
+        required_deposit: requiredDeposit ? Number(requiredDeposit) : null,
+        allow_custom_deposit: allowCustomDeposit,
+        bounty_amount: bountyAmount ? Number(bountyAmount) : null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: updateError } = await supabase
+        .from("pets")
+        .update(updateData)
+        .eq("id", post.id);
+
+      if (updateError) {
+        console.error("Update error:", updateError);
+        setError("Cập nhật bài đăng lỗi: " + updateError.message);
+        setLoading(false);
+        return;
+      }
+
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setError("Có lỗi bất ngờ.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b bg-white sticky top-0 z-10">
+        <h2 className="text-lg font-bold">✏️ Chỉnh sửa bài đăng</h2>
+        <button
+          onClick={onClose}
+          className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+        >
+          ×
+        </button>
+      </div>
+
+      {/* Form - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Pet Name */}
+          <div>
+            <label className="block font-semibold mb-1 text-sm">
+              Tên thú cưng *
+            </label>
+            <input
+              type="text"
+              className="w-full border rounded px-3 py-2 text-sm"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ví dụ: Mèo cam mập mờm"
+            />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="block font-semibold mb-1 text-sm">
+              Loại bài đăng
+            </label>
+            <select
+              className="w-full border rounded px-3 py-2 text-sm"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option value="adopt">Nhận nuôi</option>
+              <option value="lost">Đi lạc</option>
+              <option value="rescue">Cứu hộ</option>
+            </select>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block font-semibold mb-1 text-sm">Mô tả</label>
+            <textarea
+              className="w-full border rounded px-3 py-2 text-sm"
+              rows={4}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Mô tả chi tiết về thú cưng..."
+            />
+          </div>
+
+          {/* Image Upload */}
+          <div>
+            <label className="block font-semibold mb-1 text-sm">
+              Ảnh thú cưng
+            </label>
+            {existingImageUrl && (
+              <div className="mb-2">
+                <img
+                  src={existingImageUrl}
+                  alt="Current"
+                  className="w-32 h-32 object-cover rounded border"
+                />
+                <p className="text-xs text-gray-600 mt-1">Ảnh hiện tại</p>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              className="text-sm"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+            />
+            <p className="text-xs text-gray-600 mt-1">
+              Chọn ảnh mới để thay đổi
+            </p>
+          </div>
+
+          {/* Category-specific: Deposit for Adoption */}
+          {category === "adopt" && (
+            <div className="border-t pt-4 space-y-3">
+              <div className="p-3 bg-orange-50 border-2 border-orange-200 rounded-lg">
+                <h3 className="font-bold text-orange-900 mb-2 text-sm">
+                  💰 Tiền cọc nhận nuôi
+                </h3>
+
+                <div className="mb-3">
+                  <label className="block font-semibold mb-1 text-xs">
+                    Số tiền cọc tối thiểu (đ)
+                  </label>
+                  <input
+                    type="number"
+                    step="10000"
+                    min="0"
+                    className="w-full border rounded px-3 py-2 text-sm"
+                    value={requiredDeposit}
+                    onChange={(e) => setRequiredDeposit(e.target.value)}
+                    placeholder="Ví dụ: 50000"
+                  />
+                  <p className="text-xs text-gray-600 mt-1">
+                    Để trống = không yêu cầu cọc
+                  </p>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allowCustomDeposit}
+                      onChange={(e) => setAllowCustomDeposit(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-xs font-medium">
+                      Cho phép người nhận tự điều chỉnh số tiền cọc
+                    </span>
+                  </label>
+                  <p className="text-xs text-gray-600 mt-1 ml-6">
+                    Nếu tắt: Phải đặt cọc ĐÚNG số tiền quy định
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Category-specific: Bounty for Lost/Rescue */}
+          {(category === "lost" || category === "rescue") && (
+            <div className="border-t pt-4">
+              <div className="p-3 bg-amber-50 border-2 border-amber-200 rounded-lg">
+                <h3 className="font-bold text-amber-900 mb-2 text-sm">
+                  {category === "lost"
+                    ? "🎁 Tiền thưởng tìm kiếm"
+                    : "🔥 Hỗ trợ cứu hộ"}
+                </h3>
+
+                <div>
+                  <label className="block font-semibold mb-1 text-xs">
+                    Số tiền thưởng (đ)
+                  </label>
+                  <input
+                    type="number"
+                    step="10000"
+                    min="0"
+                    className="w-full border rounded px-3 py-2 text-sm"
+                    value={bountyAmount}
+                    onChange={(e) => setBountyAmount(e.target.value)}
+                    placeholder="Ví dụ: 1000000"
+                  />
+                  <p className="text-xs text-gray-600 mt-1">
+                    {category === "lost"
+                      ? "Thưởng cho người tìm thấy và xác nhận thành công"
+                      : "Hỗ trợ cho người cứu hộ khi hoàn thành"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="text-red-600 text-sm bg-red-50 border border-red-300 rounded p-2">
+              {error}
+            </div>
+          )}
+        </form>
+      </div>
+
+      {/* Footer - Action Buttons */}
+      <div className="p-4 border-t bg-white sticky bottom-0">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 px-4 py-2 border rounded font-semibold text-sm disabled:opacity-50"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="flex-1 bg-blue-600 text-white px-4 py-2 rounded font-semibold text-sm disabled:opacity-50"
+          >
+            {loading ? "Đang lưu..." : "Lưu"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

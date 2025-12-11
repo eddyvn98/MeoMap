@@ -347,6 +347,20 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
 
       {/* 3) THƯỞNG & LIÊN HỆ */}
       <section className="p-4 bg-yellow-50 border rounded-lg">
+        {pet.bounty_amount && pet.bounty_amount > 0 && (
+          <div className="mb-4 p-3 bg-amber-100 border-2 border-amber-400 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">🎁</span>
+              <h4 className="font-bold text-amber-900">Treo thưởng tìm kiếm</h4>
+            </div>
+            <p className="text-3xl font-bold text-amber-900">
+              {pet.bounty_amount.toLocaleString()}đ
+            </p>
+            <p className="text-xs text-amber-800 mt-2">
+              Người tìm thấy và xác nhận thành công sẽ nhận được phần thưởng này
+            </p>
+          </div>
+        )}
         {pet.max_deposit && (
           <div className="mb-4 p-3 bg-yellow-100 rounded border-l-4 border-yellow-500">
             <p className="font-bold text-lg text-yellow-900">

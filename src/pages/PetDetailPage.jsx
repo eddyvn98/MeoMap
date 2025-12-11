@@ -5,6 +5,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { createDepositAndTicket } from "../deposit";
 import LostPetDetail from "../components/LostPetDetail";
 import RescuePetDetail from "../components/RescuePetDetail";
+import EditPostPanel from "../components/EditPostPanel";
 
 // Tính mã số 6 chữ số từ pet_id
 function getShortNumericCode(input) {
@@ -97,6 +98,9 @@ export default function PetDetailPage() {
 
   // state cho owner: danh sách người đăng ký nhận
   const [applicants, setApplicants] = useState([]);
+  
+  // state cho edit panel
+  const [editingPost, setEditingPost] = useState(null);
   const [loadingApplicants, setLoadingApplicants] = useState(false);
   const [adoption, setAdoption] = useState(null); // Thông tin giao mèo đã hoàn tất
   const [ownerProfile, setOwnerProfile] = useState(null); // Thông tin liên hệ của owner
@@ -239,14 +243,22 @@ export default function PetDetailPage() {
           setMaxDeposit(null);
         }
 
-        // Gợi ý số tiền cọc
-        const base = data.deposit_amount || 50000;
-        const suggested =
-          depRows && depRows.length > 0
-            ? (depRows.reduce((m, d) => (d.amount > m ? d.amount : m), 0) + 10000)
-            : base;
-
-        setDepositAmount(suggested);
+        // Gợi ý số tiền cọc - use required_deposit if set and custom not allowed
+        if (data.required_deposit && data.allow_custom_deposit === false) {
+          // Must use exact required_deposit
+          setDepositAmount(data.required_deposit);
+        } else if (data.required_deposit && data.required_deposit > 0) {
+          // Use required_deposit as minimum
+          setDepositAmount(data.required_deposit);
+        } else {
+          // Old logic: suggest based on existing deposits
+          const base = data.deposit_amount || 50000;
+          const suggested =
+            depRows && depRows.length > 0
+              ? (depRows.reduce((m, d) => (d.amount > m ? d.amount : m), 0) + 10000)
+              : base;
+          setDepositAmount(suggested);
+        }
 
       } finally {
         setLoading(false);
@@ -413,15 +425,27 @@ export default function PetDetailPage() {
       // Kiểm tra user input
       const userInput = Number(depositAmount);
       
-      // Cho phép 0 đồng nếu owner không yêu cầu tiền cọc
-      const ownerRequiresDeposit = pet.max_deposit && pet.max_deposit > 0;
+      // NEW: Use required_deposit instead of max_deposit
+      const requiredDeposit = pet.required_deposit || 0;
+      const allowCustom = pet.allow_custom_deposit !== false; // default true
       
-      if (userInput < 0 || (ownerRequiresDeposit && userInput === 0)) {
+      // Validate deposit amount
+      if (userInput < 0) {
         throw new Error('Số tiền cọc không hợp lệ.');
       }
       
+      // Check minimum deposit requirement
+      if (requiredDeposit > 0 && userInput < requiredDeposit) {
+        throw new Error(`Số tiền cọc tối thiểu là ${requiredDeposit.toLocaleString()}đ`);
+      }
+      
+      // If custom deposit not allowed, must match exactly
+      if (!allowCustom && userInput !== requiredDeposit) {
+        throw new Error(`Chủ bài yêu cầu cọc đúng ${requiredDeposit.toLocaleString()}đ`);
+      }
+      
       // Nếu user nhập 0 và owner không yêu cầu -> hiển thị thông tin liên hệ
-      if (userInput === 0 && !ownerRequiresDeposit) {
+      if (userInput === 0 && requiredDeposit === 0) {
         const contactMsg = ownerProfile?.email 
           ? `Chủ bài không yêu cầu tiền cọc.\n\nThông tin liên hệ:\nEmail: ${ownerProfile.email}${ownerProfile.phone ? `\nSĐT: ${ownerProfile.phone}` : ''}` 
           : 'Chủ bài không yêu cầu tiền cọc. Vui lòng xem thông tin liên hệ bên dưới.';
@@ -470,33 +494,26 @@ export default function PetDetailPage() {
       
       // Nếu có dùng ví -> trừ ví
       if (walletUsed > 0) {
-        const { error: walletErr } = await supabase.rpc("decrease_wallet_credit", {
+        // P1 FIX: Use atomic RPC to prevent double spending
+        const { data: walletResult, error: walletErr } = await supabase.rpc("atomic_decrease_wallet", {
           p_user_id: currentUser.id,
           p_amount: walletUsed,
-          p_deposit_id: deposit.id,
-          p_type: "use_for_deposit",
-          p_note: "Dùng ví để đặt cọc nhận mèo.",
+          p_reason: "Dùng ví để đặt cọc nhận mèo.",
+          p_related_id: deposit.id,
+          p_related_type: "deposit"
         });
 
         if (walletErr) {
-          console.error("Lỗi decrease_wallet_credit", walletErr);
+          console.error("Lỗi atomic_decrease_wallet", walletErr);
           throw new Error("Có lỗi khi trừ tiền trong ví. Vui lòng liên hệ admin.");
         }
-        
-        // Re-fetch wallet credit từ DB để đảm bảo đồng bộ
-        const { data: updatedProfile, error: walletReloadErr } = await supabase
-          .from("profiles")
-          .select("wallet_credit")
-          .eq("id", currentUser.id)
-          .single();
 
-        if (walletReloadErr) {
-          console.error("Lỗi reload wallet_credit:", walletReloadErr);
-          // Fallback: cập nhật local state (RPC đã thành công)
-          setWalletCredit(walletCredit - walletUsed);
-        } else {
-          setWalletCredit(updatedProfile?.wallet_credit || 0);
+        if (!walletResult.success) {
+          throw new Error(walletResult.error || "Không thể trừ ví.");
         }
+        
+        // Update local state với balance_after từ RPC (100% chính xác)
+        setWalletCredit(walletResult.balance_after);
       }
 
       // Load lại deposit từ DB để update state
@@ -760,7 +777,7 @@ export default function PetDetailPage() {
   };
 
   const handleLostPetEdit = () => {
-    navigate(`/edit-pet/${id}`);
+    setEditingPost(pet);
   };
 
   // Nếu category là 'lost' → render Lost Pet UI
@@ -902,7 +919,7 @@ export default function PetDetailPage() {
           {/* Các nút hành động */}
           <div style={{ display: "flex", gap: 8, fontSize: 13, marginBottom: 16 }}>
             <button
-              onClick={() => navigate(`/edit-pet/${pet.id}`)}
+              onClick={() => setEditingPost(pet)}
               style={{
                 padding: "8px 12px",
                 background: "#fff",
@@ -1491,16 +1508,26 @@ export default function PetDetailPage() {
             <input
               type="number"
               step={10000}
-              min={pet?.max_deposit && pet.max_deposit > 0 ? 10000 : 0}
+              min={pet?.required_deposit && pet.required_deposit > 0 ? pet.required_deposit : 0}
               value={depositAmount}
               onChange={(e) => setDepositAmount(Number(e.target.value))}
-              style={{ width: 160, marginLeft: 4, padding: "4px 8px" }}
+              disabled={pet?.allow_custom_deposit === false}
+              style={{ 
+                width: 160, 
+                marginLeft: 4, 
+                padding: "4px 8px",
+                background: pet?.allow_custom_deposit === false ? "#f3f4f6" : "#fff",
+                cursor: pet?.allow_custom_deposit === false ? "not-allowed" : "text"
+              }}
             />
             {" "} đ
           </label>
-          {pet?.max_deposit && pet.max_deposit > 0 ? (
+          {pet?.required_deposit && pet.required_deposit > 0 ? (
             <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
-              (Chủ yêu cầu tối thiểu: {pet.max_deposit.toLocaleString()} đ)
+              💰 Cọc tối thiểu: {pet.required_deposit.toLocaleString()} đ
+              {pet?.allow_custom_deposit === false && (
+                <span style={{ color: "#dc2626", fontWeight: 600 }}> (Bắt buộc)</span>
+              )}
             </div>
           ) : (
             <div style={{ fontSize: 11, color: "#16a34a", marginTop: 4 }}>
@@ -1510,7 +1537,7 @@ export default function PetDetailPage() {
         </div>
 
         {/* Hiển thị thông tin liên hệ owner khi không yêu cầu cọc */}
-        {(!pet?.max_deposit || pet.max_deposit === 0) && (
+        {(!pet?.required_deposit || pet.required_deposit === 0) && (
           <div 
             style={{ 
               marginBottom: 12, 
@@ -1736,6 +1763,50 @@ export default function PetDetailPage() {
             </p>
           </div>
         )}
+
+      {/* Edit Post Panel Overlay */}
+      {editingPost && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.6)",
+            zIndex: 99999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "auto",
+          }}
+          onClick={() => setEditingPost(null)}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: 8,
+              width: "90%",
+              maxWidth: 600,
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+              pointerEvents: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <EditPostPanel
+              post={editingPost}
+              onClose={() => setEditingPost(null)}
+              onSuccess={() => {
+                setEditingPost(null);
+                window.location.reload();
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

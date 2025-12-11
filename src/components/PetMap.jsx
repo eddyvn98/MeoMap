@@ -116,7 +116,7 @@ const makeCatIcon = (imageUrl) => {
   });
 };
 
-const makeStatusIcon = (status, category, imageUrl) => {
+const makeStatusIcon = (status, category, imageUrl, pet = {}) => {
   const cat = (category || "lost").toLowerCase();
   
   let badgeColor, badgeText;
@@ -136,6 +136,20 @@ const makeStatusIcon = (status, category, imageUrl) => {
 
   const imgSrc = imageUrl || "https://cdn-icons-png.flaticon.com/512/2127/2127645.png";
 
+  // Check for deposit/bounty badges
+  const hasDeposit = pet.required_deposit && pet.required_deposit > 0;
+  const hasBounty = pet.bounty_amount && pet.bounty_amount > 0;
+  
+  // Badge icon based on category
+  let moneyBadge = '';
+  if (cat === 'adopt' && hasDeposit) {
+    moneyBadge = '<div style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#f97316;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">💰</div>';
+  } else if (cat === 'lost' && hasBounty) {
+    moneyBadge = '<div style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#fbbf24;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🎁</div>';
+  } else if (cat === 'rescue' && hasBounty) {
+    moneyBadge = '<div style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🔥</div>';
+  }
+
   return L.divIcon({
     className: "pet-marker-icon",
     html: `
@@ -146,6 +160,7 @@ const makeStatusIcon = (status, category, imageUrl) => {
         <div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:${badgeColor};color:#fff;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
           ${badgeText}
         </div>
+        ${moneyBadge}
       </div>
     `,
     iconSize: [56, 70],
@@ -370,7 +385,7 @@ export default forwardRef(function PetMap({
           const req = adoptRequests[petId];
           const badge = req ? computeBadge(req) : null;
 
-          let markerIcon = makeStatusIcon(p.status, p.category, p.image_url);
+          let markerIcon = makeStatusIcon(p.status, p.category, p.image_url, p);
 
           // If adopt pet with follow-up badge, overlay badge on marker
           if (badge) {

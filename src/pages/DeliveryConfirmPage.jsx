@@ -75,25 +75,39 @@ export default function DeliveryConfirmPage() {
 
     setConfirming(true);
     try {
-      // 1. Update delivery_status
+      // P1 FIX: Use atomic RPC instead of multiple queries
+      // This prevents race condition when refunding deposit
+      const { data: rpcResult, error: rpcErr } = await supabase
+        .rpc('finish_delivery_with_refund', {
+          p_deposit_id: deposit.id,
+          p_user_id: currentUser.id
+        });
+
+      if (rpcErr) throw rpcErr;
+
+      if (!rpcResult.success) {
+        throw new Error(rpcResult.error || 'Lỗi không xác định khi hoàn cọc');
+      }
+
+      // 2. Update delivery_status + delivered_at
       const { error: updateErr } = await supabase
         .from("deposits")
         .update({
           delivery_status: "delivered",
           delivered_at: new Date().toISOString(),
-          status: "confirmed" // Giữ confirmed
+          status: "refunded" // RPC đã set status, nhưng update lại để sure
         })
         .eq("id", deposit.id);
 
       if (updateErr) throw updateErr;
 
-      // 2. Update pet status
+      // 3. Update pet status
       await supabase
         .from("pets")
         .update({ status: "delivered" })
         .eq("id", deposit.pet_id);
 
-      // 3. Create adoption record (nếu chưa có)
+      // 4. Create adoption record (nếu chưa có)
       const { data: existingAdoption } = await supabase
         .from("adoptions")
         .select("id")
@@ -113,7 +127,7 @@ export default function DeliveryConfirmPage() {
           });
       }
 
-      alert("✅ Đã xác nhận giao mèo thành công!");
+      alert("✅ Đã xác nhận giao mèo thành công!\n💰 Cọc đã hoàn lại cho người nhận.");
       navigate(`/pet/${deposit.pet_id}`);
     } catch (err) {
       console.error(err);

@@ -62,6 +62,29 @@ export default function UserReportPage() {
 
     const currentUserId = authData.user.id;
 
+    // P1 FIX: Check rate limit before submitting report
+    const { data: rateCheckResult, error: rateCheckErr } = await supabase
+      .rpc('can_submit_report', {
+        p_deposit_id: deposit.id,
+        p_user_id: currentUserId
+      });
+
+    if (rateCheckErr) {
+      setError("Lỗi kiểm tra báo cáo: " + rateCheckErr.message);
+      setSubmitting(false);
+      return;
+    }
+
+    if (!rateCheckResult.allowed) {
+      setError("❌ " + rateCheckResult.reason);
+      if (rateCheckResult.retry_after_seconds) {
+        const minutes = Math.ceil(rateCheckResult.retry_after_seconds / 60);
+        setError(`❌ ${rateCheckResult.reason} (chờ ${minutes} phút)`);
+      }
+      setSubmitting(false);
+      return;
+    }
+
     // Xác định target: nếu người đăng đang report thì target là receiver, và ngược lại
     let targetId;
     if (currentUserId === deposit.owner_id) {

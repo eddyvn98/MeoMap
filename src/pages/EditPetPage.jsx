@@ -22,6 +22,11 @@ export default function EditPetPage() {
 
   // Optional deposit amount (owner can set suggested deposit)
   const [suggestedDeposit, setSuggestedDeposit] = useState("");
+  
+  // New deposit/bounty fields
+  const [requiredDeposit, setRequiredDeposit] = useState("");
+  const [allowCustomDeposit, setAllowCustomDeposit] = useState(true);
+  const [bountyAmount, setBountyAmount] = useState("");
 
   useEffect(() => {
     const loadUserAndPet = async () => {
@@ -60,6 +65,11 @@ export default function EditPetPage() {
       setStatus(petData.status || "available");
       setExistingImageUrl(petData.image_url || "");
       setSuggestedDeposit(petData.max_deposit ? String(petData.max_deposit) : "");
+      
+      // Load new deposit/bounty fields
+      setRequiredDeposit(petData.required_deposit ? String(petData.required_deposit) : "");
+      setAllowCustomDeposit(petData.allow_custom_deposit !== false);
+      setBountyAmount(petData.bounty_amount ? String(petData.bounty_amount) : "");
 
       setLoading(false);
     };
@@ -112,6 +122,9 @@ export default function EditPetPage() {
         status,
         image_url: imageUrl,
         max_deposit: suggestedDeposit ? Number(suggestedDeposit) : null,
+        required_deposit: requiredDeposit ? Number(requiredDeposit) : null,
+        allow_custom_deposit: allowCustomDeposit,
+        bounty_amount: bountyAmount ? Number(bountyAmount) : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -279,24 +292,80 @@ export default function EditPetPage() {
           </p>
         </div>
 
-        {/* Suggested Deposit (optional) */}
-        <div className="border-t pt-4">
-          <label className="block font-semibold mb-1">
-            Tiền cọc gợi ý (tuỳ chọn)
-          </label>
-          <input
-            type="number"
-            step="10000"
-            min="0"
-            className="w-full border rounded px-3 py-2"
-            value={suggestedDeposit}
-            onChange={(e) => setSuggestedDeposit(e.target.value)}
-            placeholder="Ví dụ: 50000"
-          />
-          <p className="text-xs text-gray-600 mt-1">
-            Để trống nếu không yêu cầu tiền cọc. Người nhận vẫn có thể tự nhập số tiền khác khi đặt cọc.
-          </p>
-        </div>
+        {/* Category-specific: Deposit for Adoption */}
+        {category === "adopt" && (
+          <div className="border-t pt-4 space-y-3">
+            <div className="p-3 bg-orange-50 border-2 border-orange-200 rounded-lg">
+              <h3 className="font-bold text-orange-900 mb-2">💰 Tiền cọc nhận nuôi</h3>
+              
+              <div className="mb-3">
+                <label className="block font-semibold mb-1 text-sm">
+                  Số tiền cọc tối thiểu (đ)
+                </label>
+                <input
+                  type="number"
+                  step="10000"
+                  min="0"
+                  className="w-full border rounded px-3 py-2"
+                  value={requiredDeposit}
+                  onChange={(e) => setRequiredDeposit(e.target.value)}
+                  placeholder="Ví dụ: 50000"
+                />
+                <p className="text-xs text-gray-600 mt-1">
+                  Số tiền cọc tối thiểu người nhận nuôi phải đặt. Để trống = không yêu cầu cọc.
+                </p>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allowCustomDeposit}
+                    onChange={(e) => setAllowCustomDeposit(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm font-medium">
+                    Cho phép người nhận tự điều chỉnh số tiền cọc
+                  </span>
+                </label>
+                <p className="text-xs text-gray-600 mt-1 ml-6">
+                  Nếu tắt: Người nhận phải đặt cọc ĐÚNG số tiền bạn quy định.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Category-specific: Bounty for Lost/Rescue */}
+        {(category === "lost" || category === "rescue") && (
+          <div className="border-t pt-4">
+            <div className="p-3 bg-amber-50 border-2 border-amber-200 rounded-lg">
+              <h3 className="font-bold text-amber-900 mb-2">
+                {category === "lost" ? "🎁 Tiền thưởng tìm kiếm" : "🔥 Hỗ trợ cứu hộ"}
+              </h3>
+              
+              <div>
+                <label className="block font-semibold mb-1 text-sm">
+                  Số tiền thưởng (đ)
+                </label>
+                <input
+                  type="number"
+                  step="10000"
+                  min="0"
+                  className="w-full border rounded px-3 py-2"
+                  value={bountyAmount}
+                  onChange={(e) => setBountyAmount(e.target.value)}
+                  placeholder="Ví dụ: 1000000"
+                />
+                <p className="text-xs text-gray-600 mt-1">
+                  {category === "lost" 
+                    ? "Số tiền thưởng cho người tìm thấy và xác nhận thành công."
+                    : "Số tiền hỗ trợ cho người cứu hộ khi hoàn thành ca cứu hộ."}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="text-red-600 text-sm bg-red-50 border border-red-300 rounded p-2">

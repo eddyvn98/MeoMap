@@ -1,10 +1,12 @@
 ﻿import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { QRCodeSVG } from "qrcode.react";
 import PostsSection from "./PostsSection";
 import AdoptionFlowSection from "./AdoptionFlowSection";
 import AdoptionActivityTimeline from "./AdoptionActivityTimeline";
 import AdoptionOwnerSection from "./AdoptionOwnerSection";
+import EditPostPanel from "./EditPostPanel";
 
 const WIDTH_MAP = {
   compact: "clamp(320px, 26vw, 440px)",
@@ -22,6 +24,7 @@ export default function ProfileDrawer({
   mapBbox = null,
   inlineWithinMap = false,
 }) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1024);
   const [user, setUser] = useState(null);
@@ -29,6 +32,7 @@ export default function ProfileDrawer({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedPost, setSelectedPost] = useState(null);
+  const [editingPost, setEditingPost] = useState(null);
   const [adoptionRequests, setAdoptionRequests] = useState([]);
   const [myAdoptionRequest, setMyAdoptionRequest] = useState(null);
   const [loadingRequests, setLoadingRequests] = useState(false);
@@ -405,7 +409,7 @@ export default function ProfileDrawer({
             userId={user?.id || null}
             bbox={mapBbox}
             onViewDetail={(post) => setSelectedPost(post)}
-            onEdit={(post) => setSelectedPost(post)}
+            onEdit={(post) => setEditingPost(post)}
             onDelete={() => {}}
             onShowQR={() => {}}
             onEnterToken={() => {}}
@@ -720,6 +724,50 @@ export default function ProfileDrawer({
 
         </div>
       </aside>
+
+      {/* Edit Post Panel Overlay */}
+      {editingPost && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.6)",
+            zIndex: 99999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "auto",
+          }}
+          onClick={() => setEditingPost(null)}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: 8,
+              width: "90%",
+              maxWidth: 600,
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+              pointerEvents: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <EditPostPanel
+              post={editingPost}
+              onClose={() => setEditingPost(null)}
+              onSuccess={() => {
+                // Reload posts
+                window.location.reload();
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

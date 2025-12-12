@@ -733,7 +733,14 @@ export default function ProfileDrawer({
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
                       <button
                         onClick={() => {
-                          alert(`Chỉnh sửa bài: ${selectedPost.name}`);
+                          // Dispatch a global event to open EditPostPanel overlay
+                          try {
+                            window.dispatchEvent(
+                              new CustomEvent("open-edit-post", { detail: selectedPost })
+                            );
+                          } catch (e) {
+                            console.error(e);
+                          }
                         }}
                         style={{
                           padding: "10px 16px",
@@ -770,7 +777,11 @@ export default function ProfileDrawer({
                       </button>
                       <button
                         onClick={() => {
-                          alert(`Hiện QR cho bài: ${selectedPost.name}`);
+                          window.dispatchEvent(
+                            new CustomEvent("open-qr-modal", {
+                              detail: { petId: selectedPost.id || selectedPost.pet_id, mode: selectedPost.category || "lost" },
+                            })
+                          );
                         }}
                         style={{
                           padding: "10px 16px",

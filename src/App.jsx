@@ -15,6 +15,8 @@ import RescuePetDetail from "./components/RescuePetDetail";
 import LostPetDetail from "./components/LostPetDetail";
 import AdoptPetDetail from "./components/AdoptPetDetail";
 import { useReminderScheduler } from "./hooks/useReminderScheduler";
+import EditPostPanel from "./components/EditPostPanel";
+import QrConfirmModal from "./components/QrConfirmModal";
 
 function MapFilters({ filters, setFilters }) {
   const [expanded, setExpanded] = useState(false);
@@ -213,6 +215,9 @@ export default function App() {
     rescue: localStorage.getItem("banner_rescue_shown") === "1",
   });
   const [showBanner, setShowBanner] = useState(null);
+  const [globalEditingPost, setGlobalEditingPost] = useState(null);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [qrPayload, setQrPayload] = useState(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -225,6 +230,66 @@ export default function App() {
   useEffect(() => {
     const seen = localStorage.getItem("meomap_onboarding_seen");
     if (!seen) setShowOnboarding(true);
+  }, []);
+
+  // Listen for global edit event from ProfileDrawer
+  useEffect(() => {
+    const handler = (e) => setGlobalEditingPost(e.detail);
+    window.addEventListener("open-edit-post", handler);
+    return () => window.removeEventListener("open-edit-post", handler);
+  }, []);
+
+  // Listen for global QR modal event
+  useEffect(() => {
+    const handler = (e) => {
+      setQrPayload(e.detail);
+      setQrModalOpen(true);
+    };
+    window.addEventListener("open-qr-modal", handler);
+    return () => window.removeEventListener("open-qr-modal", handler);
+  }, []);
+
+  // Listen for lost reward cancellation (voucher conversion)
+  useEffect(() => {
+    const handler = async (e) => {
+      try {
+        const { petId } = e.detail || {};
+        if (!petId) return;
+        const { data: pet, error: petErr } = await supabase
+          .from("pets")
+          .select("id, owner_id, bounty_amount")
+          .eq("id", petId)
+          .single();
+        if (petErr) {
+          console.error("Không lấy được pet:", petErr);
+          return;
+        }
+        if (!pet?.owner_id || !pet?.bounty_amount || pet.bounty_amount <= 0) {
+          console.warn("Thiếu owner hoặc không có bounty_amount để hoàn về ví", pet);
+          return;
+        }
+        const { error: txnErr } = await supabase
+          .from("wallet_transactions")
+          .insert({
+            user_id: pet.owner_id,
+            deposit_id: null,
+            amount: Math.round(pet.bounty_amount),
+            type: "reward_cancel_voucher",
+            note: "Người báo tin từ chối thưởng (lost); hoàn về ví, chỉ quy đổi voucher",
+          });
+        if (txnErr) {
+          console.error("Lỗi ghi giao dịch ví:", txnErr);
+          alert("Không thể ghi giao dịch hoàn thưởng. Vui lòng thử lại.");
+          return;
+        }
+        alert("✅ Đã hoàn thưởng về ví người đăng (dạng voucher).");
+      } catch (err) {
+        console.error("Lỗi xử lý hủy nhận thưởng:", err);
+        alert("Có lỗi khi xử lý hủy nhận thưởng.");
+      }
+    };
+    window.addEventListener("lost-cancel-reward", handler);
+    return () => window.removeEventListener("lost-cancel-reward", handler);
   }, []);
 
   // Run reminder scheduler periodically (every hour)
@@ -443,10 +508,10 @@ export default function App() {
     {
       title: "MeoMap dùng để làm gì?",
       bullets: [
-        "Tìm thú cưng đi lạc",
-        "Nhận nuôi mèo/chó",
-        "Báo tin cứu hộ",
-        "Theo dõi cọc & uy tín",
+        "Đăng và tìm thú cưng đi lạc",
+        "Đăng tin nhận nuôi chó/mèo",
+        "Báo tin cứu hộ, cập nhật tình trạng",
+        "Quản lý cọc, thưởng và uy tín giao dịch",
       ],
     },
     {
@@ -558,6 +623,50 @@ export default function App() {
 
       {/* Removed floating center card to avoid double popups; popover buttons now open detail directly */}
 
+      {/* Global Edit Post Panel Overlay (triggered via window event) */}
+      {globalEditingPost && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.6)",
+            zIndex: 99999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "auto",
+          }}
+          onClick={() => setGlobalEditingPost(null)}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: 8,
+              width: "90%",
+              maxWidth: 600,
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+              pointerEvents: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <EditPostPanel
+              post={globalEditingPost}
+              onClose={() => setGlobalEditingPost(null)}
+              onSuccess={() => {
+                setGlobalEditingPost(null);
+                window.location.reload();
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Full Screen Map */}
       <div style={{ flex: 1, position: "relative", zIndex: 0 }}>
         {/* Search inside map, aligned with profile top */}
@@ -579,15 +688,8 @@ export default function App() {
 
           if (!pet) return null;
 
-          if (pet.owner_id == user?.id) {
-            if (!isProfileOpen) {
-              openProfilePanel(null);
-            }
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('selectMyPost', { detail: { petId: pet.id || pet.pet_id } }));
-            }, 100);
-            return null;
-          }
+          // Check if user is the owner
+          const isOwner = pet.owner_id === user?.id;
 
           return (
             <>
@@ -614,11 +716,11 @@ export default function App() {
               <div className="flex-1 overflow-y-auto p-4">
                 {/* Category-specific detail widgets */}
                 {pet.category === "rescue" ? (
-                  <RescuePetDetail pet={pet} user={user} isOwner={false} />
+                  <RescuePetDetail pet={pet} user={user} isOwner={isOwner} />
                 ) : pet.category === "adopt" ? (
-                  <AdoptPetDetail pet={pet} user={user} isOwner={false} />
+                  <AdoptPetDetail pet={pet} user={user} isOwner={isOwner} />
                 ) : pet.category === "lost" ? (
-                  <LostPetDetail pet={pet} user={user} isOwner={false} />
+                  <LostPetDetail pet={pet} user={user} isOwner={isOwner} />
                 ) : (
                   <>
                     {/* Fallback simple view for other categories */}
@@ -904,6 +1006,9 @@ export default function App() {
 
       {/* Quick Guide Modal */}
       <QuickGuideModal isOpen={showGuideModal} onClose={() => setShowGuideModal(false)} />
+
+      {/* Global QR Modal */}
+      <QrConfirmModal isOpen={qrModalOpen} onClose={() => setQrModalOpen(false)} payload={qrPayload} />
 
       {/* First-Click Banner */}
       {showBanner && (

@@ -270,6 +270,13 @@ export default function PetDetailPage() {
 
   // Xác định người dùng có phải owner không
   const isOwner = currentUser && pet && (pet.owner_id === currentUser.id || pet.user_id === currentUser.id);
+  console.log("[PetDetailPage] isOwner calculation:", { 
+    currentUserId: currentUser?.id, 
+    petOwnerId: pet?.owner_id, 
+    petUserId: pet?.user_id, 
+    isOwner,
+    petCategory: pet?.category
+  });
 
   // Load danh sách người đăng ký nhận nếu là owner
   useEffect(() => {

@@ -4,6 +4,8 @@ import LostPetOwnerView from "./LostPetOwnerView";
 import ContextualHelpCard from "./ContextualHelpCard";
 
 export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDelete, onEdit }) {
+  console.log("[LostPetDetail] Props:", { petId: pet?.id, userId: user?.id, petOwnerId: pet?.user_id, isOwner });
+  
   const [owner, setOwner] = useState(null);
   const [sightings, setSightings] = useState([]);
   const [showSightingForm, setShowSightingForm] = useState(false);

@@ -3,10 +3,8 @@ import React from "react";
 const AdoptionProgressBar = ({ currentStep = 0 }) => {
   // currentStep: 0=Xem, 1=Nhắn, 2=Duyệt, 3=Cọc, 4=Nhận, 5=Hoàn
   const steps = [
-    { label: "Xem bài", icon: "👀" },
-    { label: "Gửi lời nhắn", icon: "💬" },
-    { label: "Chủ duyệt", icon: "✅" },
     { label: "Đặt cọc", icon: "💰" },
+    { label: "Trao đổi", icon: "💬" },
     { label: "Nhận mèo", icon: "🐱" },
     { label: "Hoàn cọc", icon: "✨" },
   ];

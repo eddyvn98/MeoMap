@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS public.donations (
   user_id uuid NULL, -- nullable cho góp ẩn danh
   amount integer NOT NULL, -- số tiền (VND)
   method text NOT NULL CHECK (method IN ('direct', 'system')), -- 'direct' = chuyển thẳng, 'system' = qua hệ thống
+  anonymous boolean NOT NULL DEFAULT false, -- true = ẩn danh (không hiển thị tên), false = hiển thị tên
   receipt_url text NULL, -- URL ảnh biên lai (nếu chuyển thẳng)
   note text NULL, -- ghi chú từ người góp
   token text NOT NULL DEFAULT substring(md5(gen_random_uuid()::text) for 6), -- mã tham chiếu 6 ký tự để phân luồng tiền

@@ -43,9 +43,9 @@ export default function DonationWidget({ caseId, isOwner, onCaseClosed }) {
   if (loading) return <div className="text-xs text-gray-500">Đang tải...</div>;
 
   return (
-    <div className="p-4 bg-orange-50 border-2 border-orange-300 rounded-lg">
+    <div className="p-4 bg-orange-50 border-2 border-orange-300 rounded-lg space-y-4">
       {/* Header */}
-      <div className="space-y-3 mb-4">
+      <div className="space-y-3">
         {/* Status */}
         <div className="flex items-center gap-3">
           <div className="w-4 h-4 bg-orange-500 rounded-full animate-pulse"></div>
@@ -73,6 +73,29 @@ export default function DonationWidget({ caseId, isOwner, onCaseClosed }) {
           </div>
         )}
       </div>
+
+      {/* Hướng dẫn đóng góp tiền */}
+      <details className="p-3 bg-white border border-orange-200 rounded-lg">
+        <summary className="cursor-pointer font-semibold text-orange-900 mb-2">
+          🔘 Đóng góp tiền - Hai cách
+        </summary>
+        <div className="space-y-2 text-xs text-gray-700 mt-3 leading-relaxed">
+          <div className="p-2 bg-green-50 border border-green-200 rounded">
+            <strong>✔ Qua hệ thống (GỢI Ý):</strong>
+            <div className="ml-3 mt-1">• Chuyển tiền vào ví MeoMap</div>
+            <div className="ml-3">• Được thống kê trên "Bảng cảm ơn"</div>
+            <div className="ml-3">• Nếu không có người nhận ca, tiền <strong>hoàn về ví</strong></div>
+            <div className="ml-3">• Có thể ẩn danh hoặc hiển thị tên</div>
+          </div>
+          <div className="p-2 bg-blue-50 border border-blue-200 rounded">
+            <strong>🏦 Chuyển thẳng:</strong>
+            <div className="ml-3 mt-1">• Chuyển khoản trực tiếp cho người cứu</div>
+            <div className="ml-3">• Không được thống kê trên "Bảng cảm ơn"</div>
+            <div className="ml-3">• Cần cung cấp ảnh biên lai</div>
+          </div>
+          <p className="mt-2 text-[11px] italic text-gray-600">💡 Chỉ các đóng góp <strong>"qua hệ thống"</strong> mới hiển thị trên bảng cảm ơn</p>
+        </div>
+      </details>
 
       {/* Nút góp & kết thúc (nếu owner) */}
       <div className="flex gap-2">

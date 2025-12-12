@@ -1,4 +1,7 @@
 import { useState } from "react";
+import ContactExchangeCard from "./ContactExchangeCard";
+import ConfirmHandoverPanel from "./ConfirmHandoverPanel";
+import LostProgressBar from "./LostProgressBar";
 
 export default function LostPetOwnerView({ pet, owner, isOwner, sightings, onMarkAsFound, onDelete, onEdit, onVerifySighting, onGeneratePoster, onHandleShare }) {
   const [expandedSighting, setExpandedSighting] = useState(null);
@@ -31,8 +34,14 @@ export default function LostPetOwnerView({ pet, owner, isOwner, sightings, onMar
     return tips;
   };
 
+  console.log("[LostPetOwnerView] Rendering with:", { pet: pet?.id, sightingsCount: sightings?.length, isOwner });
+
   return (
     <div className="space-y-4">
+      {/* Progress for lost flow */}
+      <section className="p-3 bg-indigo-50 border rounded-lg">
+        <LostProgressBar currentStep={isFound ? 4 : sightings.length > 0 ? 1 : 0} />
+      </section>
       {/* ========== OWNER HEADER BADGES ========== */}
       <section className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-blue-400">
         <div className="relative w-full h-64 bg-gray-200">
@@ -269,6 +278,59 @@ export default function LostPetOwnerView({ pet, owner, isOwner, sightings, onMar
           )}
         </section>
       )}
+
+      {/* ========== LIÊN HỆ HAI CHIỀU SAU BÁO TIN ========== */}
+      {sightings.length > 0 && (
+        <section className="p-4 bg-blue-50 border rounded-lg">
+          <ContactExchangeCard
+            owner={{
+              name: owner?.display_name || "Chủ mèo",
+              phone: owner?.phone || owner?.phone_number || "",
+              note: "Liên hệ để hẹn thời gian/địa điểm gặp",
+            }}
+            reporter={{
+              name:
+                sightings[0]?.metadata?.reporter_name || sightings[0]?.reporter_name || "Người tìm thấy",
+              phone:
+                sightings[0]?.metadata?.reporter_phone || sightings[0]?.reporter_phone || "",
+              note: sightings[0]?.description || "",
+            }}
+            infoNote="Sau khi gửi báo: hai bên thấy thông tin liên hệ để trao đổi, hẹn gặp và xác nhận."
+          />
+        </section>
+      )}
+
+      {/* ========== XÁC NHẬN GIAO/NHẬN (DÙNG CHUNG) ========== */}
+      <section className="p-4 bg-white border rounded-lg">
+        <ConfirmHandoverPanel
+          mode="lost"
+          contactA={{
+            name: owner?.display_name || "Chủ mèo",
+            phone: owner?.phone || owner?.phone_number || "",
+          }}
+          contactB={{
+            name:
+              sightings[0]?.metadata?.reporter_name || sightings[0]?.reporter_name || "Người tìm thấy",
+            phone:
+              sightings[0]?.metadata?.reporter_phone || sightings[0]?.reporter_phone || "",
+          }}
+          onShowQR={() => {
+            window.dispatchEvent(new CustomEvent("open-qr-modal", { detail: { petId: pet.id, mode: "lost" } }));
+          }}
+          onConfirm={() => {
+            if (typeof onMarkAsFound === "function") onMarkAsFound();
+          }}
+          onCancelReward={() => {
+            window.dispatchEvent(
+              new CustomEvent("lost-cancel-reward", { detail: { petId: pet.id } })
+            );
+            alert(
+              "Đã chọn hủy nhận thưởng: tiền sẽ về ví người đăng và không rút được, chỉ quy đổi voucher."
+            );
+          }}
+          statusLabel={isFound ? "Đã xác nhận giao/nhận" : sightings.length > 0 ? "Đang trao đổi" : "Chờ báo tin"}
+        />
+      </section>
 
       {/* ========== LỊCH SỬ HOẠT ĐỘNG ========== */}
       <section className="p-4 bg-purple-50 border rounded-lg">

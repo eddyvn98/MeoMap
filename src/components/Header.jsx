@@ -111,6 +111,23 @@ export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenPro
                   💰 Ví của tôi
                 </button>
               </Link>
+              <Link to="/rescuer">
+                <button
+                  style={{
+                    ...buttonStyle,
+                    background: "#f0f0f0",
+                    color: "#333",
+                  }}
+                  onMouseOver={(e) =>
+                    (e.currentTarget.style.background = "#e0e0e0")
+                  }
+                  onMouseOut={(e) =>
+                    (e.currentTarget.style.background = "#f0f0f0")
+                  }
+                >
+                  🚑 Cứu hộ
+                </button>
+              </Link>
             </div>
 
             {/* Actions buttons */}

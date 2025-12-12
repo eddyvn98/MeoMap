@@ -22,6 +22,8 @@ import EditPetPage from "./pages/EditPetPage";
 import MyAdoptionRequestsPage from "./pages/MyAdoptionRequestsPage";
 import HowItWorks from "./components/HowItWorks";
 import FAQ from "./components/FAQ";
+import MyReportsPage from "./pages/MyReportsPage";
+import RescuerPage from "./pages/RescuerPage";
 
 export default function Router() {
   return (
@@ -32,6 +34,7 @@ export default function Router() {
         <Route path="/map" element={<App />} />
         <Route path="/map-fullscreen" element={<MapPage />} />
         <Route path="/pet/:id" element={<PetDetailPage />} />
+        <Route path="/pet-detail/:id" element={<PetDetailPage />} />
         <Route path="/report" element={<ReportPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -49,8 +52,10 @@ export default function Router() {
         <Route path="/deposit/:id/ticket" element={<DepositTicketPage />} />
         <Route path="/edit-pet/:id" element={<EditPetPage />} />
         <Route path="/my-adoption-requests" element={<MyAdoptionRequestsPage />} />
+        <Route path="/my-reports" element={<MyReportsPage />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/rescuer" element={<RescuerPage />} />
       </Routes>
     </BrowserRouter>
   );

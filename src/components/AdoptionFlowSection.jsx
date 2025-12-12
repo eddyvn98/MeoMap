@@ -242,11 +242,11 @@ export default function AdoptionFlowSection({
     }
 
     const steps = [
-      { id: 1, label: "Danh sách", icon: "📋" },
-      { id: 2, label: "Chọn/Quét", icon: "📱" },
-      { id: 3, label: "Giao", icon: "🚚" },
-      { id: 4, label: "Đánh giá", icon: "⭐" },
-      { id: 5, label: "Hoàn tất", icon: "🎉" },
+      { id: 1, label: "Chọn người nhận", icon: "📋" },
+      // { id: 2, label: "Cọc(nếu có)", icon: "💰" },
+      { id: 3, label: "Nhắn tin", icon: "💬" },
+      { id: 4, label: "Giao nhận", icon: "🤝" },
+      { id: 5, label: "Đánh giá", icon: "⭐" },
     ];
 
     return (

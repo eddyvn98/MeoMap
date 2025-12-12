@@ -172,8 +172,8 @@ const makeStatusIcon = (status, category, imageUrl, pet = {}, currentUserId = nu
   return L.divIcon({
     className: "pet-marker-icon",
     html: `
-      <div style="position:relative;width:112px;height:112px;">
-        <div style="width:112px;height:112px;border-radius:50%;overflow:hidden;border:5px solid ${borderColor};box-shadow:0 4px 12px rgba(0,0,0,0.3);background:#fff;">
+      <div style="position:relative;width:80px;height:80px;">
+        <div style="width:80px;height:80px;border-radius:50%;overflow:hidden;border:5px solid ${borderColor};box-shadow:0 4px 12px rgba(0,0,0,0.3);background:#fff;">
           <img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;" />
         </div>
         <div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);background:${badgeColor};color:#fff;padding:4px 12px;border-radius:14px;font-size:11px;font-weight:bold;white-space:nowrap;box-shadow:0 3px 6px rgba(0,0,0,0.4);">
@@ -433,8 +433,8 @@ export default forwardRef(function PetMap({
             markerIcon = L.divIcon({
               className: "pet-marker-icon",
               html: `
-                <div style="position:relative;width:112px;height:112px;">
-                  <div style="width:112px;height:112px;border-radius:50%;overflow:hidden;border:5px solid #10b981;box-shadow:0 4px 12px rgba(0,0,0,0.3);background:#fff;">
+                <div style="position:relative;width:80px;height:80px;">
+                  <div style="width:80px;height:80px;border-radius:50%;overflow:hidden;border:5px solid #10b981;box-shadow:0 4px 12px rgba(0,0,0,0.3);background:#fff;">
                     <img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;" />
                   </div>
                   <div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;padding:4px 12px;border-radius:14px;font-size:11px;font-weight:bold;white-space:nowrap;box-shadow:0 3px 6px rgba(0,0,0,0.4);">

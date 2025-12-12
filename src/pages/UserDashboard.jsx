@@ -86,6 +86,33 @@ export default function UserDashboard() {
     loadDeposits();
   }, [user, activeTab]);
 
+  // 3b) Load ca cứu hộ của tôi (vai trò: rescuer)
+  useEffect(() => {
+    if (!user || activeTab !== "rescues") return;
+
+    const loadRescues = async () => {
+      setLoadingRescues(true);
+      setError("");
+
+      const { data, error } = await supabase
+        .from("pets")
+        .select("*")
+        .eq("rescuer_id", user.id)
+        .eq("category", "rescue")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setError("Không tải được danh sách ca cứu hộ.");
+        setRescues([]);
+      } else {
+        setRescues(data || []);
+      }
+      setLoadingRescues(false);
+    };
+
+    loadRescues();
+  }, [user, activeTab]);
+
   // 4) Load ví của tôi
   useEffect(() => {
     if (!user || activeTab !== "wallet") return;
@@ -228,6 +255,7 @@ export default function UserDashboard() {
         {[
           { id: "posts", label: "📝 Bài đăng của tôi (Người đăng)" },
           { id: "deposits", label: "💰 Cọc & giao dịch của tôi (Người nhận)" },
+          { id: "rescues", label: "🚑 Ca cứu hộ của tôi (Người cứu)" },
           { id: "wallet", label: "💳 Ví của tôi" },
           { id: "reputation", label: "⭐ Uy tín của tôi" },
         ].map((tab) => (
@@ -288,7 +316,13 @@ export default function UserDashboard() {
                     {pet.name || "Không đặt tên"}
                   </div>
 
-                  <div className="text-gray-600">Loại: 🟢 Nhận nuôi</div>
+                  <div className="text-gray-600">
+                    Loại: {
+                      pet.category === "rescue" ? "🚑 Cứu hộ" :
+                      pet.category === "lost" ? "🔍 Đi lạc" :
+                      "🟢 Nhận nuôi"
+                    }
+                  </div>
 
                   <div className="text-gray-600 flex items-center gap-2">
                     <span>Trạng thái:</span>
@@ -316,12 +350,30 @@ export default function UserDashboard() {
                     >
                       Sửa
                     </button>
-                    <button
-                      className="flex-1 border rounded py-1 hover:bg-orange-50"
-                      onClick={() => navigate(`/account/adopt/${pet.id}/applicants`)}
-                    >
-                      Người đăng ký nhận
-                    </button>
+                    {pet.category === "adopt" && (
+                      <button
+                        className="flex-1 border rounded py-1 hover:bg-orange-50"
+                        onClick={() => navigate(`/account/adopt/${pet.id}/applicants`)}
+                      >
+                        Người đăng ký
+                      </button>
+                    )}
+                    {pet.category === "rescue" && (
+                      <button
+                        className="flex-1 border rounded py-1 hover:bg-orange-50 text-orange-600 font-medium"
+                        onClick={() => navigate(`/pet/${pet.id}`)}
+                      >
+                        Xem ca cứu
+                      </button>
+                    )}
+                    {pet.category === "lost" && (
+                      <button
+                        className="flex-1 border rounded py-1 hover:bg-red-50 text-red-600 font-medium"
+                        onClick={() => navigate(`/pet/${pet.id}`)}
+                      >
+                        Xem báo tin
+                      </button>
+                    )}
                   </div>
                 </div>
               </article>
@@ -393,8 +445,96 @@ export default function UserDashboard() {
 
       {/* TAB 3: CA CỨU HỘ CỦA TÔI */}
       {activeTab === "rescues" && (
-        <section className="p-4 bg-gray-50 rounded text-xs text-gray-600">
-          Chưa có ca cứu hộ. Tính năng này sẽ được bổ sung sau.
+        <section>
+          {loadingRescues && (
+            <div className="text-xs text-gray-600">Đang tải danh sách…</div>
+          )}
+
+          {!loadingRescues && rescues.length === 0 && (
+            <div className="text-xs text-gray-500 p-4 bg-gray-50 rounded">
+              Bạn chưa nhận ca cứu hộ nào. Hãy vào <strong>"🚑 Cứu hộ"</strong> để tìm và nhận ca.
+            </div>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {rescues.map((rescue) => {
+              const isClosed = rescue.status === "delivered";
+              return (
+                <article
+                  key={rescue.id}
+                  className={`border rounded-lg overflow-hidden text-xs bg-white shadow-sm hover:shadow-md transition ${
+                    isClosed ? "opacity-75" : ""
+                  }`}
+                >
+                  {rescue.image_url && (
+                    <img
+                      src={rescue.image_url}
+                      alt={rescue.name || "pet"}
+                      className="w-full h-32 object-cover"
+                    />
+                  )}
+
+                  <div className="p-2 space-y-1">
+                    <div className="font-semibold text-sm truncate">
+                      🚑 {rescue.name || "Không đặt tên"}
+                    </div>
+
+                    <div className="text-gray-600">Loại: 🚑 Cứu hộ</div>
+
+                    <div className="text-gray-600 flex items-center gap-2">
+                      <span>Trạng thái:</span>
+                      <span
+                        className={`px-2 py-1 rounded text-[11px] font-medium ${
+                          isClosed
+                            ? "bg-green-100 text-green-700"
+                            : "bg-orange-100 text-orange-700 animate-pulse"
+                        }`}
+                      >
+                        {isClosed ? "✅ Đã hoàn thành" : "⏳ Đang tiến hành"}
+                      </span>
+                    </div>
+
+                    {rescue.bounty_amount > 0 && (
+                      <div className="text-gray-600">
+                        💰 Hỗ trợ: {rescue.bounty_amount.toLocaleString()}đ
+                      </div>
+                    )}
+
+                    {rescue.total_donations > 0 && (
+                      <div className="text-gray-600">
+                        💜 Quyên góp: {rescue.total_donations.toLocaleString()}đ
+                      </div>
+                    )}
+
+                    <div className="text-[11px] text-gray-500">
+                      {rescue.created_at
+                        ? new Date(rescue.created_at).toLocaleString("vi-VN")
+                        : "N/A"}
+                    </div>
+
+                    <div className="flex gap-1 mt-2">
+                      <button
+                        className={`flex-1 border rounded py-1 ${
+                          isClosed
+                            ? "hover:bg-gray-50 text-gray-600"
+                            : "hover:bg-blue-50 text-blue-600 font-medium"
+                        }`}
+                        onClick={() => navigate(`/pet/${rescue.id}`)}
+                      >
+                        {isClosed ? "Xem chi tiết" : "🎯 Quản lý"}
+                      </button>
+                      <button
+                        className="flex-1 border rounded py-1 hover:bg-orange-50"
+                        onClick={() => navigate(`/edit-pet/${rescue.id}`)}
+                      >
+                        Sửa
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         </section>
       )}
 

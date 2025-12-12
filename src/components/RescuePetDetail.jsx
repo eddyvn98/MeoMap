@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 import { closeRescueCase } from "../donation";
 import { finalizeBounties } from "../bounty";
 import BountyWidget from "./BountyWidget";
 import DonationWidget from "./DonationWidget";
 import DonorList from "./DonorList";
 import ContextualHelpCard from "./ContextualHelpCard";
+import RescueActivityPanel from "./RescueActivityPanel";
+import RescueUpdatesTimeline from "./RescueUpdatesTimeline";
+import RescueAppealsList from "./RescueAppealsList";
 
 /**
  * Chi tiết bài đăng cứu hộ (rescue category)
@@ -18,8 +22,56 @@ import ContextualHelpCard from "./ContextualHelpCard";
 export default function RescuePetDetail({ pet, user, isOwner }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [acceptingRescue, setAcceptingRescue] = useState(false);
 
   const isClosed = pet.status === "delivered";
+  const isRescuer = user && pet.rescuer_id && pet.rescuer_id === user.id;
+
+  // Debug logging
+  console.log("🚑 RescuePetDetail - isRescuer check:", {
+    hasUser: !!user,
+    userId: user?.id,
+    petRescuerId: pet.rescuer_id,
+    isRescuer,
+    petId: pet.id,
+    isClosed
+  });
+
+  const handleAcceptRescue = async () => {
+    if (!user) {
+      alert("❌ Vui lòng đăng nhập để nhận ca cứu hộ");
+      return;
+    }
+
+    if (pet.rescuer_id) {
+      alert("❌ Ca cứu hộ này đã có người nhận");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Bạn có chắc muốn nhận ca cứu hộ thú cưng "${pet.name}" này?\n\nBạn sẽ trở thành người cứu hộ chính và có trách nhiệm hoàn thành ca này.`
+      )
+    )
+      return;
+
+    setAcceptingRescue(true);
+    try {
+      const { error } = await supabase
+        .from("pets")
+        .update({ rescuer_id: user.id })
+        .eq("id", pet.id);
+
+      if (error) throw error;
+
+      alert("✅ Bạn đã nhận ca cứu hộ! Vào Trung Tâm Cứu Hộ để quản lý.");
+      window.location.reload();
+    } catch (err) {
+      alert("❌ Lỗi: " + err.message);
+    } finally {
+      setAcceptingRescue(false);
+    }
+  };
 
   const handleCloseCase = async () => {
     if (
@@ -56,9 +108,9 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
 
   return (
     <div className="space-y-4">
-      {/* HEADER */}
+      {/* HEADER - Compact version for detail panel */}
       <section className="relative bg-gray-100 rounded-lg overflow-hidden">
-        <div className="relative w-full h-64 bg-gray-200">
+        <div className="relative w-full h-40 bg-gray-200">
           {pet.image_url ? (
             <img
               src={pet.image_url}
@@ -97,9 +149,26 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
           <p className="text-sm text-orange-700 mt-1">
             Trường hợp khẩn cấp. Người cứu sẽ nhận hỗ trợ tùy theo mức thưởng.
           </p>
-          <p className="text-sm text-gray-600 mt-1">
-            Người cứu hộ: Cộng đồng MeoMap
-          </p>
+          {pet.rescuer_id ? (
+            <p className="text-sm text-green-700 mt-1">
+              ✅ Người cứu hộ đã nhận ca - ID: {pet.rescuer_id.slice(0, 8)}...
+            </p>
+          ) : (
+            <p className="text-sm text-gray-600 mt-1">
+              ⏳ Chờ người cứu hộ nhận ca
+            </p>
+          )}
+
+          {/* NÚT NHẬN CA CHO NGƯỜI KHÁC (CHƯA NHẬN CA) */}
+          {!isOwner && !pet.rescuer_id && !isClosed && user && (
+            <button
+              onClick={handleAcceptRescue}
+              disabled={acceptingRescue}
+              className="mt-3 px-4 py-2 bg-orange-500 text-white rounded font-semibold hover:bg-orange-600 disabled:opacity-50"
+            >
+              {acceptingRescue ? "⏳ Đang xử lý..." : "✋ Nhận ca cứu hộ"}
+            </button>
+          )}
         </div>
       </section>
 
@@ -136,6 +205,19 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
             </details>
           </div>
         </ContextualHelpCard>
+      )}
+
+      {/* RESCUER - RESCUE ACTIVITY PANEL */}
+      {isRescuer && !isClosed && (
+        <RescueActivityPanel
+          caseId={pet.id}
+          rescuerId={user.id}
+          isRescuer={isRescuer}
+          onCaseUpdated={() => {
+            // Reload page để cập nhật dữ liệu từ DB
+            window.location.reload();
+          }}
+        />
       )}
 
       {/* ===== KHỐI 1: TIỀN TREO THƯỞNG (Ban đầu) ===== */}
@@ -202,19 +284,19 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
         </section>
       )}
 
-      {/* TIMELINE HOẠT ĐỘNG (PLACEHOLDER) */}
-      <section className="p-4 bg-purple-50 border rounded-lg">
-        <h3 className="font-bold text-purple-900 mb-3">📜 Timeline hoạt động</h3>
-        <p className="text-xs text-gray-600 mb-3">
-          Người cứu hộ sẽ đăng tải check-in, báo cáo tình trạng, ảnh, hóa đơn tại đây.
-        </p>
-        <div className="space-y-2">
-          <div className="p-2 bg-purple-100 text-purple-700 text-xs rounded">
-            ⏰ Bài được đăng: {new Date(pet.created_at).toLocaleString("vi-VN")}
-          </div>
-          {/* Timeline entries will be added here in next iteration */}
-        </div>
-      </section>
+      {/* LỜI KÊU GỌI ỦNG HỘ */}
+      {!isClosed && (
+        <section className="p-4 border rounded-lg">
+          <RescueAppealsList caseId={pet.id} />
+        </section>
+      )}
+
+      {/* TIMELINE CẬP NHẬT TÌNH HÌNH */}
+      {!isClosed && (
+        <section className="p-4 border rounded-lg">
+          <RescueUpdatesTimeline caseId={pet.id} />
+        </section>
+      )}
 
       {/* OWNER ACTIONS */}
       {isOwner && !isClosed && (

@@ -31,7 +31,7 @@ export default function ReportPage() {
     setError("");
 
     if (!name.trim()) {
-      setError("Nhập tên thú cưng.");
+      setError("Nhập Tiêu đề bài viết.");
       return;
     }
     if (!position) {
@@ -44,7 +44,39 @@ export default function ReportPage() {
     let imageUrl = null;
 
     try {
-      // 1) Upload ảnh nếu có
+      // 1) Check wallet balance if bounty is set
+      const bountyValue = (category === "lost" || category === "rescue") && bountyAmount ? parseInt(bountyAmount) : 0;
+      
+      if (bountyValue > 0) {
+        // Get current user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+          setError("Bạn phải đăng nhập để treo thưởng.");
+          setSubmitting(false);
+          return;
+        }
+
+        // Get wallet balance
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("balance_thuong")
+          .eq("id", user.id)
+          .single();
+
+        if (profileError || !profile) {
+          setError("Không thể kiểm tra số dư ví.");
+          setSubmitting(false);
+          return;
+        }
+
+        if (profile.balance_thuong < bountyValue) {
+          setError(`Số dư ví không đủ. Bạn có ${profile.balance_thuong.toLocaleString()}đ, cần ${bountyValue.toLocaleString()}đ.`);
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      // 2) Upload ảnh nếu có
       if (file) {
         const ext = file.name.split(".").pop();
         const filePath = `pets/${Date.now()}.${ext}`;
@@ -67,7 +99,23 @@ export default function ReportPage() {
         imageUrl = publicData?.publicUrl || null;
       }
 
-      // 2) Ghi bản ghi vào bảng pets (insert trả về row mới bằng .select())
+      // 3) Deduct bounty_amount from wallet if set
+      if (bountyValue > 0) {
+        const { data: result, error: deductError } = await supabase.rpc("decrease_balance_thuong", {
+          p_user_id: (await supabase.auth.getUser()).data.user.id,
+          p_amount: bountyValue,
+          p_description: `Khóa tiền treo thưởng khi tạo bài "${name}"`,
+        });
+
+        if (deductError || !result?.success) {
+          console.error("Deduct bounty error:", deductError || result);
+          setError("Khóa tiền treo thưởng thất bại: " + (result?.message || deductError?.message || "Lỗi không xác định"));
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      // 4) Ghi bản ghi vào bảng pets (insert trả về row mới bằng .select())
       const petData = {
         name,
         status,
@@ -82,7 +130,7 @@ export default function ReportPage() {
         // Add deposit/bounty fields based on category
         required_deposit: category === "adopt" && requiredDeposit ? parseInt(requiredDeposit) : null,
         allow_custom_deposit: category === "adopt" ? allowCustomDeposit : true,
-        bounty_amount: (category === "lost" || category === "rescue") && bountyAmount ? parseInt(bountyAmount) : null,
+        bounty_amount: bountyValue > 0 ? bountyValue : null,
       };
 
       console.log("Attempting to insert pet:", petData);
@@ -138,7 +186,7 @@ export default function ReportPage() {
 
         <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
           <div style={{ marginBottom: 10 }}>
-            <label>Tên thú cưng</label>
+            <label>Tiêu đề bài viết</label>
             <input
               style={{ width: "100%", padding: 8 }}
               value={name}

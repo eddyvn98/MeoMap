@@ -4,7 +4,6 @@ import { supabase } from "../supabaseClient";
 import { closeRescueCase } from "../donation";
 import { finalizeBounties } from "../bounty";
 import BountyWidget from "./BountyWidget";
-import DonationWidget from "./DonationWidget";
 import DonorList from "./DonorList";
 import ContextualHelpCard from "./ContextualHelpCard";
 import RescueActivityPanel from "./RescueActivityPanel";
@@ -23,6 +22,15 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [acceptingRescue, setAcceptingRescue] = useState(false);
+  const [editingBankInfo, setEditingBankInfo] = useState(false);
+  const [bankInfo, setBankInfo] = useState({
+    rescuer_bank_account_number: pet.rescuer_bank_account_number || "",
+    rescuer_bank_account_name: pet.rescuer_bank_account_name || "",
+    rescuer_bank_name: pet.rescuer_bank_name || "",
+    rescuer_bank_qr_code_url: pet.rescuer_bank_qr_code_url || "",
+  });
+  const [qrFile, setQrFile] = useState(null);
+  const [savingBankInfo, setSavingBankInfo] = useState(false);
 
   const isClosed = pet.status === "delivered";
   const isRescuer = user && pet.rescuer_id && pet.rescuer_id === user.id;
@@ -64,7 +72,8 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
 
       if (error) throw error;
 
-      alert("✅ Bạn đã nhận ca cứu hộ! Vào Trung Tâm Cứu Hộ để quản lý.");
+      alert("✅ Bạn đã nhận ca cứu hộ! Vui lòng cập nhật thông tin ngân hàng để người đóng góp có thể chuyển tiền.");
+      setEditingBankInfo(true);
       window.location.reload();
     } catch (err) {
       alert("❌ Lỗi: " + err.message);
@@ -106,6 +115,56 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
     }
   };
 
+  const handleSaveBankInfo = async () => {
+    setSavingBankInfo(true);
+    try {
+      let qrUrl = bankInfo.rescuer_bank_qr_code_url;
+
+      // Upload QR file if selected
+      if (qrFile) {
+        const ext = qrFile.name.split(".").pop();
+        const filePath = `bank-qr/${pet.id}_${Date.now()}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("pet-images")
+          .upload(filePath, qrFile);
+
+        if (uploadError) {
+          console.error(uploadError);
+          throw new Error("Upload ảnh QR lỗi: " + uploadError.message);
+        }
+
+        const { data: publicData } = supabase.storage
+          .from("pet-images")
+          .getPublicUrl(filePath);
+
+        qrUrl = publicData?.publicUrl || bankInfo.rescuer_bank_qr_code_url;
+      }
+
+      const updateData = {
+        ...bankInfo,
+        rescuer_bank_qr_code_url: qrUrl,
+      };
+
+      const { error } = await supabase
+        .from("pets")
+        .update(updateData)
+        .eq("id", pet.id);
+
+      if (error) throw error;
+
+      alert("✅ Đã cập nhật thông tin ngân hàng!");
+      setEditingBankInfo(false);
+      setQrFile(null);
+      window.location.reload();
+    } catch (error) {
+      console.error(error);
+      alert("❌ Lỗi khi lưu thông tin: " + error.message);
+    } finally {
+      setSavingBankInfo(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* HEADER - Compact version for detail panel */}
@@ -136,8 +195,8 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
             </div>
           </div>
 
-          {/* Badge category */}
-          <div className="absolute top-4 left-4">
+          {/* Badge danh mục */}
+          <div className="absolute bottom-4 left-4">
             <div className="px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold">
               Cứu hộ
             </div>
@@ -146,7 +205,7 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
 
         <div className="p-4 bg-white border-b">
           <h3 className="text-2xl font-bold text-gray-900">{pet.name}</h3>
-          <p className="text-sm text-orange-700 mt-1">
+          <p className="text-sm text-gray-700 mt-2">
             Trường hợp khẩn cấp. Người cứu sẽ nhận hỗ trợ tùy theo mức thưởng.
           </p>
           {pet.rescuer_id ? (
@@ -158,22 +217,33 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
               ⏳ Chờ người cứu hộ nhận ca
             </p>
           )}
-
-          {/* NÚT NHẬN CA CHO NGƯỜI KHÁC (CHƯA NHẬN CA) */}
-          {!isOwner && !pet.rescuer_id && !isClosed && user && (
-            <button
-              onClick={handleAcceptRescue}
-              disabled={acceptingRescue}
-              className="mt-3 px-4 py-2 bg-orange-500 text-white rounded font-semibold hover:bg-orange-600 disabled:opacity-50"
-            >
-              {acceptingRescue ? "⏳ Đang xử lý..." : "✋ Nhận ca cứu hộ"}
-            </button>
+          {/* NÚT NHẬN CA (CHO TẤT CẢ NGƯỜI DÙNG) */}
+          {!pet.rescuer_id && !isClosed && user && (
+            <div>
+              <button
+                onClick={handleAcceptRescue}
+                disabled={acceptingRescue}
+                className="mt-3 px-4 py-2 bg-orange-500 text-white rounded font-semibold hover:bg-orange-600 disabled:opacity-50"
+              >
+                {acceptingRescue ? "⏳ Đang xử lý..." : "✋ Nhận ca cứu hộ"}
+              </button>
+              {isOwner && (
+                <div className="mt-2 p-3 bg-amber-50 border border-amber-300 rounded text-xs">
+                  <p className="text-amber-900 font-semibold">⚠️ Lưu ý: Bạn đang tự nhận ca cứu của chính mình</p>
+                  <p className="text-amber-800 mt-1">
+                    • Bạn có thể quản lý ca cứu và nhận ủng hộ từ cộng đồng<br />
+                    • <strong>Không nhận được tiền thưởng</strong> khi tự hoàn thành ca này<br />
+                    • Tiền thưởng chỉ dành cho người khác giúp đỡ
+                  </p>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </section>
 
       {/* THƯỞNG HỖ TRỢ CỨU HỘ */}
-      {pet.bounty_amount && pet.bounty_amount > 0 && (
+      {pet.bounty_amount > 0 && (
         <ContextualHelpCard
           cardId="rescue-support"
           icon="🔥"
@@ -182,11 +252,11 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
           position="bottom"
         >
           <div className="p-3 bg-red-100 border-2 border-red-400 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-1 mb-2">
               <span className="text-2xl">🔥</span>
               <h4 className="font-bold text-red-900">Hỗ trợ cứu hộ</h4>
             </div>
-            <p className="text-3xl font-bold text-red-900">
+            <p className="text-2xl font-bold text-red-900">
               {pet.bounty_amount.toLocaleString()}đ
             </p>
             <p className="text-xs text-red-800 mt-2 mb-3">
@@ -224,6 +294,7 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
       {!isClosed && (
         <BountyWidget
           caseId={pet.id}
+          caseOwnerId={pet.owner_id}
           isRescuer={isOwner}
           onBountiesAccepted={() => {
             // Refresh page hoặc reload bounties
@@ -231,13 +302,180 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
         />
       )}
 
-      {/* ===== KHỐI 2: TIỀN HỖ TRỢ CHI PHÍ (Quá trình) ===== */}
+      {/* ===== HỖ TRỢ CỨU HỘ TRỰC TIẾP ===== */}
       {!isClosed && (
-        <DonationWidget
-          caseId={pet.id}
-          isOwner={isOwner}
-          onCaseClosed={handleCloseCase}
-        />
+        <div className="p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-blue-900 text-base">
+              🏦 Thông tin chuyển khoản trực tiếp (Hỗ trợ cứu hộ)
+            </h3>
+            {isRescuer && !editingBankInfo && (
+              <button
+                onClick={() => setEditingBankInfo(true)}
+                className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+              >
+                ✏️ Chỉnh sửa
+              </button>
+            )}
+          </div>
+
+          {editingBankInfo && isRescuer ? (
+            // EDIT MODE
+            <div className="space-y-3 bg-white p-3 rounded border-2 border-blue-400">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Số tài khoản:
+                </label>
+                <input
+                  type="text"
+                  value={bankInfo.rescuer_bank_account_number}
+                  onChange={(e) => setBankInfo({ ...bankInfo, rescuer_bank_account_number: e.target.value })}
+                  placeholder="Ví dụ: 123456789"
+                  className="w-full border rounded px-2 py-1 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Tên chủ tài khoản:
+                </label>
+                <input
+                  type="text"
+                  value={bankInfo.rescuer_bank_account_name}
+                  onChange={(e) => setBankInfo({ ...bankInfo, rescuer_bank_account_name: e.target.value })}
+                  placeholder="Ví dụ: Nguyễn Văn A"
+                  className="w-full border rounded px-2 py-1 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Ngân hàng:
+                </label>
+                <input
+                  type="text"
+                  value={bankInfo.rescuer_bank_name}
+                  onChange={(e) => setBankInfo({ ...bankInfo, rescuer_bank_name: e.target.value })}
+                  placeholder="Ví dụ: Vietcombank, Agribank..."
+                  className="w-full border rounded px-2 py-1 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Ảnh Mã QR chuyển tiền (tùy chọn):
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setQrFile(e.target.files?.[0] || null)}
+                  className="w-full border rounded px-2 py-1 text-sm"
+                />
+                {bankInfo.rescuer_bank_qr_code_url && !qrFile && (
+                  <div className="mt-2">
+                    <p className="text-xs text-gray-600 mb-1">Ảnh hiện tại:</p>
+                    <img
+                      src={bankInfo.rescuer_bank_qr_code_url}
+                      alt="Bank QR"
+                      className="w-32 h-32 object-contain border rounded"
+                    />
+                  </div>
+                )}
+                {qrFile && (
+                  <div className="mt-2">
+                    <p className="text-xs text-green-600 mb-1">✓ Ảnh mới được chọn</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveBankInfo}
+                  disabled={savingBankInfo}
+                  className="flex-1 px-3 py-2 bg-green-500 text-white rounded text-sm font-semibold hover:bg-green-600 disabled:opacity-50"
+                >
+                  💾 Lưu
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingBankInfo(false);
+                    setQrFile(null);
+                    setBankInfo({
+                      rescuer_bank_account_number: pet.rescuer_bank_account_number || "",
+                      rescuer_bank_account_name: pet.rescuer_bank_account_name || "",
+                      rescuer_bank_name: pet.rescuer_bank_name || "",
+                      rescuer_bank_qr_code_url: pet.rescuer_bank_qr_code_url || "",
+                    });
+                  }}
+                  className="flex-1 px-3 py-2 bg-gray-400 text-white rounded text-sm font-semibold hover:bg-gray-500"
+                >
+                  ✖️ Hủy
+                </button>
+              </div>
+            </div>
+          ) : (
+            // VIEW MODE
+            <>
+              <p className="text-xs text-blue-800 mb-3">
+                Đây là tiền hỗ trợ cứu hộ trực tiếp. Chuyển khoản theo thông tin của người nhận ca cứu.
+              </p>
+              
+              <div className="space-y-2">
+                {(pet.rescuer_bank_account_number || pet.bank_account_number) ? (
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-xs text-gray-600 font-semibold">Số tài khoản:</p>
+                    <p className="text-base font-bold text-gray-900">{pet.rescuer_bank_account_number || pet.bank_account_number}</p>
+                  </div>
+                ) : (
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-xs text-gray-600">Số tài khoản:</p>
+                    <p className="text-xs text-blue-700">Chưa cập nhật</p>
+                  </div>
+                )}
+                
+                {(pet.rescuer_bank_account_name || pet.bank_account_name) ? (
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-xs text-gray-600 font-semibold">Tên chủ tài khoản:</p>
+                    <p className="text-base font-bold text-gray-900">{pet.rescuer_bank_account_name || pet.bank_account_name}</p>
+                  </div>
+                ) : (
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-xs text-gray-600">Tên chủ tài khoản:</p>
+                    <p className="text-xs text-blue-700">Chưa cập nhật</p>
+                  </div>
+                )}
+                
+                {(pet.rescuer_bank_name || pet.bank_name) ? (
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-xs text-gray-600 font-semibold">Ngân hàng:</p>
+                    <p className="text-base font-bold text-gray-900">{pet.rescuer_bank_name || pet.bank_name}</p>
+                  </div>
+                ) : (
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-xs text-gray-600">Ngân hàng:</p>
+                    <p className="text-xs text-blue-700">Chưa cập nhật</p>
+                  </div>
+                )}
+                
+                {(pet.rescuer_bank_qr_code_url || pet.bank_qr_code_url) && (
+                  <div className="bg-white p-3 rounded border text-center">
+                    <p className="text-xs text-gray-600 font-semibold mb-2">Quét QR để chuyển tiền:</p>
+                    <img 
+                      src={pet.rescuer_bank_qr_code_url || pet.bank_qr_code_url} 
+                      alt="Bank QR Code" 
+                      className="w-48 h-48 mx-auto object-contain border-2 border-gray-300 rounded"
+                    />
+                  </div>
+                )}
+              </div>
+              
+              <p className="text-xs text-blue-700 mt-3 italic">
+                💡 Lưu ý: Tiền hỗ trợ trực tiếp không hiển thị trên hệ thống.
+                Nếu thiếu thông tin, vui lòng liên hệ người nhận ca cứu để nhận QR/chuyển khoản.
+              </p>
+            </>
+          )}
+        </div>
       )}
 
       {/* CLOSED NOTICE */}

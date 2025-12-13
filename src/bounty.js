@@ -10,21 +10,91 @@ import { supabase } from "./supabaseClient";
  * @param {string} caseId - ID ca cứu hộ
  * @param {number} amount - Số tiền (VND)
  * @param {string} userId - ID người treo (nullable = ẩn danh)
+ * @param {string} caseOwnerId - ID chủ bài (để kiểm tra)
  */
-export async function createBounty({ caseId, amount, userId = null }) {
+export async function createBounty({ caseId, amount, userId = null, caseOwnerId = null }) {
   try {
+    // 1. Kiểm tra đăng nhập - KHÔNG CHO PHÉP TẠO BOUNTY KHI CHƯA ĐĂNG NHẬP
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return { 
+        success: false, 
+        error: "Bạn phải đăng nhập để treo thưởng" 
+      };
+    }
+
+    // 2. KIỂM TRA NẾU NGƯỜI TREO LÀ CHỦ BÀI
+    if (caseOwnerId && user.id === caseOwnerId) {
+      return {
+        success: false,
+        error: "❌ Chủ bài không thể treo thưởng cho bài của chính mình"
+      };
+    }
+
+    // 3. Kiểm tra số dư ví balance_thuong
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("balance_thuong")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      console.error("Error fetching profile:", profileError);
+      return { 
+        success: false, 
+        error: "Không thể kiểm tra số dư ví" 
+      };
+    }
+
+    const currentBalance = profile?.balance_thuong || 0;
+
+    if (currentBalance < amount) {
+      return { 
+        success: false, 
+        error: `Số dư ví không đủ. Số dư hiện tại: ${currentBalance.toLocaleString()}đ, cần: ${amount.toLocaleString()}đ. Vui lòng nạp tiền vào ví trước.` 
+      };
+    }
+
+    // 4. Trừ tiền từ ví balance_thuong
+    const { error: updateError } = await supabase.rpc('decrease_balance_thuong', {
+      p_user_id: user.id,
+      p_amount: amount,
+      p_case_id: caseId,
+      p_note: `Treo thưởng cho ca ${caseId}`
+    });
+
+    if (updateError) {
+      console.error("Error decreasing balance_thuong:", updateError);
+      return { 
+        success: false, 
+        error: "Không thể trừ tiền từ ví. Vui lòng thử lại." 
+      };
+    }
+
+    // 5. Tạo bounty record với userId của người đăng nhập
     const { data: bounty, error } = await supabase
       .from("bounties")
       .insert({
         case_id: caseId,
-        user_id: userId,
+        user_id: userId || user.id, // Nếu không ẩn danh thì dùng user.id
         amount,
         status: "available",
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // Nếu tạo bounty thất bại, hoàn lại tiền
+      await supabase.rpc('increase_balance_thuong', {
+        p_user_id: user.id,
+        p_amount: amount,
+        p_source: 'refund',
+        p_related_id: caseId,
+        p_note: `Hoàn tiền do lỗi tạo bounty cho ca ${caseId}`
+      });
+      throw error;
+    }
 
     return { success: true, bounty };
   } catch (error) {

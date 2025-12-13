@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getBountyStats, acceptBounties, rejectBounty } from "../bounty";
 import BountyModal from "./BountyModal";
+import { supabase } from "../supabaseClient";
 
 /**
  * Widget hiển thị tiền TREO THƯỞNG / HỖ TRỢ BAN ĐẦU
@@ -8,21 +9,27 @@ import BountyModal from "./BountyModal";
  * 
  * - Tổng tiền đang treo
  * - Số người treo thưởng
- * - Nút treo thưởng
+ * - Nút treo thưởng (chỉ cho user khác, không cho owner)
  * - (Nếu là người cứu) Nút nhận hoặc từ chối
  */
-export default function BountyWidget({ caseId, isRescuer = false, onBountiesAccepted }) {
+export default function BountyWidget({ caseId, caseOwnerId, isRescuer = false, onBountiesAccepted }) {
   const [stats, setStats] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedBountyIds, setSelectedBountyIds] = useState([]); // Bounties to accept
+  const [currentUserId, setCurrentUserId] = useState(null);
 
-  // Load stats
+  // Load stats and current user
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       const { stats: s } = await getBountyStats(caseId);
       setStats(s || { totalAvailable: 0, availableCount: 0, totalAccepted: 0, allBounties: [] });
+      
+      // Get current user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+      
       setLoading(false);
     };
     load();
@@ -157,12 +164,18 @@ export default function BountyWidget({ caseId, isRescuer = false, onBountiesAcce
 
       {/* Buttons */}
       <div className="flex gap-2">
-        <button
-          onClick={handleAddBounty}
-          className="flex-1 px-4 py-2 bg-blue-500 text-white rounded font-semibold text-sm hover:bg-blue-600"
-        >
-          🎁 Treo thưởng
-        </button>
+        {currentUserId && currentUserId === caseOwnerId ? (
+          <div className="flex-1 px-4 py-2 bg-gray-200 text-gray-600 rounded font-semibold text-sm text-center">
+            ℹ️ Chủ bài không thể treo thưởng thêm
+          </div>
+        ) : (
+          <button
+            onClick={handleAddBounty}
+            className="flex-1 px-4 py-2 bg-blue-500 text-white rounded font-semibold text-sm hover:bg-blue-600"
+          >
+            🎁 Treo thưởng
+          </button>
+        )}
         <button
           onClick={handleRefresh}
           className="px-3 py-2 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400"
@@ -176,6 +189,7 @@ export default function BountyWidget({ caseId, isRescuer = false, onBountiesAcce
       {showModal && (
         <BountyModal
           caseId={caseId}
+          caseOwnerId={caseOwnerId}
           onClose={() => setShowModal(false)}
           onSuccess={() => {
             setShowModal(false);

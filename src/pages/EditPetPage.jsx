@@ -82,16 +82,64 @@ export default function EditPetPage() {
     setError("");
 
     if (!name.trim()) {
-      setError("Tên thú cưng không được để trống.");
+      setError("Tiêu đề bài viết không được để trống.");
       return;
     }
 
     setSubmitting(true);
 
     try {
+      // 1) Check if bounty_amount increased and lock the difference
+      const currentBounty = pet.bounty_amount || 0;
+      const newBounty = bountyAmount ? Number(bountyAmount) : 0;
+      const bountyIncrease = newBounty - currentBounty;
+
+      if (bountyIncrease > 0) {
+        // Get current user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+          setError("Bạn phải đăng nhập để tăng tiền treo thưởng.");
+          setSubmitting(false);
+          return;
+        }
+
+        // Get wallet balance
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("balance_thuong")
+          .eq("id", user.id)
+          .single();
+
+        if (profileError || !profile) {
+          setError("Không thể kiểm tra số dư ví.");
+          setSubmitting(false);
+          return;
+        }
+
+        if (profile.balance_thuong < bountyIncrease) {
+          setError(`Số dư ví không đủ. Bạn có ${profile.balance_thuong.toLocaleString()}đ, cần thêm ${bountyIncrease.toLocaleString()}đ.`);
+          setSubmitting(false);
+          return;
+        }
+
+        // Deduct the increase from wallet
+        const { data: result, error: deductError } = await supabase.rpc("decrease_balance_thuong", {
+          p_user_id: user.id,
+          p_amount: bountyIncrease,
+          p_description: `Tăng tiền treo thưởng cho bài "${name}"`,
+        });
+
+        if (deductError || !result?.success) {
+          console.error("Deduct bounty increase error:", deductError || result);
+          setError("Khóa tiền treo thưởng thất bại: " + (result?.message || deductError?.message || "Lỗi không xác định"));
+          setSubmitting(false);
+          return;
+        }
+      }
+
       let imageUrl = existingImageUrl;
 
-      // Upload new image if selected
+      // 2) Upload new image if selected
       if (file) {
         const ext = file.name.split(".").pop();
         const filePath = `pets/${Date.now()}.${ext}`;
@@ -114,7 +162,7 @@ export default function EditPetPage() {
         imageUrl = publicData?.publicUrl || existingImageUrl;
       }
 
-      // Update pet
+      // 3) Update pet
       const updateData = {
         name,
         description,
@@ -124,7 +172,7 @@ export default function EditPetPage() {
         max_deposit: suggestedDeposit ? Number(suggestedDeposit) : null,
         required_deposit: requiredDeposit ? Number(requiredDeposit) : null,
         allow_custom_deposit: allowCustomDeposit,
-        bounty_amount: bountyAmount ? Number(bountyAmount) : null,
+        bounty_amount: newBounty > 0 ? newBounty : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -215,7 +263,7 @@ export default function EditPetPage() {
       <form onSubmit={handleSubmit} className="space-y-4 text-sm">
         {/* Pet Name */}
         <div>
-          <label className="block font-semibold mb-1">Tên thú cưng *</label>
+          <label className="block font-semibold mb-1">Tiêu đề bài viết *</label>
           <input
             type="text"
             className="w-full border rounded px-3 py-2"

@@ -213,6 +213,31 @@ export const logAdoptionActivity = async (activityData) => {
 };
 
 /**
+ * Lấy danh sách sightings của một pet (lost pet)
+ * @param {string} petId - ID của pet
+ * @returns {Promise<Array>}
+ */
+export const getPetSightings = async (petId) => {
+  try {
+    const { data, error } = await supabase
+      .from('adoption_activities')
+      .select(`
+        *,
+        actor:profiles (display_name, avatar_url)
+      `)
+      .eq('pet_id', petId)
+      .eq('activity_type', 'sighting')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error getting pet sightings:', error);
+    return [];
+  }
+};
+
+/**
  * Subscribe to real-time notifications
  * @param {string} userId - ID của user
  * @param {Function} callback - Callback function khi có notification mới

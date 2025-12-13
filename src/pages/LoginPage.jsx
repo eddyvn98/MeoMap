@@ -22,6 +22,24 @@ export default function LoginPage() {
         setError(error.message || "Login failed");
         return;
       }
+
+      // Ensure profile exists after login
+      if (data?.user) {
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", data.user.id)
+          .single();
+
+        if (!existingProfile) {
+          await supabase.from("profiles").insert({
+            id: data.user.id,
+            email: data.user.email,
+            display_name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
+          });
+        }
+      }
+
       // logged in → redirect to /account
       navigate("/account");
     } catch (err) {

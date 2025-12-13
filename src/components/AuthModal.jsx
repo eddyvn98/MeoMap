@@ -18,12 +18,29 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
     setMessage("");
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signInError) throw signInError;
+
+      // Ensure profile exists after login
+      if (data?.user) {
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", data.user.id)
+          .single();
+
+        if (!existingProfile) {
+          await supabase.from("profiles").insert({
+            id: data.user.id,
+            email: data.user.email,
+            display_name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
+          });
+        }
+      }
 
       setMessage("Đăng nhập thành công!");
       setTimeout(() => {
@@ -55,7 +72,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -66,6 +83,15 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
       });
 
       if (signUpError) throw signUpError;
+
+      // Create profile immediately after signup
+      if (data?.user) {
+        await supabase.from("profiles").insert({
+          id: data.user.id,
+          email: data.user.email,
+          display_name: name || data.user.email?.split('@')[0] || 'User',
+        });
+      }
 
       setMessage("Tạo tài khoản thành công! Vui lòng kiểm tra email xác nhận.");
       setTimeout(() => {

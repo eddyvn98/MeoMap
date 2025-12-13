@@ -80,16 +80,13 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
       const { data, error } = await supabase
         .from("adoption_activities")
         .select("*")
-        .eq("adoption_request_id", pet.id)
+        .eq("pet_id", pet.id)
+        .eq("activity_type", "sighting")
         .order("created_at", { ascending: false });
       
       if (error) {
-        if (error.code === 'PGRST205') {
-          console.warn('[LostPetDetail] adoption_activities table not found; skipping sightings');
-          setSightings([]);
-        } else {
-          console.error('Load sightings error:', error);
-        }
+        console.error('Load sightings error:', error);
+        setSightings([]);
         return;
       }
       setSightings(data || []);
@@ -121,24 +118,22 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
         imageUrl = publicData?.publicUrl;
       }
 
-      await supabase.from("adoption_activities").insert({
-        adoption_request_id: pet.id,
-        activity_type: "sighting",
-        actor_id: user.id,
-        actor_type: "viewer",
-        description: sightingDescription,
-        metadata: {
-          location: sightingLocation,
-          image_url: imageUrl,
-        },
-        created_at: new Date().toISOString(),
-      }).then(({ error }) => {
-        if (error && error.code === 'PGRST205') {
-          console.warn('[LostPetDetail] adoption_activities table not found; skipping insert');
-        } else if (error) {
-          throw error;
-        }
-      });
+      const { error: insertError } = await supabase
+        .from("adoption_activities")
+        .insert({
+          pet_id: pet.id,
+          activity_type: "sighting",
+          actor_id: user.id,
+          actor_type: "viewer",
+          description: sightingDescription,
+          metadata: {
+            location: sightingLocation,
+            image_url: imageUrl,
+          },
+          created_at: new Date().toISOString(),
+        });
+
+      if (insertError) throw insertError;
 
       alert("Cảm ơn bạn đã báo nhìn thấy! 🙏");
       setSightingDescription("");
@@ -150,10 +145,11 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
       const { data: updatedSightings, error: reloadError } = await supabase
         .from("adoption_activities")
         .select("*")
-        .eq("adoption_request_id", pet.id)
+        .eq("pet_id", pet.id)
+        .eq("activity_type", "sighting")
         .order("created_at", { ascending: false });
 
-      if (reloadError && reloadError.code !== 'PGRST205') {
+      if (reloadError) {
         console.error('Reload sightings error:', reloadError);
       }
       setSightings(updatedSightings || []);
@@ -205,9 +201,7 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
         })
         .eq("id", sightingId);
 
-      if (error && error.code !== 'PGRST205') {
-        throw error;
-      }
+      if (error) throw error;
 
       setSightingVerifications({
         ...sightingVerifications,
@@ -215,12 +209,14 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
       });
 
       // Reload
-      const { data: updatedSightings } = await supabase
+      const { data: updatedSightings, error: reloadError } = await supabase
         .from("adoption_activities")
         .select("*")
-        .eq("adoption_request_id", pet.id)
+        .eq("pet_id", pet.id)
+        .eq("activity_type", "sighting")
         .order("created_at", { ascending: false });
 
+      if (reloadError) throw reloadError;
       setSightings(updatedSightings || []);
     } catch (err) {
       console.error(err);

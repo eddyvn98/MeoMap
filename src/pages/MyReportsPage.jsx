@@ -16,12 +16,12 @@ export default function MyReportsPage() {
         setError("Bạn cần đăng nhập để xem báo của mình.");
         return;
       }
-      // Load sightings (adoption_activities with activity_type='sighting') where reporter_id = current user
+      // Load sightings (adoption_activities with activity_type='sighting') where actor_id = current user
       const { data, error: loadErr } = await supabase
         .from("adoption_activities")
-        .select("id, pet_id, reporter_id, activity_type, description, metadata, created_at")
+        .select("id, pet_id, actor_id, activity_type, description, metadata, created_at")
         .eq("activity_type", "sighting")
-        .eq("reporter_id", userData.user.id)
+        .eq("actor_id", userData.user.id)
         .order("created_at", { ascending: false });
       if (loadErr) {
         setError("Lỗi tải danh sách báo: " + loadErr.message);

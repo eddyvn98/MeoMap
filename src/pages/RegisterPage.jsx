@@ -23,6 +23,16 @@ export default function RegisterPage() {
         setError(error.message || "Register failed");
         return;
       }
+
+      // Create profile immediately after signup
+      if (data?.user) {
+        await supabase.from("profiles").insert({
+          id: data.user.id,
+          email: data.user.email,
+          display_name: data.user.email?.split('@')[0] || 'User',
+        });
+      }
+
       // registration ok — you may require email confirmation depending on project
       alert('Đã tạo tài khoản. Vui lòng kiểm tra email để xác nhận (nếu có).');
       navigate('/login');

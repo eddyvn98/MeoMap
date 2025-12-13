@@ -8,12 +8,36 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Ensure profile exists for user
+    const ensureProfile = async (user) => {
+      if (!user) return;
+      
+      try {
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", user.id)
+          .single();
+
+        if (!existingProfile) {
+          await supabase.from("profiles").insert({
+            id: user.id,
+            email: user.email,
+            display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          });
+        }
+      } catch (err) {
+        console.error("Profile creation error:", err);
+      }
+    };
+
     // Check session khi mount
     const checkSession = async () => {
       try {
         const { data, error } = await supabase.auth.getSession();
         if (data?.session?.user) {
           setUser(data.session.user);
+          await ensureProfile(data.session.user);
         }
         setLoading(false);
       } catch (err) {
@@ -26,9 +50,10 @@ export function AuthProvider({ children }) {
 
     // Simple auth state change listener
     try {
-      const { data } = supabase.auth.onAuthStateChanged((session) => {
+      const { data } = supabase.auth.onAuthStateChanged(async (session) => {
         if (session?.user) {
           setUser(session.user);
+          await ensureProfile(session.user);
         } else {
           setUser(null);
         }

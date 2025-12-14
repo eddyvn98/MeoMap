@@ -9,6 +9,8 @@ import React from "react";
     infoNote?: string
 */
 export default function ContactExchangeCard({ reporter, owner, infoNote }) {
+  console.log(reporter);
+  
   return (
     <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, background: "#f9fafb" }}>
       <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Thông tin liên hệ hai bên</h3>

@@ -308,8 +308,8 @@ export default function App() {
 
     // Filter status - check for both 'open' and 'Lost' (legacy)
     if (filters.status === "available") {
-      // Include Lost, Found, Abandoned as "open" cases
-      query = query.in("status", ["available", "Lost", "Found", "Abandoned"]);
+      // Include Lost, Found, Abandoned as "open" cases, AND delivered (show completed pets with different marker)
+      query = query.in("status", ["available", "Lost", "Found", "Abandoned", "delivered"]);
     }
 
     // Filter by category
@@ -720,7 +720,113 @@ export default function App() {
                 ) : pet.category === "adopt" ? (
                   <AdoptPetDetail pet={pet} user={user} isOwner={isOwner} />
                 ) : pet.category === "lost" ? (
-                  <LostPetDetail pet={pet} user={user} isOwner={isOwner} />
+                  <LostPetDetail 
+                    pet={pet} 
+                    user={user} 
+                    isOwner={isOwner}
+                    onMarkAsFound={async () => {
+                      if (!confirm("Bạn có chắc muốn đánh dấu bài này là 'Đã tìm thấy'?")) return;
+                      
+                      try {
+                        // 1. Get verified sighting (người tìm thấy)
+                        const { data: verifiedSightings, error: sightingError } = await supabase
+                          .from("adoption_activities")
+                          .select("actor_id")
+                          .eq("pet_id", pet.id)
+                          .eq("activity_type", "sighting")
+                          .eq("metadata->>verified", "true")
+                          .order("created_at", { ascending: false })
+                          .limit(1);
+
+                        if (sightingError) throw sightingError;
+
+                        // 2. Transfer bounty to finder if exists
+                        const finder = verifiedSightings?.[0];
+                        const bountyAmount = pet.bounty_amount || 0;
+
+                        if (finder && bountyAmount > 0) {
+                          // Credit finder's wallet
+                          const { error: walletError } = await supabase.rpc('increase_balance_thuong', {
+                            p_user_id: finder.actor_id,
+                            p_amount: bountyAmount,
+                            p_note: `Nhận thưởng tìm thấy mèo: ${pet.name}`,
+                            p_related_id: pet.id,
+                            p_source: 'lost_pet_bounty'
+                          });
+
+                          if (walletError) throw walletError;
+
+                          // Create transaction record
+                          const { error: txnError } = await supabase
+                            .from("wallet_transactions")
+                            .insert({
+                              user_id: finder.actor_id,
+                              amount: bountyAmount,
+                              type: "lost_pet_bounty",
+                              source_type: "thuong",
+                              related_id: pet.id,
+                              created_at: new Date().toISOString(),
+                            });
+
+                          if (txnError) console.error("Transaction record error:", txnError);
+                        }
+
+                        // 3. Update pet status to delivered
+                        const { error } = await supabase
+                          .from("pets")
+                          .update({ status: "delivered" })
+                          .eq("id", pet.id);
+
+                        if (error) throw error;
+
+                        // 4. Reload pets list
+                        const { data: updatedPets } = await supabase
+                          .from("pets")
+                          .select("*")
+                          .order("created_at", { ascending: false });
+                        
+                        setPets(updatedPets || []);
+                        setSelectedPetId(null);
+                        
+                        if (finder && bountyAmount > 0) {
+                          alert(`Đã cập nhật trạng thái. Người tìm thấy đã nhận ${bountyAmount.toLocaleString()}đ! 🎉`);
+                        } else {
+                          alert("Đã cập nhật trạng thái. Cảm ơn cộng đồng đã giúp đỡ! 🎉");
+                        }
+                      } catch (err) {
+                        console.error(err);
+                        alert("Lỗi: " + err.message);
+                      }
+                    }}
+                    onDelete={async () => {
+                      if (!confirm("Bạn có chắc muốn XÓA bài đăng này?")) return;
+                      
+                      try {
+                        const { error } = await supabase
+                          .from("pets")
+                          .delete()
+                          .eq("id", pet.id);
+
+                        if (error) throw error;
+
+                        // Reload pets list
+                        const { data: updatedPets } = await supabase
+                          .from("pets")
+                          .select("*")
+                          .order("created_at", { ascending: false });
+                        
+                        setPets(updatedPets || []);
+                        setSelectedPetId(null);
+                        alert("Đã xóa bài đăng.");
+                      } catch (err) {
+                        console.error(err);
+                        alert("Lỗi: " + err.message);
+                      }
+                    }}
+                    onEdit={() => {
+                      setEditingPost(pet);
+                    }}
+                  />
                 ) : (
                   <>
                     {/* Fallback simple view for other categories */}

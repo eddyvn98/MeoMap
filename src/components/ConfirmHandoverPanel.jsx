@@ -20,6 +20,8 @@ export default function ConfirmHandoverPanel({
   contactA,
   contactB,
   statusLabel,
+  isOwner = false,
+  isCompleted = false,
 }) {
   const roleA = mode === "adopt" ? "Người đăng" : "Người đăng (chủ mèo)";
   const roleB = mode === "adopt" ? "Người nhận" : "Người tìm thấy";
@@ -46,18 +48,65 @@ export default function ConfirmHandoverPanel({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-        <button onClick={onShowQR} style={btnPrimary}>Quét/Hiện mã QR</button>
-        <button onClick={onConfirm} style={btnSecondary}>Xác nhận đã giao/nhận</button>
-        {onCancelReward && (
-          <button onClick={onCancelReward} style={btnDanger}>Hủy nhận thưởng</button>
-        )}
-      </div>
-
-      {onCancelReward && (
-        <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>
-          Khi hủy nhận thưởng: tiền sẽ về ví người đăng và không rút được, chỉ quy đổi thành voucher mua hàng.
+      {isCompleted ? (
+        <div style={{ marginTop: 16, padding: 12, background: "#dcfce7", borderRadius: 8, textAlign: "center" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#166534" }}>
+            ✅ Đã hoàn thành giao nhận
+          </div>
         </div>
+      ) : (
+        <>
+          <div style={{ display: "flex", gap: 8, marginTop: 16, flexDirection: "column" }}>
+            {isOwner ? (
+              <>
+                <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>
+                  Chờ người tìm thấy xác nhận đã giao mèo, sau đó bạn xác nhận để chuyển tiền thưởng.
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={onShowQR} style={btnPrimary}>Quét/Hiện mã QR</button>
+                  <button 
+                    onClick={onConfirm} 
+                    style={{
+                      ...btnSecondary, 
+                      background: onConfirm ? "#10b981" : "#d1d5db",
+                      color: "#fff",
+                      cursor: onConfirm ? "pointer" : "not-allowed",
+                      opacity: onConfirm ? 1 : 0.6
+                    }}
+                    disabled={!onConfirm}
+                  >
+                    ✓ Xác nhận nhận mèo & chuyển tiền
+                  </button>
+                </div>
+                {!onConfirm && (
+                  <div style={{ fontSize: 12, color: "#ef4444", marginTop: 4 }}>
+                    ⚠️ Chờ người tìm thấy xác nhận đã giao mèo trước
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>
+                  Sau khi giao mèo cho chủ, click "Xác nhận đã giao" để thông báo chủ xác nhận.
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={onShowQR} style={btnPrimary}>Hiện QR cho chủ quét</button>
+                  <button onClick={onConfirm} style={{...btnSecondary, background: "#10b981", color: "#fff"}}>
+                    ✓ Xác nhận đã giao mèo
+                  </button>
+                  {onCancelReward && (
+                    <button onClick={onCancelReward} style={btnDanger}>Hủy nhận thưởng</button>
+                  )}
+                </div>
+                {onCancelReward && (
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                    Khi hủy nhận thưởng: tiền sẽ về ví người đăng và không rút được, chỉ quy đổi thành voucher mua hàng.
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

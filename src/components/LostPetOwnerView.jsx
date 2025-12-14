@@ -230,22 +230,36 @@ export default function LostPetOwnerView({ pet, owner, isOwner, sightings, onMar
                         : "bg-yellow-100 border-yellow-500"
                     }`}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 text-xs">
-                        <p className="font-semibold text-gray-900">
-                          {new Date(s.created_at).toLocaleTimeString("vi-VN")}
+                    {/* Reporter info */}
+                    <div className="flex items-center gap-2 mb-2">
+                      {s.reporter?.avatar_url ? (
+                        <img
+                          src={s.reporter.avatar_url}
+                          alt={s.reporter.display_name}
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-bold text-gray-600">
+                          {s.reporter?.display_name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="font-semibold text-xs text-gray-900">
+                          {s.reporter?.display_name || 'Người dùng ẩn danh'}
                         </p>
-                        {s.metadata?.location && (
-                          <p className="text-gray-700">📍 {s.metadata.location}</p>
-                        )}
-                        {s.description && (
-                          <p className="text-gray-700 mt-1">"{s.description}"</p>
+                        {s.reporter?.phone && (
+                          <a
+                            href={`tel:${s.reporter.phone}`}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            📞 {s.reporter.phone}
+                          </a>
                         )}
                       </div>
-
+                      
                       {/* Verify buttons */}
                       {s.metadata?.verified !== true && (
-                        <div className="flex gap-1 ml-2 flex-shrink-0">
+                        <div className="flex gap-1 flex-shrink-0">
                           <button
                             onClick={() => onVerifySighting(s.id, true)}
                             className="px-2 py-1 bg-green-500 text-white text-xs rounded font-semibold hover:bg-green-600"
@@ -264,12 +278,31 @@ export default function LostPetOwnerView({ pet, owner, isOwner, sightings, onMar
                       )}
                     </div>
 
+                    {/* Sighting details */}
+                    <div className="text-xs ml-10">
+                      <p className="text-gray-500 mb-1">
+                        {new Date(s.created_at).toLocaleString("vi-VN")}
+                      </p>
+                      {s.metadata?.location && (
+                        <p className="text-gray-700">📍 {s.metadata.location}</p>
+                      )}
+                      {s.description && (
+                        <p className="text-gray-700 mt-1">"{s.description}"</p>
+                      )}
+                    </div>
+
                     {s.metadata?.image_url && (
                       <img
                         src={s.metadata.image_url}
                         alt="Sighting"
-                        className="w-16 h-16 object-cover rounded mt-2"
+                        className="w-full max-w-xs rounded mt-2 ml-10"
                       />
+                    )}
+
+                    {s.metadata?.verified === true && (
+                      <div className="mt-2 text-xs font-semibold text-green-700 ml-10">
+                        ✅ Đã xác nhận đúng
+                      </div>
                     )}
                   </div>
                 ))}
@@ -289,10 +322,8 @@ export default function LostPetOwnerView({ pet, owner, isOwner, sightings, onMar
               note: "Liên hệ để hẹn thời gian/địa điểm gặp",
             }}
             reporter={{
-              name:
-                sightings[0]?.metadata?.reporter_name || sightings[0]?.reporter_name || "Người tìm thấy",
-              phone:
-                sightings[0]?.metadata?.reporter_phone || sightings[0]?.reporter_phone || "",
+              name: sightings[0]?.reporter?.display_name || "Người tìm thấy",
+              phone: sightings[0]?.reporter?.phone || "",
               note: sightings[0]?.description || "",
             }}
             infoNote="Sau khi gửi báo: hai bên thấy thông tin liên hệ để trao đổi, hẹn gặp và xác nhận."
@@ -302,32 +333,47 @@ export default function LostPetOwnerView({ pet, owner, isOwner, sightings, onMar
 
       {/* ========== XÁC NHẬN GIAO/NHẬN (DÙNG CHUNG) ========== */}
       <section className="p-4 bg-white border rounded-lg">
+        {verifiedSightings > 0 && sightings.some(s => s.metadata?.verified === true && s.metadata?.finder_confirmed === true) && (
+          <div style={{ 
+            padding: 12, 
+            background: "#fef3c7", 
+            border: "2px solid #fbbf24",
+            borderRadius: 8, 
+            marginBottom: 12,
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#92400e"
+          }}>
+            🔔 Người tìm thấy đã xác nhận giao mèo! Hãy xác nhận để chuyển tiền thưởng.
+          </div>
+        )}
         <ConfirmHandoverPanel
           mode="lost"
+          isOwner={true}
+          isCompleted={isFound}
           contactA={{
             name: owner?.display_name || "Chủ mèo",
             phone: owner?.phone || owner?.phone_number || "",
           }}
           contactB={{
-            name:
-              sightings[0]?.metadata?.reporter_name || sightings[0]?.reporter_name || "Người tìm thấy",
-            phone:
-              sightings[0]?.metadata?.reporter_phone || sightings[0]?.reporter_phone || "",
+            name: sightings[0]?.reporter?.display_name || "Người tìm thấy",
+            phone: sightings[0]?.reporter?.phone || "",
           }}
           onShowQR={() => {
             window.dispatchEvent(new CustomEvent("open-qr-modal", { detail: { petId: pet.id, mode: "lost" } }));
           }}
-          onConfirm={() => {
-            if (typeof onMarkAsFound === "function") onMarkAsFound();
-          }}
-          onCancelReward={() => {
-            window.dispatchEvent(
-              new CustomEvent("lost-cancel-reward", { detail: { petId: pet.id } })
-            );
-            alert(
-              "Đã chọn hủy nhận thưởng: tiền sẽ về ví người đăng và không rút được, chỉ quy đổi voucher."
-            );
-          }}
+          onConfirm={
+            sightings.some(s => s.metadata?.verified === true && s.metadata?.finder_confirmed === true)
+              ? () => {
+                  if (typeof onMarkAsFound === "function") {
+                    onMarkAsFound();
+                  } else {
+                    console.warn("onMarkAsFound is not a function:", onMarkAsFound);
+                    alert("Chức năng xác nhận chưa được kết nối");
+                  }
+                }
+              : null
+          }
           statusLabel={isFound ? "Đã xác nhận giao/nhận" : sightings.length > 0 ? "Đang trao đổi" : "Chờ báo tin"}
         />
       </section>

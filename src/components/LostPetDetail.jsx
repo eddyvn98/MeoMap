@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import LostPetOwnerView from "./LostPetOwnerView";
 import ContextualHelpCard from "./ContextualHelpCard";
+import ConfirmHandoverPanel from "./ConfirmHandoverPanel";
 
 export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDelete, onEdit }) {
-  console.log("[LostPetDetail] Props:", { petId: pet?.id, userId: user?.id, petOwnerId: pet?.user_id, isOwner });
-  
   const [owner, setOwner] = useState(null);
   const [sightings, setSightings] = useState([]);
   const [showSightingForm, setShowSightingForm] = useState(false);
@@ -74,12 +73,20 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
     loadOwner();
   }, [pet.owner_id]);
 
-  // Load sightings
+  // Load sightings with reporter info
   useEffect(() => {
     const loadSightings = async () => {
       const { data, error } = await supabase
         .from("adoption_activities")
-        .select("*")
+        .select(`
+          *,
+          reporter:actor_id (
+            id,
+            display_name,
+            avatar_url,
+            phone
+          )
+        `)
         .eq("pet_id", pet.id)
         .eq("activity_type", "sighting")
         .order("created_at", { ascending: false });
@@ -135,16 +142,37 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
 
       if (insertError) throw insertError;
 
-      alert("Cảm ơn bạn đã báo nhìn thấy! 🙏");
+      // Show success message with navigation options
+      const currentUrl = window.location.href;
+      const goToReports = confirm(
+        "✅ Cảm ơn bạn đã báo nhìn thấy!\n\n" +
+        "📋 Bạn có thể xem lại báo cáo của mình trong:\n" +
+        "• Trang cá nhân → Tab 'Báo của tôi'\n" +
+        "• Hoặc ở lại trang này để theo dõi\n\n" +
+        "Nhấn OK để đến trang 'Báo của tôi', Cancel để ở lại đây."
+      );
+
+      if (goToReports) {
+        window.location.href = "/account?tab=reports";
+      }
+
       setSightingDescription("");
       setSightingLocation("");
       setSightingImage(null);
       setShowSightingForm(false);
 
-      // Reload sightings
+      // Reload sightings with reporter info
       const { data: updatedSightings, error: reloadError } = await supabase
         .from("adoption_activities")
-        .select("*")
+        .select(`
+          *,
+          reporter:actor_id (
+            id,
+            display_name,
+            avatar_url,
+            phone
+          )
+        `)
         .eq("pet_id", pet.id)
         .eq("activity_type", "sighting")
         .order("created_at", { ascending: false });
@@ -208,10 +236,18 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
         [sightingId]: isValid
       });
 
-      // Reload
+      // Reload with reporter info
       const { data: updatedSightings, error: reloadError } = await supabase
         .from("adoption_activities")
-        .select("*")
+        .select(`
+          *,
+          reporter:actor_id (
+            id,
+            display_name,
+            avatar_url,
+            phone
+          )
+        `)
         .eq("pet_id", pet.id)
         .eq("activity_type", "sighting")
         .order("created_at", { ascending: false });
@@ -473,13 +509,31 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
           <p className="text-sm text-gray-600">Chưa có báo nhìn thấy nào.</p>
         ) : (
           <div className="space-y-3 max-h-64 overflow-y-auto">
-            {sightings.map((s, idx) => (
-              <div key={idx} className="p-3 bg-blue-50 border-l-4 border-blue-500 rounded text-sm">
-                <p className="font-semibold text-gray-900">
-                  {new Date(s.created_at).toLocaleString("vi-VN")}
-                </p>
+            {sightings.map((s) => (
+              <div key={s.id} className="p-3 bg-blue-50 border-l-4 border-blue-500 rounded text-sm">
+                <div className="flex items-start gap-2 mb-2">
+                  {s.reporter?.avatar_url ? (
+                    <img
+                      src={s.reporter.avatar_url}
+                      alt={s.reporter.display_name}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-bold text-gray-600">
+                      {s.reporter?.display_name?.[0]?.toUpperCase() || '?'}
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900 text-xs">
+                      {s.reporter?.display_name || 'Người dùng ẩn danh'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(s.created_at).toLocaleString("vi-VN")}
+                    </p>
+                  </div>
+                </div>
                 {s.metadata?.location && (
-                  <p className="text-xs text-gray-700">📍 {s.metadata.location}</p>
+                  <p className="text-xs text-gray-700 mb-1">📍 {s.metadata.location}</p>
                 )}
                 {s.description && (
                   <p className="text-sm text-gray-700 mt-1">{s.description}</p>
@@ -488,8 +542,13 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
                   <img
                     src={s.metadata.image_url}
                     alt="Sighting"
-                    className="w-20 h-20 object-cover rounded mt-2"
+                    className="w-full max-w-xs rounded mt-2"
                   />
+                )}
+                {s.metadata?.verified !== undefined && (
+                  <div className={`mt-2 text-xs font-semibold ${s.metadata.verified ? 'text-green-700' : 'text-red-700'}`}>
+                    {s.metadata.verified ? '✅ Đã xác nhận bởi chủ' : '❌ Không chính xác'}
+                  </div>
                 )}
               </div>
             ))}
@@ -566,6 +625,127 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
           </form>
         </section>
       )}
+
+      {/* 9) XÁC NHẬN GIAO/NHẬN - DÀNH CHO FINDER */}
+      {(() => {
+        console.log("🚀🚀🚀 IIFE EXECUTED - This should always run if public view renders");
+        
+        // Debug logging
+        console.log("🔍 Finder Panel Check:", {
+          isOwner,
+          hasUser: !!user,
+          userId: user?.id,
+          sightingsCount: sightings.length,
+          sightings: sightings.map(s => ({
+            id: s.id,
+            actor_id: s.actor_id,
+            verified: s.metadata?.verified,
+            finder_confirmed: s.metadata?.finder_confirmed
+          }))
+        });
+
+        if (isOwner || !user) return null;
+
+        const mySighting = sightings.find(s => s.actor_id === user.id && s.metadata?.verified === true);
+        
+        console.log("🔍 My Sighting:", mySighting);
+        
+        if (!mySighting) return null;
+
+        const finderConfirmed = mySighting?.metadata?.finder_confirmed === true;
+        
+        return (
+          <section className="p-4 bg-white border rounded-lg mt-4">
+            {finderConfirmed && !isFound && (
+              <div style={{ 
+                padding: 12, 
+                background: "#fef3c7", 
+                border: "2px solid #fbbf24",
+                borderRadius: 8, 
+                marginBottom: 12,
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#92400e"
+              }}>
+                ⏳ Bạn đã xác nhận giao mèo. Chờ chủ xác nhận để nhận thưởng...
+              </div>
+            )}
+            <ConfirmHandoverPanel
+              mode="lost"
+              isOwner={false}
+              isCompleted={isFound || finderConfirmed}
+            contactA={{
+              name: owner?.display_name || "Chủ mèo",
+              phone: owner?.phone || "",
+            }}
+            contactB={{
+              name: user?.email || "Bạn",
+              phone: "",
+            }}
+            onShowQR={() => {
+              window.dispatchEvent(new CustomEvent("open-qr-modal", { detail: { petId: pet.id, mode: "lost" } }));
+            }}
+            onConfirm={async () => {
+              if (!confirm("Bạn xác nhận đã giao mèo cho chủ?")) return;
+              
+              try {
+                // Find user's verified sighting
+                const mySighting = sightings.find(s => s.actor_id === user.id && s.metadata?.verified === true);
+                if (!mySighting) {
+                  alert("Không tìm thấy sighting của bạn");
+                  return;
+                }
+
+                // Update metadata to mark finder confirmed
+                const { error } = await supabase
+                  .from("adoption_activities")
+                  .update({
+                    metadata: {
+                      ...mySighting.metadata,
+                      finder_confirmed: true,
+                      finder_confirmed_at: new Date().toISOString(),
+                    }
+                  })
+                  .eq("id", mySighting.id);
+
+                if (error) throw error;
+
+                // Reload sightings
+                const { data: updatedSightings } = await supabase
+                  .from("adoption_activities")
+                  .select(`
+                    *,
+                    reporter:actor_id (
+                      id,
+                      display_name,
+                      avatar_url,
+                      phone
+                    )
+                  `)
+                  .eq("pet_id", pet.id)
+                  .eq("activity_type", "sighting")
+                  .order("created_at", { ascending: false });
+
+                setSightings(updatedSightings || []);
+                alert("✅ Đã gửi xác nhận! Chờ chủ xác nhận để nhận thưởng.");
+              } catch (err) {
+                console.error(err);
+                alert("Lỗi: " + err.message);
+              }
+            }}
+            onCancelReward={() => {
+              if (confirm("Bạn chắc chắn muốn Hủy nhận thưởng? Tiền sẽ về ví người đăng (không rút, chỉ đổi voucher).")) {
+                window.dispatchEvent(
+                  new CustomEvent("lost-cancel-reward", { detail: { petId: pet.id } })
+                );
+                alert("Đã chọn hủy nhận thưởng.");
+              }
+            }}
+            statusLabel={isFound ? "Đã xác nhận giao/nhận" : finderConfirmed ? "Đã gửi xác nhận" : "Chờ giao mèo"}
+          />
+        </section>
+        );
+      })()}
 
       {/* 7) HÀNH ĐỘNG CHỦ BÀI */}
       {isOwner && (

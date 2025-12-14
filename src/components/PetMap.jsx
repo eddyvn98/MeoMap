@@ -119,12 +119,20 @@ const makeCatIcon = (imageUrl) => {
 
 const makeStatusIcon = (status, category, imageUrl, pet = {}, currentUserId = null) => {
   const cat = (category || "lost").toLowerCase();
+  const isDelivered = status === "delivered";
   
   let badgeColor, badgeText, borderColor;
   if (cat === "lost") {
-    badgeColor = "#ef4444";
-    borderColor = "#ef4444";
-    badgeText = "Lost";
+    // Delivered pets show as green with checkmark
+    if (isDelivered) {
+      badgeColor = "#10b981";
+      borderColor = "#10b981";
+      badgeText = "✓ Found";
+    } else {
+      badgeColor = "#ef4444";
+      borderColor = "#ef4444";
+      badgeText = "Lost";
+    }
   } else if (cat === "adopt") {
     badgeColor = "#10b981";
     borderColor = "#10b981";

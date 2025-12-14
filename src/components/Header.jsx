@@ -128,6 +128,23 @@ export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenPro
                   🚑 Cứu hộ
                 </button>
               </Link>
+              <Link to="/store">
+                <button
+                  style={{
+                    ...buttonStyle,
+                    background: "#f0f0f0",
+                    color: "#333",
+                  }}
+                  onMouseOver={(e) =>
+                    (e.currentTarget.style.background = "#e0e0e0")
+                  }
+                  onMouseOut={(e) =>
+                    (e.currentTarget.style.background = "#f0f0f0")
+                  }
+                >
+                  🛍️ Cửa hàng
+                </button>
+              </Link>
             </div>
 
             {/* Actions buttons */}

@@ -28,6 +28,8 @@ import HowItWorks from "./components/HowItWorks";
 import FAQ from "./components/FAQ";
 import MyReportsPage from "./pages/MyReportsPage";
 import RescuerPage from "./pages/RescuerPage";
+import StorePage from "./pages/StorePage";
+import AdminShopPage from "./pages/AdminShopPage";
 
 export default function Router() {
   return (
@@ -64,6 +66,8 @@ export default function Router() {
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/rescuer" element={<RescuerPage />} />
+        <Route path="/store" element={<StorePage />} />
+        <Route path="/admin/shop" element={<AdminShopPage />} />
       </Routes>
     </BrowserRouter>
   );

@@ -135,14 +135,18 @@ export default function ProfilePage() {
           </p>
         )}
 
-        {(profile.balance_coc !== undefined || profile.balance_thuong !== undefined) && (
+        {(profile.balance_main !== undefined || profile.balance_coc !== undefined || profile.balance_thuong !== undefined) && (
           <div style={{ fontSize: 14, marginTop: 8 }}>
             <p style={{ margin: "4px 0" }}>
-              <strong>Balance_COC (Cọc):</strong>{" "}
+              <strong>💳 Ví chính:</strong>{" "}
+              {(profile.balance_main || 0).toLocaleString()} đ
+            </p>
+            <p style={{ margin: "4px 0" }}>
+              <strong>🔒 Ví cọc:</strong>{" "}
               {(profile.balance_coc || 0).toLocaleString()} đ
             </p>
             <p style={{ margin: "4px 0" }}>
-              <strong>Balance_THUONG (Thưởng):</strong>{" "}
+              <strong>🎁 Ví thưởng:</strong>{" "}
               {(profile.balance_thuong || 0).toLocaleString()} đ
             </p>
           </div>

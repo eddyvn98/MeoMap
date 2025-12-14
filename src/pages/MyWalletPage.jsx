@@ -9,11 +9,15 @@ import {
   formatVND,
   getWithdrawalStatusDisplay
 } from "../services/walletService";
+import VoucherConversionModal from "../components/VoucherConversionModal";
+import MyVouchersTab from "../components/MyVouchersTab";
+import TopUpModal from "../components/TopUpModal";
 
 export default function MyWalletPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [balanceMain, setBalanceMain] = useState(0);
   const [balanceCoc, setBalanceCoc] = useState(0);
   const [balanceThuong, setBalanceThuong] = useState(0);
   const [transactions, setTransactions] = useState([]);
@@ -25,6 +29,9 @@ export default function MyWalletPage() {
   const [withdrawalNote, setWithdrawalNote] = useState("");
   const [withdrawalLoading, setWithdrawalLoading] = useState(false);
   const [withdrawalError, setWithdrawalError] = useState("");
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
+  const [showTopUpModal, setShowTopUpModal] = useState(false);
+  const [userId, setUserId] = useState(null);
 
   // Transaction type labels
   const getTransactionTypeLabel = (type) => {
@@ -62,27 +69,29 @@ export default function MyWalletPage() {
       return;
     }
 
-    const userId = authData.user.id;
+    const currentUserId = authData.user.id;
+    setUserId(currentUserId);
 
     // Load wallet balances
-    const walletResult = await getUserWallet(userId);
+    const walletResult = await getUserWallet(currentUserId);
     if (!walletResult.success) {
       setError(walletResult.error);
       setLoading(false);
       return;
     }
 
-    setBalanceCoc(walletResult.wallet.balance_coc);
-    setBalanceThuong(walletResult.wallet.balance_thuong);
+    setBalanceMain(walletResult.wallet.balance_main || 0);
+    setBalanceCoc(walletResult.wallet.balance_coc || 0);
+    setBalanceThuong(walletResult.wallet.balance_thuong || 0);
 
     // Load transactions
-    const txResult = await getWalletTransactions(userId);
+    const txResult = await getWalletTransactions(currentUserId);
     if (txResult.success) {
       setTransactions(txResult.transactions);
     }
 
     // Load withdrawal requests
-    const wrResult = await getWithdrawalRequests(userId);
+    const wrResult = await getWithdrawalRequests(currentUserId);
     if (wrResult.success) {
       setWithdrawalRequests(wrResult.requests);
     }
@@ -100,14 +109,15 @@ export default function MyWalletPage() {
     setWithdrawalLoading(true);
 
     const amount = parseInt(withdrawalAmount);
-    if (!amount || amount < 10000) {
-      setWithdrawalError("Số tiền rút tối thiểu là 10.000đ");
+    if (!amount || amount < 50000) {
+      setWithdrawalError("Số tiền rút tối thiểu là 50.000đ");
       setWithdrawalLoading(false);
       return;
     }
 
-    if (amount > balanceThuong) {
-      setWithdrawalError("Số dư Balance_THUONG không đủ");
+    const availableWithdraw = balanceMain + balanceThuong;
+    if (amount > availableWithdraw) {
+      setWithdrawalError("Số dư rút không đủ (Ví chính + Ví thưởng)");
       setWithdrawalLoading(false);
       return;
     }
@@ -190,10 +200,10 @@ export default function MyWalletPage() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 mb-6 border-b">
+      <div className="flex gap-2 mb-6 border-b overflow-x-auto">
         <button
           onClick={() => setSelectedTab("overview")}
-          className={`px-4 py-2 font-medium ${
+          className={`px-4 py-2 font-medium whitespace-nowrap ${
             selectedTab === "overview"
               ? "border-b-2 border-blue-600 text-blue-600"
               : "text-gray-600 hover:text-gray-800"
@@ -202,8 +212,18 @@ export default function MyWalletPage() {
           Tổng quan
         </button>
         <button
+          onClick={() => setSelectedTab("vouchers")}
+          className={`px-4 py-2 font-medium whitespace-nowrap ${
+            selectedTab === "vouchers"
+              ? "border-b-2 border-blue-600 text-blue-600"
+              : "text-gray-600 hover:text-gray-800"
+          }`}
+        >
+          🎫 Voucher của tôi
+        </button>
+        <button
           onClick={() => setSelectedTab("transactions")}
-          className={`px-4 py-2 font-medium ${
+          className={`px-4 py-2 font-medium whitespace-nowrap ${
             selectedTab === "transactions"
               ? "border-b-2 border-blue-600 text-blue-600"
               : "text-gray-600 hover:text-gray-800"
@@ -227,12 +247,35 @@ export default function MyWalletPage() {
       {selectedTab === "overview" && (
         <div className="space-y-6">
           {/* Balance Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Balance MAIN Card */}
+            <div className="p-6 border-2 border-blue-300 rounded-lg bg-blue-50">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-2xl">💳</span>
+                <h2 className="text-lg font-bold text-blue-800">Ví Chính</h2>
+              </div>
+              <div className="text-3xl font-bold text-blue-900 mb-2">
+                {formatVND(balanceMain)}
+              </div>
+              <div className="text-sm text-blue-700 space-y-1">
+                <p>• Ví cá nhân nạp/rút tự do</p>
+                <p>• Dùng mua hàng và cọc</p>
+              </div>
+              <div className="grid grid-cols-1 gap-2 mt-4">
+                <button
+                  onClick={() => setShowTopUpModal(true)}
+                  className="py-2 px-3 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2 text-sm"
+                >
+                  ➕ Nạp Tiền
+                </button>
+              </div>
+            </div>
+
             {/* Balance COC Card */}
             <div className="p-6 border-2 border-orange-300 rounded-lg bg-orange-50">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-2xl">💰</span>
-                <h2 className="text-lg font-bold text-orange-800">Balance_COC</h2>
+                <span className="text-2xl">🔒</span>
+                <h2 className="text-lg font-bold text-orange-800">Ví Cọc</h2>
               </div>
               <div className="text-3xl font-bold text-orange-900 mb-2">
                 {formatVND(balanceCoc)}
@@ -242,13 +285,21 @@ export default function MyWalletPage() {
                 <p>• <strong>KHÔNG RÚT ĐƯỢC</strong> về ngân hàng</p>
                 <p>• Chỉ dùng cho cọc mới hoặc đổi voucher</p>
               </div>
+              <div className="grid grid-cols-1 gap-2 mt-4">
+                <button
+                  onClick={() => setShowVoucherModal(true)}
+                  className="py-2 px-3 bg-orange-500 text-white rounded font-semibold hover:bg-orange-600 transition flex items-center justify-center gap-2 text-sm"
+                >
+                  💳 Đổi Voucher
+                </button>
+              </div>
             </div>
 
             {/* Balance THUONG Card */}
             <div className="p-6 border-2 border-green-300 rounded-lg bg-green-50">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-2xl">🎁</span>
-                <h2 className="text-lg font-bold text-green-800">Balance_THUONG</h2>
+                <h2 className="text-lg font-bold text-green-800">Ví Thưởng</h2>
               </div>
               <div className="text-3xl font-bold text-green-900 mb-2">
                 {formatVND(balanceThuong)}
@@ -258,6 +309,20 @@ export default function MyWalletPage() {
                 <p>• <strong>RÚT ĐƯỢC</strong> qua chuyển khoản ngân hàng</p>
                 <p>• Nhận từ báo cáo, bounty, sự kiện</p>
               </div>
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                <button
+                  onClick={() => setShowVoucherModal(true)}
+                  className="py-2 px-3 bg-green-500 text-white rounded font-semibold hover:bg-green-600 transition flex items-center justify-center gap-2 text-sm"
+                >
+                  💳 Quy đổi Voucher
+                </button>
+                <button
+                  onClick={() => setSelectedTab("withdrawal")}
+                  className="py-2 px-3 bg-green-600 text-white rounded font-semibold hover:bg-green-700 transition flex items-center justify-center gap-2 text-sm"
+                >
+                  🏦 Rút Tiền
+                </button>
+              </div>
             </div>
           </div>
 
@@ -265,9 +330,9 @@ export default function MyWalletPage() {
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <h3 className="font-semibold text-blue-900 mb-2">📋 Chính sách ví</h3>
             <ul className="text-sm text-blue-800 space-y-1">
-              <li>• Tiền cọc hoàn lại sẽ vào <strong>Balance_COC</strong> (không rút được)</li>
-              <li>• Tiền thưởng từ hệ thống vào <strong>Balance_THUONG</strong> (rút được)</li>
-              <li>• Rút tiền thưởng: tối thiểu 10.000đ, admin duyệt trong 24-48h</li>
+              <li>• Tiền cọc hoàn lại sẽ vào <strong>Ví cọc</strong> (chỉ quy đổi voucher)</li>
+              <li>• Tiền thưởng từ hệ thống vào <strong>Ví thưởng</strong> (rút được)</li>
+              <li>• Rút tiền: tối thiểu 50.000đ, admin duyệt trong 24-48h</li>
               <li>• Phí rút tiền: 0đ (miễn phí hoàn toàn)</li>
             </ul>
           </div>
@@ -360,21 +425,22 @@ export default function MyWalletPage() {
       {/* Withdrawal Tab */}
       {selectedTab === "withdrawal" && (
         <div className="max-w-2xl">
-          <h2 className="text-xl font-semibold mb-4">Rút tiền thưởng (Balance_THUONG)</h2>
+          <h2 className="text-xl font-semibold mb-4">Rút tiền (Ví chính + Ví thưởng)</h2>
           
           {/* Current Balance Display */}
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="text-sm text-green-700 mb-1">Số dư có thể rút</div>
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg space-y-1">
+            <div className="text-sm text-green-700">Số dư có thể rút (main + thưởng)</div>
             <div className="text-2xl font-bold text-green-900">
-              {formatVND(balanceThuong)}
+              {formatVND(balanceMain + balanceThuong)}
             </div>
+            <div className="text-xs text-green-700">Ví chính: {formatVND(balanceMain)} | Ví thưởng: {formatVND(balanceThuong)}</div>
           </div>
 
           {/* Withdrawal Form */}
           <div className="p-6 border rounded-lg bg-white space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2">
-                Số tiền muốn rút (tối thiểu 10.000đ)
+                Số tiền muốn rút (tối thiểu 50.000đ)
               </label>
               <input
                 type="number"
@@ -386,7 +452,7 @@ export default function MyWalletPage() {
               />
                           {/* Quick amount buttons */}
                           <div className="flex gap-2 mt-2 flex-wrap">
-                            {balanceThuong >= 50000 && (
+                            {balanceMain + balanceThuong >= 50000 && (
                               <button
                                 type="button"
                                 onClick={() => setWithdrawalAmount("50000")}
@@ -396,7 +462,7 @@ export default function MyWalletPage() {
                                 50k
                               </button>
                             )}
-                            {balanceThuong >= 100000 && (
+                            {balanceMain + balanceThuong >= 100000 && (
                               <button
                                 type="button"
                                 onClick={() => setWithdrawalAmount("100000")}
@@ -406,7 +472,7 @@ export default function MyWalletPage() {
                                 100k
                               </button>
                             )}
-                            {balanceThuong >= 200000 && (
+                            {balanceMain + balanceThuong >= 200000 && (
                               <button
                                 type="button"
                                 onClick={() => setWithdrawalAmount("200000")}
@@ -416,7 +482,7 @@ export default function MyWalletPage() {
                                 200k
                               </button>
                             )}
-                            {balanceThuong >= 500000 && (
+                            {balanceMain + balanceThuong >= 500000 && (
                               <button
                                 type="button"
                                 onClick={() => setWithdrawalAmount("500000")}
@@ -426,14 +492,14 @@ export default function MyWalletPage() {
                                 500k
                               </button>
                             )}
-                            {balanceThuong > 0 && (
+                            {balanceMain + balanceThuong > 0 && (
                               <button
                                 type="button"
-                                onClick={() => setWithdrawalAmount(balanceThuong.toString())}
+                                onClick={() => setWithdrawalAmount((balanceMain + balanceThuong).toString())}
                                 className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 font-medium"
                                 disabled={withdrawalLoading}
                               >
-                                Rút tất cả
+                                Rút tối đa
                               </button>
                             )}
                           </div>
@@ -541,6 +607,42 @@ export default function MyWalletPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Vouchers Tab */}
+      {selectedTab === "vouchers" && userId && (
+        <div>
+          <MyVouchersTab userId={userId} />
+        </div>
+      )}
+
+      {/* Top-Up Modal */}
+      {userId && (
+        <TopUpModal
+          isOpen={showTopUpModal}
+          onClose={() => setShowTopUpModal(false)}
+          userId={userId}
+          onSuccess={() => {
+            // Reload wallet data after successful top-up
+            loadData();
+            setShowTopUpModal(false);
+          }}
+        />
+      )}
+
+      {/* Voucher Conversion Modal */}
+      {userId && (
+        <VoucherConversionModal
+          isOpen={showVoucherModal}
+          onClose={() => setShowVoucherModal(false)}
+          userId={userId}
+          balanceCoc={balanceCoc}
+          balanceThuong={balanceThuong}
+          onSuccess={() => {
+            // Reload wallet data after successful conversion
+            loadData();
+          }}
+        />
       )}
     </div>
   );

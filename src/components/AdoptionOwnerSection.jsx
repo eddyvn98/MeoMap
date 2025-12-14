@@ -99,7 +99,7 @@ export default function AdoptionOwnerSection({
         const follow = computeFollowupBadge(request);
 
         const requester = request.requester;
-        const deposit = requester?.wallet_credit || 0;
+        const deposit = requester?.balance_coc || 0;
         const okTrades = request.requester_rep?.ok_trades || 0;
         const totalTrades = request.requester_rep?.total_trades || 0;
 

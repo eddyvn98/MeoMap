@@ -277,20 +277,7 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
         </ContextualHelpCard>
       )}
 
-      {/* RESCUER - RESCUE ACTIVITY PANEL */}
-      {isRescuer && !isClosed && (
-        <RescueActivityPanel
-          caseId={pet.id}
-          rescuerId={user.id}
-          isRescuer={isRescuer}
-          onCaseUpdated={() => {
-            // Reload page để cập nhật dữ liệu từ DB
-            window.location.reload();
-          }}
-        />
-      )}
-
-      {/* ===== KHỐI 1: TIỀN TREO THƯỞNG (Ban đầu) ===== */}
+      {/* ===== KHỐI 1: TIỀN TREO THƯỞNG & HỖ TRỢ BAN ĐẦU ===== */}
       {!isClosed && (
         <BountyWidget
           caseId={pet.id}
@@ -302,7 +289,61 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
         />
       )}
 
-      {/* ===== HỖ TRỢ CỨU HỘ TRỰC TIẾP ===== */}
+      {/* ===== KHỐI 2: CHI TIẾT CA CỨU HỘ ===== */}
+      {pet.district && (
+        <section className="p-4 bg-gray-50 border rounded-lg">
+          <h3 className="font-bold text-gray-900 mb-3">📍 Vị trí cứu hộ</h3>
+          <p className="text-sm text-gray-700 mb-2">{pet.district}</p>
+          {pet.lat && pet.lng && (
+            <a
+              href={`https://maps.google.com/?q=${pet.lat},${pet.lng}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block px-4 py-2 bg-blue-500 text-white rounded font-semibold text-sm hover:bg-blue-600"
+            >
+              📍 Xem trên Google Maps
+            </a>
+          )}
+        </section>
+      )}
+
+      {/* DANH SÁCH NGƯỜI GÓP */}
+      {!isClosed && (
+        <section className="p-4 border rounded-lg">
+          <h3 className="font-bold text-gray-900 mb-3">💪 Những người đã chia sẻ yêu thương</h3>
+          <DonorList caseId={pet.id} />
+        </section>
+      )}
+
+      {/* ===== KHỐI 3: CẬP NHẬT TÌNH HÌNH ===== */}
+      {isRescuer && !isClosed && (
+        <RescueActivityPanel
+          caseId={pet.id}
+          rescuerId={user.id}
+          isRescuer={isRescuer}
+          activeTab="updates"
+          onCaseUpdated={() => {
+            // Reload page để cập nhật dữ liệu từ DB
+            window.location.reload();
+          }}
+        />
+      )}
+
+      {/* ===== KHỐI 4: LỜI KỀU GỌI ỦNG HỘ ===== */}
+      {isRescuer && !isClosed && (
+        <RescueActivityPanel
+          caseId={pet.id}
+          rescuerId={user.id}
+          isRescuer={isRescuer}
+          activeTab="appeal"
+          onCaseUpdated={() => {
+            // Reload page để cập nhật dữ liệu từ DB
+            window.location.reload();
+          }}
+        />
+      )}
+
+      {/* ===== KHỐI 5: THÔNG TIN CHUYỂN KHOẢN TRỰC TIẾP ===== */}
       {!isClosed && (
         <div className="p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
           <div className="flex items-center justify-between mb-3">
@@ -416,8 +457,17 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
           ) : (
             // VIEW MODE
             <>
+              <div className="bg-white p-3 rounded border-l-4 border-blue-500 mb-3">
+                <p className="text-xs font-semibold text-blue-900 mb-2">💡 <strong>Hỗ trợ trực tiếp là gì?</strong></p>
+                <p className="text-xs text-blue-800 leading-relaxed">
+                  Đây là tiền được chuyển <strong>trực tiếp</strong> vào tài khoản ngân hàng của người nhận ca cứu hộ - 
+                  <strong>không thông qua hệ thống</strong>. Những người muốn ủng hộ chi phí cứu hộ (tiền xăng, ăn uống, chi phí cấp cứu) 
+                  sẽ dùng <strong>thông tin tài khoản này để chuyển tiền</strong> cho người cứu.
+                </p>
+              </div>
+
               <p className="text-xs text-blue-800 mb-3">
-                Đây là tiền hỗ trợ cứu hộ trực tiếp. Chuyển khoản theo thông tin của người nhận ca cứu.
+                ✏️ <strong>Người nhận ca cứu hộ:</strong> Vui lòng cập nhật thông tin tài khoản để cộng đồng có thể ủng hộ bạn.
               </p>
               
               <div className="space-y-2">
@@ -493,32 +543,6 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
         <section className="p-4 bg-blue-50 border rounded-lg">
           <h3 className="font-bold text-blue-900 mb-3">📋 Chi tiết ca cứu hộ</h3>
           <p className="text-sm text-gray-700">{pet.description}</p>
-        </section>
-      )}
-
-      {/* VỊ TRÍ */}
-      {pet.district && (
-        <section className="p-4 bg-gray-50 border rounded-lg">
-          <h3 className="font-bold text-gray-900 mb-3">📍 Vị trí cứu hộ</h3>
-          <p className="text-sm text-gray-700 mb-2">{pet.district}</p>
-          {pet.lat && pet.lng && (
-            <a
-              href={`https://maps.google.com/?q=${pet.lat},${pet.lng}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-block px-4 py-2 bg-blue-500 text-white rounded font-semibold text-sm hover:bg-blue-600"
-            >
-              📍 Xem trên Google Maps
-            </a>
-          )}
-        </section>
-      )}
-
-      {/* DANH SÁCH NGƯỜI GÓP */}
-      {!isClosed && (
-        <section className="p-4 border rounded-lg">
-          <h3 className="font-bold text-gray-900 mb-3">💪 Những người đã chia sẻ yêu thương</h3>
-          <DonorList caseId={pet.id} />
         </section>
       )}
 

@@ -23,7 +23,60 @@ export async function addDonation({
   userId = null, // null = ẩn danh
 }) {
   try {
-    // 1. Thêm donation record
+    // Nếu góp qua hệ thống, YÊU CẦU đăng nhập và kiểm tra balance
+    if (method === "system") {
+      // 1. Kiểm tra authentication
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        return { 
+          success: false, 
+          error: "Bạn phải đăng nhập để góp qua hệ thống" 
+        };
+      }
+
+      // 2. Kiểm tra số dư ví balance_thuong
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("balance_thuong")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError) {
+        console.error("Error fetching profile:", profileError);
+        return { 
+          success: false, 
+          error: "Không thể kiểm tra số dư ví" 
+        };
+      }
+
+      const currentBalance = profile?.balance_thuong || 0;
+
+      if (currentBalance < amount) {
+        return { 
+          success: false, 
+          error: `Số dư ví không đủ. Số dư hiện tại: ${currentBalance.toLocaleString()}đ, cần: ${amount.toLocaleString()}đ. Vui lòng nạp tiền vào ví trước.` 
+        };
+      }
+
+      // 3. Trừ tiền từ ví balance_thuong
+      const { error: updateError } = await supabase.rpc('decrease_balance_thuong', {
+        p_user_id: user.id,
+        p_amount: amount,
+        p_case_id: caseId,
+        p_note: `Góp tiền cho ca ${caseId}`
+      });
+
+      if (updateError) {
+        console.error("Error decreasing balance_thuong:", updateError);
+        return { 
+          success: false, 
+          error: "Không thể trừ tiền từ ví. Vui lòng thử lại." 
+        };
+      }
+    }
+
+    // 4. Thêm donation record
     const { data: donation, error: donationError } = await supabase
       .from("donations")
       .insert({
@@ -37,9 +90,24 @@ export async function addDonation({
       .select()
       .single();
 
-    if (donationError) throw donationError;
+    if (donationError) {
+      // Nếu tạo donation thất bại và đã trừ tiền, hoàn lại
+      if (method === "system") {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.rpc('increase_balance_thuong', {
+            p_user_id: user.id,
+            p_amount: amount,
+            p_source: 'refund',
+            p_related_id: caseId,
+            p_note: `Hoàn tiền do lỗi tạo donation cho ca ${caseId}`
+          });
+        }
+      }
+      throw donationError;
+    }
 
-    // 2. Nếu góp qua hệ thống → cộng vào wallet
+    // 5. Nếu góp qua hệ thống → cộng vào case_wallet
     if (method === "system") {
       const { error: walletError } = await supabase
         .from("case_wallet")
@@ -50,8 +118,8 @@ export async function addDonation({
         .eq("case_id", caseId);
 
       if (walletError) {
-        console.warn("Warning: Could not update wallet", walletError);
-        // Donation vẫn được lưu, wallet update là non-critical
+        console.warn("Warning: Could not update case_wallet", walletError);
+        // Donation đã được lưu, wallet update là non-critical
       }
     }
 
@@ -92,11 +160,12 @@ export async function getDonationStats(caseId) {
     const { data: donations, error } = await supabase
       .from("donations")
       .select("amount, user_id, method")
-      .eq("case_id", caseId);
+      .eq("case_id", caseId)
+      .eq("method", "system");
 
     if (error) throw error;
 
-    const totalDonated = donations.reduce((sum, d) => sum + d.amount, 0);
+    const totalDonated = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
     const donorCount = new Set(
       donations.map((d) => d.user_id || "anonymous")
     ).size;

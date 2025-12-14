@@ -14,7 +14,11 @@ import DeliveryConfirmPage from "./pages/DeliveryConfirmPage";
 import ProfilePage from "./pages/ProfilePage";
 import UserReportPage from "./pages/UserReportPage";
 import AdminReportsPage from "./pages/AdminReportsPage";
+import AdminWithdrawalsPage from "./pages/AdminWithdrawalsPage";
+import AdminWithdrawalsPageP2P from "./pages/AdminWithdrawalsPageP2P";
 import WalletPage from "./pages/WalletPage";
+import MyWalletPage from "./pages/MyWalletPage";
+import MyWalletPageP2P from "./pages/MyWalletPageP2P";
 import UserDashboard from "./pages/UserDashboard";
 import AdoptApplicantsPage from "./pages/AdoptApplicantsPage";
 import DepositTicketPage from "./pages/DepositTicketPage";
@@ -46,7 +50,11 @@ export default function Router() {
         <Route path="/profile/:userId" element={<ProfilePage />} />
         <Route path="/report-user/:depositId" element={<UserReportPage />} />
         <Route path="/admin/reports" element={<AdminReportsPage />} />
+        <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
+        <Route path="/admin/withdrawals-p2p" element={<AdminWithdrawalsPageP2P />} />
         <Route path="/wallet" element={<WalletPage />} />
+        <Route path="/my-wallet" element={<MyWalletPage />} />
+        <Route path="/my-wallet-p2p" element={<MyWalletPageP2P />} />
         <Route path="/account" element={<UserDashboard />} />
         <Route path="/account/adopt/:petId/applicants" element={<AdoptApplicantsPage />} />
         <Route path="/deposit/:id/ticket" element={<DepositTicketPage />} />

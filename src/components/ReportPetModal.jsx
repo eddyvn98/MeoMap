@@ -238,7 +238,7 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
       return;
     }
     if (!formData.name.trim()) {
-      alert("Vui lòng nhập tên thú cưng");
+      alert("Vui lòng nhập Tiêu đề bài viết");
       return;
     }
     if (!formData.contact.trim()) {
@@ -438,7 +438,7 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
 
             <div style={{ marginBottom: "16px" }}>
               <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "14px" }}>
-                Tên thú cưng
+                Tiêu đề bài viết
               </label>
               <input
                 type="text"

@@ -135,11 +135,17 @@ export default function ProfilePage() {
           </p>
         )}
 
-        {profile.wallet_credit !== undefined && (
-          <p style={{ fontSize: 14, marginTop: 8 }}>
-            <strong>Ví điện tử:</strong>{" "}
-            {profile.wallet_credit.toLocaleString()} đ
-          </p>
+        {(profile.balance_coc !== undefined || profile.balance_thuong !== undefined) && (
+          <div style={{ fontSize: 14, marginTop: 8 }}>
+            <p style={{ margin: "4px 0" }}>
+              <strong>Balance_COC (Cọc):</strong>{" "}
+              {(profile.balance_coc || 0).toLocaleString()} đ
+            </p>
+            <p style={{ margin: "4px 0" }}>
+              <strong>Balance_THUONG (Thưởng):</strong>{" "}
+              {(profile.balance_thuong || 0).toLocaleString()} đ
+            </p>
+          </div>
         )}
       </div>
 

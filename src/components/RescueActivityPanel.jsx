@@ -9,8 +9,8 @@ import { supabase } from "../supabaseClient";
  * 2. Cập nhật tình hình - thêm ảnh, video, mô tả, chi phí tạm ứng
  * 3. Hoàn thành ca - quét QR/bấm nút xác nhận để kết thúc
  */
-export default function RescueActivityPanel({ caseId, rescuerId, isRescuer, onCaseUpdated }) {
-  const [activeSection, setActiveSection] = useState("overview"); // overview | appeal | updates | complete
+export default function RescueActivityPanel({ caseId, rescuerId, isRescuer, activeTab = "overview", onCaseUpdated }) {
+  const [activeSection, setActiveSection] = useState(activeTab); // overview | appeal | updates | complete
 
   // Trạng thái ca
   const [caseData, setCaseData] = useState(null);
@@ -157,6 +157,7 @@ export default function RescueActivityPanel({ caseId, rescuerId, isRescuer, onCa
 
     setSubmittingCompletion(true);
     try {
+      // Update case status
       const { error: updateError } = await supabase
         .from("pets")
         .update({
@@ -169,7 +170,25 @@ export default function RescueActivityPanel({ caseId, rescuerId, isRescuer, onCa
 
       if (updateError) throw updateError;
 
-      alert("✅ Ca cứu hộ đã hoàn thành! Tiền hỗ trợ sẽ được giải ngân.");
+      // Check if rescuer is also the owner (self-rescue)
+      const isSelfRescue = caseData.owner_id === rescuerId;
+
+      if (isSelfRescue) {
+        // Self-rescue: No bounty payment
+        alert(
+          "✅ Ca cứu hộ đã hoàn thành!\n\n" +
+          "⚠️ Lưu ý: Vì bạn tự cứu ca của chính mình, bạn KHÔNG nhận được tiền thưởng.\n" +
+          "Tiền thưởng chỉ dành cho người khác giúp đỡ."
+        );
+      } else {
+        // Normal rescue: Bounty will be paid via backend trigger/function
+        alert(
+          "✅ Ca cứu hộ đã hoàn thành!\n\n" +
+          "💰 Tiền hỗ trợ sẽ được giải ngân vào ví của bạn.\n" +
+          "Kiểm tra trong mục 'Ví của tôi'."
+        );
+      }
+
       setCompletionNotes("");
       setCompletionImages([]);
       setActiveSection("overview");
@@ -219,7 +238,7 @@ export default function RescueActivityPanel({ caseId, rescuerId, isRescuer, onCa
       </div>
 
       {/* TABS */}
-      {!isCaseClosed && (
+      {!isCaseClosed && activeTab === "overview" && (
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setActiveSection("overview")}
@@ -278,13 +297,30 @@ export default function RescueActivityPanel({ caseId, rescuerId, isRescuer, onCa
             </ul>
           </div>
 
+          {/* Cảnh báo nếu tự cứu */}
+          {caseData.owner_id === rescuerId && (
+            <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg">
+              <p className="text-sm text-amber-900 font-semibold">⚠️ Bạn đang tự cứu ca của chính mình</p>
+              <p className="text-xs text-amber-800 mt-1">
+                Bạn có thể nhận ủng hộ từ cộng đồng, nhưng <strong>không nhận được tiền thưởng ban đầu</strong> khi hoàn thành.
+                Tiền thưởng chỉ dành cho người khác giúp đỡ.
+              </p>
+            </div>
+          )}
+
           {/* Thống kê nhanh */}
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 bg-orange-100 rounded-lg border border-orange-300">
-              <p className="text-xs text-orange-700 font-semibold">Tiền hỗ trợ ban đầu</p>
+              <p className="text-xs text-orange-700 font-semibold">
+                Tiền hỗ trợ ban đầu
+                {caseData.owner_id === rescuerId && " (không nhận)"}
+              </p>
               <p className="text-2xl font-bold text-orange-900">
                 {(caseData.bounty_amount || 0).toLocaleString()}đ
               </p>
+              {caseData.owner_id === rescuerId && (
+                <p className="text-xs text-orange-700 mt-1">Chỉ cho người khác</p>
+              )}
             </div>
             <div className="p-3 bg-purple-100 rounded-lg border border-purple-300">
               <p className="text-xs text-purple-700 font-semibold">Tiền quyên góp</p>
@@ -457,16 +493,37 @@ export default function RescueActivityPanel({ caseId, rescuerId, isRescuer, onCa
         <form onSubmit={handleCompleteCase} className="space-y-4 p-4 bg-green-50 rounded-lg border border-green-200">
           <h3 className="font-bold text-green-900 mb-3">✅ Hoàn thành ca cứu hộ</h3>
 
-          <div className="p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
-            <p className="text-sm text-yellow-800">
-              ⚠️ <strong>Lưu ý:</strong> Hoàn thành ca cứu hộ sẽ kích hoạt:
-            </p>
-            <ul className="text-xs text-yellow-800 mt-2 space-y-1 ml-4">
-              <li>• Tiền hỗ trợ ban đầu (bounty) được giải ngân cho bạn</li>
-              <li>• Tiền quyên góp được xử lý theo yêu cầu</li>
-              <li>• Ca cứu hộ chuyển sang trạng thái "Đã hoàn thành"</li>
-            </ul>
-          </div>
+          {caseData.owner_id === rescuerId ? (
+            // Self-rescue warning
+            <div className="p-3 bg-amber-100 border border-amber-400 rounded-lg">
+              <p className="text-sm text-amber-900 font-semibold">
+                ⚠️ <strong>Bạn đang tự cứu ca của chính mình</strong>
+              </p>
+              <p className="text-xs text-amber-800 mt-2">
+                Khi hoàn thành:
+              </p>
+              <ul className="text-xs text-amber-800 mt-1 space-y-1 ml-4">
+                <li>• ❌ <strong>KHÔNG nhận</strong> tiền hỗ trợ ban đầu ({(caseData.bounty_amount || 0).toLocaleString()}đ)</li>
+                <li>• ✅ Nhận được tiền quyên góp từ cộng đồng (nếu có)</li>
+                <li>• ✅ Ca cứu hộ chuyển sang "Đã hoàn thành"</li>
+              </ul>
+              <p className="text-xs text-amber-900 font-semibold mt-2">
+                💡 Tiền thưởng chỉ dành cho người khác giúp đỡ, không áp dụng khi tự cứu.
+              </p>
+            </div>
+          ) : (
+            // Normal rescue
+            <div className="p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                ⚠️ <strong>Lưu ý:</strong> Hoàn thành ca cứu hộ sẽ kích hoạt:
+              </p>
+              <ul className="text-xs text-yellow-800 mt-2 space-y-1 ml-4">
+                <li>• ✅ Tiền hỗ trợ ban đầu ({(caseData.bounty_amount || 0).toLocaleString()}đ) được giải ngân cho bạn</li>
+                <li>• ✅ Tiền quyên góp được xử lý theo yêu cầu</li>
+                <li>• ✅ Ca cứu hộ chuyển sang trạng thái "Đã hoàn thành"</li>
+              </ul>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">

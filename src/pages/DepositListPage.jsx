@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
+import { increaseBalanceCoc } from "../services/walletService";
 
 export default function DepositListPage() {
   const [deposits, setDeposits] = useState([]);
@@ -299,16 +300,18 @@ export default function DepositListPage() {
 
       if (updateError) throw updateError;
 
-      // 3. Increase wallet credit for receiver
-      const { error: walletError } = await supabase.rpc(
-        "increase_wallet_credit",
-        {
-          p_user_id: receiverId,
-          p_amount: amount,
-        }
+      // 3. Refund to Balance_COC (deposit escrow)
+      const walletResult = await increaseBalanceCoc(
+        receiverId,
+        amount,
+        "Hoàn cọc",
+        deposit.id,
+        "deposit"
       );
 
-      if (walletError) throw walletError;
+      if (!walletResult.success) {
+        throw new Error(walletResult.error || "Không thể hoàn tiền vào ví");
+      }
 
       // 4. Update pet status back to available
       await supabase

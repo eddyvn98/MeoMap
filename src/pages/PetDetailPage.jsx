@@ -6,6 +6,7 @@ import { createDepositAndTicket } from "../deposit";
 import LostPetDetail from "../components/LostPetDetail";
 import RescuePetDetail from "../components/RescuePetDetail";
 import EditPostPanel from "../components/EditPostPanel";
+import { decreaseBalanceCoc } from "../services/walletService";
 
 // Tính mã số 6 chữ số từ pet_id
 function getShortNumericCode(input) {
@@ -180,7 +181,7 @@ export default function PetDetailPage() {
             .maybeSingle(),
           supabase
             .from("profiles")
-            .select("wallet_credit")
+            .select("balance_coc")
             .maybeSingle()
         ]);
 
@@ -198,18 +199,18 @@ export default function PetDetailPage() {
           
           setCurrentUserReputation(userRep || null);
 
-          // Load wallet credit
+          // Load wallet credit (balance_coc for deposits)
           const { data: profile, error: profileErr } = await supabase
             .from("profiles")
-            .select("wallet_credit")
+            .select("balance_coc")
             .eq("id", user.id)
             .maybeSingle();
           
           if (profileErr) {
-            console.error("Error loading profile wallet_credit:", profileErr);
+            console.error("Error loading profile balance_coc:", profileErr);
           }
           
-          setWalletCredit(profile?.wallet_credit || 0);
+          setWalletCredit(profile?.balance_coc || 0);
 
           // Load deposit hiện tại của user
           const { data: existingDeposit } = await supabase
@@ -371,11 +372,11 @@ export default function PetDetailPage() {
     const reloadWallet = async () => {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("wallet_credit")
+        .select("balance_coc")
         .eq("id", currentUser.id)
         .single();
       
-      setWalletCredit(profile?.wallet_credit || 0);
+      setWalletCredit(profile?.balance_coc || 0);
     };
 
     reloadWallet();
@@ -499,28 +500,24 @@ export default function PetDetailPage() {
         paymentProvider,
       });
       
-      // Nếu có dùng ví -> trừ ví
+      // Nếu có dùng ví -> trừ ví (Balance_COC)
       if (walletUsed > 0) {
-        // P1 FIX: Use atomic RPC to prevent double spending
-        const { data: walletResult, error: walletErr } = await supabase.rpc("atomic_decrease_wallet", {
-          p_user_id: currentUser.id,
-          p_amount: walletUsed,
-          p_reason: "Dùng ví để đặt cọc nhận mèo.",
-          p_related_id: deposit.id,
-          p_related_type: "deposit"
-        });
+        // Use new wallet service with balance_coc
+        const result = await decreaseBalanceCoc(
+          currentUser.id,
+          walletUsed,
+          "Dùng ví để đặt cọc nhận mèo.",
+          deposit.id,
+          "deposit"
+        );
 
-        if (walletErr) {
-          console.error("Lỗi atomic_decrease_wallet", walletErr);
-          throw new Error("Có lỗi khi trừ tiền trong ví. Vui lòng liên hệ admin.");
-        }
-
-        if (!walletResult.success) {
-          throw new Error(walletResult.error || "Không thể trừ ví.");
+        if (!result.success) {
+          console.error("Lỗi decrease_balance_coc:", result.error);
+          throw new Error(result.error || "Có lỗi khi trừ tiền trong ví. Vui lòng liên hệ admin.");
         }
         
-        // Update local state với balance_after từ RPC (100% chính xác)
-        setWalletCredit(walletResult.balance_after);
+        // Update local state with new balance
+        setWalletCredit(result.balance_after);
       }
 
       // Load lại deposit từ DB để update state

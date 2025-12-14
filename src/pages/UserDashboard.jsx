@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../AuthContext";
+import { getUserWallet, formatVND } from "../services/walletService";
 
 export default function UserDashboard() {
   const navigate = useNavigate();
@@ -121,18 +122,14 @@ export default function UserDashboard() {
       setLoadingWallet(true);
       setError("");
 
-      // Lấy wallet credit
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("wallet_credit")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError) {
+      // Load both wallet balances
+      const walletResult = await getUserWallet(user.id);
+      if (!walletResult.success) {
         setError("Không tải được thông tin ví.");
         setWalletCredit(0);
       } else {
-        setWalletCredit(profile?.wallet_credit || 0);
+        // Store total for backward compatibility, but should show both separately in UI
+        setWalletCredit(walletResult.balance_coc + walletResult.balance_thuong);
       }
 
       // Lấy wallet transactions

@@ -23,12 +23,19 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
     post.bounty_amount ? String(post.bounty_amount) : ""
   );
 
+  // Bank account fields for direct donations
+  const [bankAccountNumber, setBankAccountNumber] = useState(post.bank_account_number || "");
+  const [bankAccountName, setBankAccountName] = useState(post.bank_account_name || "");
+  const [bankName, setBankName] = useState(post.bank_name || "");
+  const [bankQrFile, setBankQrFile] = useState(null);
+  const [existingBankQr, setExistingBankQr] = useState(post.bank_qr_code_url || "");
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
     if (!name.trim()) {
-      setError("Tên thú cưng không được để trống.");
+      setError("Tiêu đề bài viết không được để trống.");
       return;
     }
 
@@ -60,6 +67,30 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
         imageUrl = publicData?.publicUrl || existingImageUrl;
       }
 
+      // Upload bank QR code if selected
+      let bankQrUrl = existingBankQr;
+      if (bankQrFile) {
+        const ext = bankQrFile.name.split(".").pop();
+        const qrPath = `bank-qr/${Date.now()}.${ext}`;
+
+        const { error: qrUploadError } = await supabase.storage
+          .from("pet-images")
+          .upload(qrPath, bankQrFile);
+
+        if (qrUploadError) {
+          console.error(qrUploadError);
+          setError("Upload QR code lỗi.");
+          setLoading(false);
+          return;
+        }
+
+        const { data: qrPublicData } = supabase.storage
+          .from("pet-images")
+          .getPublicUrl(qrPath);
+
+        bankQrUrl = qrPublicData?.publicUrl || existingBankQr;
+      }
+
       // Update pet
       const updateData = {
         name,
@@ -69,6 +100,10 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
         required_deposit: requiredDeposit ? Number(requiredDeposit) : null,
         allow_custom_deposit: allowCustomDeposit,
         bounty_amount: bountyAmount ? Number(bountyAmount) : null,
+        bank_account_number: bankAccountNumber || null,
+        bank_account_name: bankAccountName || null,
+        bank_name: bankName || null,
+        bank_qr_code_url: bankQrUrl || null,
         updated_at: new Date().toISOString(),
       };
 
@@ -112,7 +147,7 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
           {/* Pet Name */}
           <div>
             <label className="block font-semibold mb-1 text-sm">
-              Tên thú cưng *
+              Tiêu đề bài viết *
             </label>
             <input
               type="text"
@@ -259,6 +294,86 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
                       ? "Gợi ý: 100k-1M phù hợp. Để trống = không có thưởng" 
                       : "Gợi ý: 200k-1M phù hợp. Để trống = không có hỗ trợ"}
                   </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bank Account Info for Direct Donations (Rescue only) */}
+          {category === "rescue" && (
+            <div className="border-t pt-4">
+              <div className="p-3 bg-green-50 border-2 border-green-300 rounded-lg">
+                <h3 className="font-bold text-green-900 mb-1 text-sm">
+                  🏦 Thông tin ngân hàng (Để nhận quyên góp trực tiếp)
+                </h3>
+                <p className="text-xs text-green-800 mb-3 font-medium">
+                  Người khác có thể chuyển tiền trực tiếp vào tài khoản của bạn để hỗ trợ ca cứu hộ
+                </p>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block font-semibold mb-1 text-xs">
+                      Số tài khoản ngân hàng
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border rounded px-3 py-2 text-sm"
+                      value={bankAccountNumber}
+                      onChange={(e) => setBankAccountNumber(e.target.value)}
+                      placeholder="Ví dụ: 0123456789"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold mb-1 text-xs">
+                      Tên chủ tài khoản
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border rounded px-3 py-2 text-sm"
+                      value={bankAccountName}
+                      onChange={(e) => setBankAccountName(e.target.value)}
+                      placeholder="Ví dụ: NGUYEN VAN A"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold mb-1 text-xs">
+                      Tên ngân hàng
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border rounded px-3 py-2 text-sm"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      placeholder="Ví dụ: Vietcombank, TPBank"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold mb-1 text-xs">
+                      QR Code thanh toán (Tùy chọn)
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setBankQrFile(e.target.files?.[0] || null)}
+                      className="w-full text-xs"
+                    />
+                    <p className="text-xs text-gray-600 mt-1">
+                      Upload QR code từ app ngân hàng để người khác quét và chuyển tiền dễ dàng
+                    </p>
+                    {existingBankQr && !bankQrFile && (
+                      <div className="mt-2">
+                        <p className="text-xs text-green-700 font-semibold">QR hiện tại:</p>
+                        <img 
+                          src={existingBankQr} 
+                          alt="Bank QR" 
+                          className="w-32 h-32 object-contain border rounded mt-1"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

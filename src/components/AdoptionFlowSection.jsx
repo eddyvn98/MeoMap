@@ -70,7 +70,7 @@ export default function AdoptionFlowSection({
         .select(`
           *,
           requester:profiles!requester_id(
-            id, display_name, email, phone, zalo, avatar_url, wallet_credit
+            id, display_name, email, phone, zalo, avatar_url, balance_coc, balance_thuong
           )
         `)
         .eq("pet_id", selectedPost.id)

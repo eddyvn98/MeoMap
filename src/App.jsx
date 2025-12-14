@@ -62,7 +62,7 @@ function MapFilters({ filters, setFilters }) {
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Tìm theo tên</label>
             <input
               type="text"
-              placeholder="Nhập tên thú cưng..."
+              placeholder="Nhập Tiêu đề bài viết..."
               value={filters.searchName || ""}
               onChange={(e) => setFilters((f) => ({ ...f, searchName: e.target.value }))}
               style={{

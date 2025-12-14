@@ -81,7 +81,7 @@ export default function ProfileDrawer({
           .select(`
             *,
             requester:profiles!requester_id(
-              id, display_name, email, phone, zalo, avatar_url, wallet_credit
+              id, display_name, email, phone, zalo, avatar_url, balance_coc, balance_thuong
             )
           `)
           .eq('pet_id', selectedPost.id)
@@ -296,7 +296,8 @@ export default function ProfileDrawer({
               <>
                 <div>Tên: {profile.display_name || 'Chưa cập nhật'}</div>
                 <div>Email: {profile.email || user?.email || 'Chưa cập nhật'}</div>
-                <div>Số dư ví: {profile.wallet_credit?.toLocaleString() || '0'} VNĐ</div>
+                <div>Balance_COC (Cọc): {profile.balance_coc?.toLocaleString() || '0'} VNĐ</div>
+                <div>Balance_THUONG (Thưởng): {profile.balance_thuong?.toLocaleString() || '0'} VNĐ</div>
               </>
             ) : (
               'Đang tải...'

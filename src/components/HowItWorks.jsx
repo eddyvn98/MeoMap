@@ -53,7 +53,7 @@ const HowItWorks = () => {
           <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
             <h3 className="font-bold text-yellow-900 mb-2">Tại Sao Có Cọc?</h3>
             <p className="text-gray-700 text-sm">
-              Cọc đảm bảo người nhận nuôi chăm sóc mèo tốt. Chủ mèo có quyền kiểm tra, và tiền sẽ hoàn lại sau khi chủ mèo xác nhận mèo được chăm sóc tốt. Đây là cách tạo lòng tin trong cộng đồng.
+              Cọc là tiền bị khóa trên hệ thống ko phải đưa trực tiếp cho người đăng. Cọc đảm bảo người nhận nuôi chăm sóc mèo tốt.  Tiền sẽ hoàn lại sau khi chủ mèo xác nhận mèo được chăm sóc tốt.
             </p>
           </div>
         </div>
@@ -65,7 +65,7 @@ const HowItWorks = () => {
       content: (
         <div className="space-y-4">
           <div className="bg-green-50 p-4 rounded border border-green-200">
-            <h3 className="font-bold text-green-700 mb-3">Quy Trình 7 Bước</h3>
+            <h3 className="font-bold text-green-700 mb-3">Quy Trình 5 Bước</h3>
             
             <div className="space-y-3">
               <div className="flex gap-3">
@@ -83,8 +83,8 @@ const HowItWorks = () => {
                   <div className="flex items-center justify-center h-8 w-8 rounded-full bg-green-600 text-white font-bold">2</div>
                 </div>
                 <div className="flex-grow">
-                  <h4 className="font-semibold text-gray-900">Nhắn Tin Chủ Mèo</h4>
-                  <p className="text-gray-600 text-sm">Gửi tin nhắn khẩu vị trước, nói về bạn & tại sao muốn nhận nuôi</p>
+                  <h4 className="font-semibold text-gray-900">Đặt Cọc (Nếu Có)</h4>
+                  <p className="text-gray-600 text-sm">Nộp tiền cọc (số tiền do chủ mèo đề xuất). Chủ mèo không nhận trực tiếp. Tiền được hệ thống khóa cho đến khi hoàn thành</p>
                 </div>
               </div>
 
@@ -93,8 +93,8 @@ const HowItWorks = () => {
                   <div className="flex items-center justify-center h-8 w-8 rounded-full bg-green-600 text-white font-bold">3</div>
                 </div>
                 <div className="flex-grow">
-                  <h4 className="font-semibold text-gray-900">Chủ Mèo Duyệt Đơn</h4>
-                  <p className="text-gray-600 text-sm">Chủ sẽ xem xét hồ sơ của bạn và phê duyệt (hoặc từ chối)</p>
+                  <h4 className="font-semibold text-gray-900">Nhắn Tin Chủ Mèo</h4>
+                  <p className="text-gray-600 text-sm">Nhận thông tin liên hệ, cả 2 sẽ trao đổi với nhau. Nếu ok thì tiến hành giao nhận</p>
                 </div>
               </div>
 
@@ -103,8 +103,8 @@ const HowItWorks = () => {
                   <div className="flex items-center justify-center h-8 w-8 rounded-full bg-green-600 text-white font-bold">4</div>
                 </div>
                 <div className="flex-grow">
-                  <h4 className="font-semibold text-gray-900">Nộp Cọc</h4>
-                  <p className="text-gray-600 text-sm">Nộp tiền cọc (số tiền do chủ mèo đề xuất). Tiền được khóa cho đến khi hoàn thành</p>
+                  <h4 className="font-semibold text-gray-900">Nhận Mèo</h4>
+                  <p className="text-gray-600 text-sm">Gặp chủ mèo nhận mèo. Chủ mèo sẽ quét mã QR hoặc nút xác nhận để xác nhận đã giao mèo thành công. Khi đó tiền cọc từ những người khác sẽ được mở khóa tự động rút về ví cá nhân, còn tiền cọc của người nhận mèo tiếp tục bị khóa</p>
                 </div>
               </div>
 
@@ -113,40 +113,32 @@ const HowItWorks = () => {
                   <div className="flex items-center justify-center h-8 w-8 rounded-full bg-green-600 text-white font-bold">5</div>
                 </div>
                 <div className="flex-grow">
-                  <h4 className="font-semibold text-gray-900">Nhận Mèo</h4>
-                  <p className="text-gray-600 text-sm">Gặp chủ mèo và nhận mèo. Chia sẻ số điện thoại/địa chỉ nếu cần</p>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <div className="flex-shrink-0">
-                  <div className="flex items-center justify-center h-8 w-8 rounded-full bg-green-600 text-white font-bold">6</div>
-                </div>
-                <div className="flex-grow">
-                  <h4 className="font-semibold text-gray-900">Checkin Định Kỳ</h4>
-                  <p className="text-gray-600 text-sm">Chủ mèo có thể yêu cầu checkin để xác nhận mèo khỏe mạnh</p>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <div className="flex-shrink-0">
-                  <div className="flex items-center justify-center h-8 w-8 rounded-full bg-green-600 text-white font-bold">7</div>
-                </div>
-                <div className="flex-grow">
                   <h4 className="font-semibold text-gray-900">Hoàn Cọc</h4>
-                  <p className="text-gray-600 text-sm">Sau khi chủ xác nhận tốt, tiền cọc được hoàn lại vào ví của bạn</p>
+                  <p className="text-gray-600 text-sm">Sau 3 ngày khi chủ cũ xác nhận chủ mới là người tốt, tiền cọc được hoàn lại vào ví của chủ mới</p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+            <h3 className="font-bold text-yellow-900 mb-2">Hủy Cọc Trước Khi Giao Mèo</h3>
+            <div className="space-y-2 text-gray-700 text-sm">
+              <p><strong>Người đặt cọc:</strong> Có thể hủy đơn trước khi chủ mèo quét QR/xác nhận giao mèo. Cọc được hoàn 100% về ví ngay sau khi hủy.</p>
+              <p><strong>Người đăng bài:</strong> Có thể hủy đơn hoặc thu hồi đề nghị trước khi quét QR/xác nhận giao mèo. Cọc của tất cả ứng viên sẽ được mở khóa và hoàn lại 100%.</p>
+              <p><strong>Nhiều người cùng cọc:</strong> Tất cả cọc được khóa cho đến khi chủ mèo chọn người nhận và quét QR/xác nhận giao mèo. Nếu chủ mèo hủy hoặc không giao, cọc được mở khóa và hoàn lại 100% cho mọi người.</p>
+              <p className="text-xs text-gray-600">Lưu ý: Sau khi quét QR hoặc bấm xác nhận giao mèo, cọc của người được chọn sẽ tiếp tục bị khóa cho đến khi hoàn tất/hoàn cọc.</p>
             </div>
           </div>
 
           <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
             <h3 className="font-bold text-blue-900 mb-2">❓ Các Câu Hỏi Thường Gặp</h3>
             <ul className="space-y-2 text-gray-700 text-sm">
-              <li><strong>Cọc bao nhiêu tiền?</strong> Do chủ mèo quyết định, thường từ 100k - 5M VND</li>
-              <li><strong>Có thể không nộp cọc không?</strong> Không, cọc là bắt buộc để đảm bảo lòng tin</li>
+              <li><strong>Cọc bao nhiêu tiền?</strong> Có thể có cọc hoặc không, do chủ mèo quyết định, thường từ 100k - 5M VND</li>
+              <li><strong>Có bắt buộc phải nộp cọc không?</strong> Không, cọc là tùy chọn. Nếu chủ mèo không yêu cầu cọc, bạn có thể nhận nuôi ngay</li>
               <li><strong>Nếu đổi ý không nhận nữa?</strong> Bạn có thể hủy đơn, cọc được hoàn lại 100%</li>
-              <li><strong>Cọc hoàn lại mất bao lâu?</strong> Thường 3-7 ngày sau khi hoàn thành</li>
+              <li><strong>Có thể hủy cọc trước khi nhận mèo?</strong> Có. Cả người đặt cọc và người đăng bài đều có thể hủy trước khi quét QR/xác nhận giao mèo, và cọc được hoàn 100%</li>
+              <li><strong>Nếu có nhiều người cùng cọc mà chủ mèo không giao cho tôi?</strong> Cọc vẫn bị khóa cho đến khi chủ mèo chọn người nhận và quét QR/xác nhận. Nếu chủ mèo hủy hoặc không giao, cọc sẽ được mở khóa và hoàn 100%</li>
+              <li><strong>Cọc hoàn lại mất bao lâu?</strong> Thường 3 sau khi chủ cũ xác nhận</li>
             </ul>
           </div>
         </div>
@@ -306,77 +298,118 @@ const HowItWorks = () => {
       content: (
         <div className="space-y-4">
           <div className="bg-indigo-50 p-4 rounded border border-indigo-200">
-            <h3 className="font-bold text-indigo-700 mb-3">Ví (Wallet) Của Bạn</h3>
-            <div className="space-y-3 text-gray-700 text-sm">
-              <p>👜 <strong>Ví là nơi quản lý tiền của bạn trên MeoMap</strong></p>
-              <div className="bg-white p-3 rounded border border-indigo-100 space-y-2">
-                <div>
-                  <strong className="text-indigo-600">Tiền Vào Ví Từ Đâu?</strong>
-                  <ul className="ml-4 text-xs space-y-1 mt-1">
-                    <li>💸 Nhận thưởng từ báo mèo đi lạc</li>
-                    <li>💵 Hỗ trợ từ cứu hộ</li>
-                    <li>🎁 Voucher & khuyến mãi</li>
-                    <li>💰 Hoàn cọc (khi hoàn thành nhận nuôi)</li>
-                  </ul>
-                </div>
-              </div>
-              <div className="bg-white p-3 rounded border border-indigo-100 space-y-2">
-                <div>
-                  <strong className="text-indigo-600">Dùng Tiền Trong Ví Để?</strong>
-                  <ul className="ml-4 text-xs space-y-1 mt-1">
-                    <li>💳 Nộp cọc khi nhận nuôi</li>
-                    <li>📦 Mua voucher & dịch vụ</li>
-                    <li>🎁 Treo thưởng tìm mèo đi lạc (tùy chọn)</li>
-                    <li>📱 Doanh vụ khác của MeoMap</li>
-                  </ul>
-                </div>
-              </div>
+            <h3 className="font-bold text-indigo-700 mb-3">💼 Chính Sách Ví - 2 Loại Số Dư</h3>
+            <div className="space-y-4 text-gray-700 text-sm">
+              <p><strong>Ví của bạn trên MeoMap được chia thành 2 loại số dư khác nhau:</strong></p>
+              
               <div className="bg-white p-3 rounded border border-indigo-100">
-                <strong className="text-indigo-600">Rút Tiền Từ Ví?</strong>
-                <p className="text-xs mt-1">Tiền trong ví là để dùng trên hệ thống MeoMap. Hiện tại chưa hỗ trợ rút tiền ra ngoài, nhưng bạn có thể sử dụng cho các giao dịch khác hoặc giúp đỡ cộng đồng.</p>
+                <div>
+                  <h4 className="font-bold text-indigo-600 mb-2">1️⃣ Số Dư Cọc (Balance_COC)</h4>
+                  <p className="text-xs mb-2"><strong>Là gì:</strong> Tiền ký quỹ khi nhận nuôi, không phải thu nhập.</p>
+                  <div className="ml-3 space-y-1 text-xs">
+                    <p><strong>Nguồn vào:</strong> Tiền cọc bạn nộp, tiền cọc hoàn lại từ các giao dịch.</p>
+                    <p><strong>Quy tắc sử dụng:</strong></p>
+                    <ul className="ml-4 space-y-1">
+                      <li>✅ Nộp cọc mới, đổi voucher, mua dịch vụ trong hệ thống</li>
+                      <li>❌ <strong>KHÔNG được rút về ngân hàng</strong></li>
+                      <li>❌ Không chuyển cho người khác</li>
+                    </ul>
+                    <p><strong>Lý do:</strong> Tránh giao dịch trá hình, rửa tiền, đảm bảo an toàn nhận nuôi.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-3 rounded border border-orange-100">
+                <div>
+                  <h4 className="font-bold text-orange-600 mb-2">2️⃣ Số Dư Thưởng (Balance_THUONG)</h4>
+                  <p className="text-xs mb-2"><strong>Là gì:</strong> Tiền bạn nhận được từ việc giúp đỡ (Lost, Rescue).</p>
+                  <div className="ml-3 space-y-1 text-xs">
+                    <p><strong>Nguồn vào:</strong> Thưởng tìm mèo đi lạc, cứu hộ, sự kiện cộng đồng.</p>
+                    <p><strong>Quy tắc sử dụng:</strong></p>
+                    <ul className="ml-4 space-y-1">
+                      <li>✅ <strong>CÓ THỂ RÚT VỀ NGÂN HÀNG</strong></li>
+                      <li>✅ Đổi voucher hoặc mua dịch vụ trong hệ thống</li>
+                    </ul>
+                    <p><strong>Lý do:</strong> Đây là "tiền công" chính đáng cho người đóng góp, không được chặn rút.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border-l-4 border-yellow-500 p-2 rounded">
+                <p className="text-xs"><strong>📊 Tóm tắt:</strong> Cọc = không rút (chỉ dùng trong hệ thống) | Thưởng = được rút + dùng trong hệ thống.</p>
               </div>
             </div>
           </div>
 
           <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
-            <h3 className="font-bold text-green-900 mb-2">💳 Cọc (Deposit)</h3>
+            <h3 className="font-bold text-green-900 mb-2">💳 Cọc (Deposit) - Balance_COC</h3>
             <div className="space-y-2 text-gray-700 text-sm">
-              <p><strong>Cọc là gì?</strong> Tiền đảm bảo khi nhận nuôi. Tiền được giữ tạm thời để chủ mèo yên tâm.</p>
+              <p><strong>Cọc là gì?</strong> Tiền ký quỹ đảm bảo nhận nuôi an toàn, không phải phí hay tiền mua mèo.</p>
               <ul className="ml-4 space-y-1">
                 <li>📌 <strong>Tiền bao nhiêu:</strong> Do chủ mèo quyết định (100k - 5M VND)</li>
                 <li>🔒 <strong>Được khóa:</strong> Từ khi nộp đến khi hoàn thành (3-30 ngày)</li>
-                <li>✅ <strong>Hoàn lại:</strong> 100% khi chủ mèo xác nhận bạn chăm sóc tốt</li>
+                <li>✅ <strong>Hoàn lại:</strong> 100% dưới dạng voucher khi chủ mèo xác nhận bạn chăm sóc tốt</li>
                 <li>⚠️ <strong>Không hoàn lại nếu:</strong> Mèo mất tích, bị bỏ, hoặc có tranh chấp</li>
               </ul>
-              <div className="bg-yellow-100 border-l-4 border-yellow-600 p-2 rounded mt-2">
-                <strong className="text-yellow-900 text-xs">💡 Mẹo:</strong>
-                <p className="text-xs mt-1">Cọc không phải là "mua mèo". Nó chỉ là bảo đảm, hoàn lại 100% nếu bạn chăm sóc tốt.</p>
-              </div>
             </div>
           </div>
 
           <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded">
-            <h3 className="font-bold text-orange-900 mb-2">🎁 Thưởng (Bounty)</h3>
+            <h3 className="font-bold text-orange-900 mb-2">🎁 Thưởng (Bounty) - Balance_THUONG</h3>
             <div className="space-y-2 text-gray-700 text-sm">
-              <p><strong>Thưởng là gì?</strong> Tiền khuyến khích người khác tìm kiếm hoặc giúp đỡ.</p>
+              <p><strong>Thưởng là gì?</strong> Tiền bạn nhận được từ việc giúp đỡ cộng đồng.</p>
               <ul className="ml-4 space-y-1">
-                <li>💰 <strong>Trong Adopt:</strong> Người treo thưởng để bạn nhận nuôi (tùy chọn)</li>
-                <li>🔍 <strong>Trong Lost:</strong> Chủ mèo treo thưởng để người báo tin tìm kiếm</li>
-                <li>🚑 <strong>Trong Rescue:</strong> Cộng đồng treo thưởng để người cứu hộ</li>
-                <li>💸 <strong>Hoàn lại:</strong> Nếu không ai nhận, thưởng hoàn lại vào ví</li>
+                <li>🔍 <strong>Báo mèo đi lạc (Lost):</strong> Chủ mèo treo thưởng, bạn báo tin → nhận tiền</li>
+                <li>🚑 <strong>Cứu hộ (Rescue):</strong> Cộng đồng treo thưởng, bạn cứu → nhận tiền</li>
+                <li>🤝 <strong>Thưởng nhận nuôi:</strong> Nếu bạn kích hoạt, bạn có thể nhận tiền</li>
+                <li>💰 <strong>Có thể rút ngân hàng:</strong> Hoàn toàn là tiền công của bạn</li>
               </ul>
             </div>
           </div>
 
           <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-            <h3 className="font-bold text-blue-900 mb-2">🎫 Voucher</h3>
+            <h3 className="font-bold text-blue-900 mb-2">💸 Rút Tiền Thưởng (Chỉ Balance_THUONG)</h3>
             <div className="space-y-2 text-gray-700 text-sm">
-              <p><strong>Voucher là gì?</strong> Mã giảm giá cho các dịch vụ của MeoMap.</p>
-              <ul className="ml-4 space-y-1">
-                <li>🎯 <strong>Từ đâu:</strong> Tặng từ cộng đồng, sự kiện, hoặc mua</li>
-                <li>💳 <strong>Dùng vào:</strong> Giảm giá cho các dịch vụ (nâng cao bài, quảng cáo)</li>
-                <li>📱 <strong>Xem voucher:</strong> Tại trang Ví - tab Voucher</li>
+              <p><strong>Chỉ tiền thưởng mới có thể rút</strong> (từ Lost/Rescue). Cọc không rút được.</p>
+              <div className="space-y-2">
+                <div className="bg-white p-2 rounded border border-blue-100">
+                  <p className="font-semibold text-blue-600 text-xs">📋 Quy Trình Rút Tiền Thủ Công:</p>
+                  <ol className="ml-4 text-xs space-y-1 mt-1 list-decimal">
+                    <li>Vào trang Ví → Tab "Rút Tiền"</li>
+                    <li>Nhập số tiền muốn rút (tối thiểu 10.000 VND)</li>
+                    <li>Nhập thông tin tài khoản ngân hàng nhận tiền</li>
+                    <li>Gửi yêu cầu → Chờ admin duyệt (24-48 giờ)</li>
+                    <li>Admin duyệt → Tiền được trừ từ ví, chuyển ngân hàng</li>
+                  </ol>
+                </div>
+                <div className="bg-green-100 border-l-4 border-green-600 p-2 rounded">
+                  <p className="font-semibold text-green-700 text-xs">✅ Cách Rút:</p>
+                  <p className="text-xs mt-1">Chuyển khoản thủ công từ tài khoản ngân hàng MeoMap → Tài khoản bạn (admin xử lý, không tự động)</p>
+                </div>
+              </div>
+              <ul className="ml-4 space-y-1 text-xs">
+                <li>🎯 <strong>Phí rút:</strong> Miễn phí (MeoMap chi phí chuyển khoản)</li>
+                <li>⏱️ <strong>Thời gian:</strong> 24-48 giờ sau khi admin duyệt</li>
+                <li>🏦 <strong>Tài khoản nhận:</strong> Bất kỳ ngân hàng nào (Vietcombank, Agribank, etc.)</li>
+                <li>⚠️ <strong>Lưu ý:</strong> Chỉ có thể rút tiền thưởng, không rút tiền cọc</li>
               </ul>
+            </div>
+          </div>
+
+          <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+            <h3 className="font-bold text-green-900 mb-2">🎫 Voucher & Quy Đổi (Cọc + Thưởng)</h3>
+            <div className="space-y-2 text-gray-700 text-sm">
+              <p><strong>Voucher là gì?</strong> Mã có giá trị để mua sản phẩm & dịch vụ trên MeoMap.</p>
+              <ul className="ml-4 space-y-1 text-xs">
+                <li>🎯 <strong>Từ đâu:</strong> Quy đổi từ Cọc hoặc Thưởng (1:1), tặng từ sự kiện</li>
+                <li>💳 <strong>Dùng vào:</strong> Mua sản phẩm phục vụ thú cưng, dịch vụ (nâng cao bài, quảng cáo)</li>
+                <li>✅ <strong>Lợi ích:</strong> Thay vì rút tiền, bạn có thể quy đổi voucher dùng luôn trong hệ thống</li>
+                <li>📱 <strong>Xem & dùng:</strong> Tại trang Ví - tab Voucher</li>
+              </ul>
+              <div className="bg-green-100 border-l-4 border-green-600 p-2 rounded mt-2">
+                <strong className="text-green-700 text-xs">💡 Gợi ý:</strong>
+                <p className="text-xs mt-1">Nếu cần tiền mặt: rút tiền thưởng. Nếu muốn tiện dùng trong app: quy đổi voucher.</p>
+              </div>
             </div>
           </div>
 
@@ -394,16 +427,16 @@ const HowItWorks = () => {
             <h3 className="font-bold text-purple-900 mb-2">📊 Ví Dụ Cụ Thể</h3>
             <div className="space-y-3 text-sm text-gray-700">
               <div className="bg-white p-2 rounded border border-purple-100">
-                <strong className="text-purple-600">Ví dụ 1: Nhận Nuôi</strong>
-                <p className="text-xs mt-1">Bạn thích mèo, chủ mèo yêu cầu cọc 500k. Bạn nộp 500k từ ví → Tiền bị khóa → Sau 1 tháng, mèo khỏe, chủ hoàn cọc → 500k quay lại ví</p>
+                <strong className="text-purple-600">Ví dụ 1: Nhận Nuôi (Dùng Cọc)</strong>
+                <p className="text-xs mt-1">💰 <strong>Balance_COC:</strong> 500k → Nộp cọc 500k → Giao nhận mèo thành công → Người cho mèo xác nhận người nhận ko phải người xấu → Hoàn cọc 500k vào Balance_COC</p>
               </div>
               <div className="bg-white p-2 rounded border border-purple-100">
-                <strong className="text-purple-600">Ví dụ 2: Báo Mèo Đi Lạc</strong>
-                <p className="text-xs mt-1">Bạn thấy mèo Mimi, báo tin cho chủ → Chủ xác nhận & tặng 1M thưởng → 1M vào ví bạn → Bạn dùng tiền này để nộp cọc mèo khác</p>
+                <strong className="text-purple-600">Ví dụ 2: Báo Mèo Đi Lạc (Nhận Thưởng)</strong>
+                <p className="text-xs mt-1">💸 <strong>Balance_THUONG:</strong> 0 → Báo tin thấy mèo → Nhận thưởng 1M → Balance_THUONG = 1M → Rút 1M về ngân hàng (hoặc quy đổi voucher)</p>
               </div>
               <div className="bg-white p-2 rounded border border-purple-100">
-                <strong className="text-purple-600">Ví dụ 3: Cứu Hộ</strong>
-                <p className="text-xs mt-1">Bạn cứu mèo mắc kẹt trong tường → Cộng đồng treo thưởng 2M → 2M vào ví bạn → Bạn dùng mua voucher quảng cáo bài viết</p>
+                <strong className="text-purple-600">Ví dụ 3: Cứu Hộ (Nhận Thưởng)</strong>
+                <p className="text-xs mt-1">💚 <strong>Balance_THUONG:</strong> 1M → Cứu mèo → Nhận thưởng 2M → Balance_THUONG = 3M → Quy đổi 2M voucher, rút 1M về ngân hàng</p>
               </div>
             </div>
           </div>

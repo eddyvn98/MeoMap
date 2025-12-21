@@ -755,7 +755,7 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
               >
                 🎯 Vị trí hiện tại
               </button>
-              <button
+              {/* <button
                 type="button"
                 onClick={() => setLocationMode("pin-map")}
                 style={{
@@ -792,7 +792,7 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
                 }}
               >
                 🗺️ Chọn trên modal
-              </button>
+              </button> */}
               <button
                 type="button"
                 onClick={() => setLocationMode("manual")}

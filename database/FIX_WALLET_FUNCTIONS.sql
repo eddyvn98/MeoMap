@@ -62,19 +62,15 @@ BEGIN
   INSERT INTO public.wallet_transactions (
     user_id,
     amount,
-    source_type,
-    transaction_type,
-    related_id,
-    description,
-    balance_after
+    type,
+    note,
+    deposit_id
   ) VALUES (
     v_topup.user_id,
     v_topup.amount,
-    'main', -- ĐÃ SỬA: source_type = 'main'
     'topup',
-    v_topup.id,
-    'Nạp tiền - ' || p_order_code,
-    v_new_balance_main
+    'Nạp tiền vào ví chính - ' || p_order_code,
+    NULL -- topup is not a deposit
   );
 
   RETURN jsonb_build_object(
@@ -255,17 +251,14 @@ BEGIN
       user_id,
       type,
       amount,
-      source_type,
-      note
+      note,
+      deposit_id
     ) VALUES (
       p_user_id,
       'purchase_product',
       v_wallet_used,
-      CASE WHEN v_payment_method = 'main' THEN 'main'
-           WHEN v_payment_method = 'main_thuong' THEN 'main'
-           ELSE 'thuong'
-      END,
-      'Mua: ' || v_product.name
+      'Mua: ' || v_product.name || ' (từ ví ' || v_payment_method || ')',
+      NULL
     );
   END IF;
 
@@ -274,14 +267,14 @@ BEGIN
       user_id,
       type,
       amount,
-      source_type,
-      note
+      note,
+      deposit_id
     ) VALUES (
       p_user_id,
       'use_voucher',
       v_voucher_amount,
-      'voucher',
-      'Dùng voucher mua: ' || v_product.name
+      'Dùng voucher mua: ' || v_product.name,
+      NULL
     );
   END IF;
 
@@ -353,17 +346,15 @@ BEGIN
   INSERT INTO public.wallet_transactions (
     user_id,
     amount,
-    source_type,
-    transaction_type,
-    description,
-    balance_after
+    type,
+    note,
+    deposit_id
   ) VALUES (
     p_user_id,
     p_amount,
-    'main', -- ĐÃ SỬA: từ 'coc' → 'main'
     'deposit_lock',
-    COALESCE(p_note, 'Khóa tiền cọc'),
-    v_new_balance_main
+    COALESCE(p_note, 'Khóa tiền cọc từ ví chính'),
+    NULL
   );
 
   RETURN jsonb_build_object(
@@ -484,17 +475,15 @@ BEGIN
   INSERT INTO public.wallet_transactions (
     user_id,
     amount,
-    source_type,
-    transaction_type,
-    related_id,
-    description
+    type,
+    note,
+    deposit_id
   ) VALUES (
     p_user_id,
     p_amount,
-    'main', -- primary source
     'withdrawal',
-    v_withdrawal_id,
-    'Rút tiền - ' || v_order_code
+    'Rút tiền - ' || v_order_code,
+    NULL
   );
 
   RETURN jsonb_build_object(

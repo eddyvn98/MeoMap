@@ -9,6 +9,8 @@ import { supabase } from './supabaseClient';
 // initialStatus: trạng thái ban đầu (mặc định 'locked', có thể là 'confirmed' nếu dùng toàn bộ ví)
 // paymentStatus: trạng thái thanh toán (mặc định 'pending')
 // paymentProvider: nhà cung cấp thanh toán (mặc định 'manual')
+// WARNING: Caller MUST validate wallet balance BEFORE calling this function!
+// This function does NOT check if user has sufficient funds.
 export async function createDepositAndTicket({ 
   petId, 
   ownerId, 

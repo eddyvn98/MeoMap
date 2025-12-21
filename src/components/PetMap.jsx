@@ -316,7 +316,7 @@ export default forwardRef(function PetMap({
           .from('adoption_requests')
           .select('pet_id, status, receiver_confirmed_checkin, checkin_required_at')
           .in('pet_id', adoptPets.map(p => p.id || p.pet_id))
-          .eq('status', 'delivered');
+          .in('status', ['delivered', 'completed']);
 
         // If table doesn't exist (404 PGRST205), silently skip
         if (error) {
@@ -427,7 +427,12 @@ export default forwardRef(function PetMap({
 
           const petId = p.id || p.pet_id;
 
+          // Ẩn pet adopt nếu đã có người nhận (delivered/completed)
           const req = adoptRequests[petId];
+          if (p.category === 'adopt' && req && (req.status === 'delivered' || req.status === 'completed')) {
+            return null; // Không hiển thị pet này trên map
+          }
+
           const badge = req ? computeBadge(req) : null;
 
           let markerIcon = makeStatusIcon(p.status, p.category, p.image_url, p, currentUserId);

@@ -16,6 +16,7 @@ import UserReportPage from "./pages/UserReportPage";
 import AdminReportsPage from "./pages/AdminReportsPage";
 import AdminWithdrawalsPage from "./pages/AdminWithdrawalsPage";
 import AdminWithdrawalsPageP2P from "./pages/AdminWithdrawalsPageP2P";
+import AdminTopupsPage from "./pages/AdminTopupsPage";
 import WalletPage from "./pages/WalletPage";
 import MyWalletPage from "./pages/MyWalletPage";
 import MyWalletPageP2P from "./pages/MyWalletPageP2P";
@@ -47,13 +48,9 @@ export default function Router() {
         <Route path="/scan-ticket" element={<ScanTicketPage />} />
         <Route path="/adoptions" element={<AdoptionListPage />} />
         <Route path="/deposits" element={<DepositListPage />} />
-        <Route path="/admin/deposits" element={<AdminDepositsPage />} />
         <Route path="/deliver/:token" element={<DeliveryConfirmPage />} />
         <Route path="/profile/:userId" element={<ProfilePage />} />
         <Route path="/report-user/:depositId" element={<UserReportPage />} />
-        <Route path="/admin/reports" element={<AdminReportsPage />} />
-        <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
-        <Route path="/admin/withdrawals-p2p" element={<AdminWithdrawalsPageP2P />} />
         <Route path="/wallet" element={<WalletPage />} />
         <Route path="/my-wallet" element={<MyWalletPage />} />
         <Route path="/my-wallet-p2p" element={<MyWalletPageP2P />} />
@@ -67,6 +64,11 @@ export default function Router() {
         <Route path="/faq" element={<FAQ />} />
         <Route path="/rescuer" element={<RescuerPage />} />
         <Route path="/store" element={<StorePage />} />
+        <Route path="/admin/deposits" element={<AdminDepositsPage />} />
+        <Route path="/admin/reports" element={<AdminReportsPage />} />
+        <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
+        <Route path="/admin/withdrawals-p2p" element={<AdminWithdrawalsPageP2P />} />
+        <Route path="/admin/topups" element={<AdminTopupsPage />} />
         <Route path="/admin/shop" element={<AdminShopPage />} />
       </Routes>
     </BrowserRouter>

@@ -356,14 +356,16 @@ $$;
 -- ================================================================
 
 DROP FUNCTION IF EXISTS public.update_topup_qr_code(BIGINT, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.update_topup_qr_code(UUID, TEXT) CASCADE;
 
 CREATE OR REPLACE FUNCTION public.update_topup_qr_code(
-  p_topup_id BIGINT,
+  p_topup_id UUID,
   p_qr_code_url TEXT
 )
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   v_updated_count INTEGER;

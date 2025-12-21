@@ -476,6 +476,13 @@ export default function PetDetailPage() {
       const walletUsed = split.walletUsed;
       const cashAmount = split.cashAmount;
       
+      // VALIDATE: Check if user has enough wallet balance
+      if (walletUsed > walletCredit) {
+        throw new Error(
+          `Số dư ví không đủ. Bạn cần ${walletUsed.toLocaleString()}đ nhưng chỉ có ${walletCredit.toLocaleString()}đ. Vui lòng nạp thêm tiền hoặc giảm số tiền dùng ví.`
+        );
+      }
+      
       // Xác định status ban đầu
       let initialStatus = "pending";
       let paymentStatus = "pending";
@@ -715,6 +722,114 @@ export default function PetDetailPage() {
         : "✅ Đã xác nhận. Chờ người nhận xác nhận...");
 
       // Reload requests
+      const { data } = await supabase
+        .from("adoption_requests")
+        .select(`
+          *,
+          profiles:requester_id(id, display_name, email, phone)
+        `)
+        .eq("pet_id", pet.id)
+        .order("created_at", { ascending: false });
+
+      setRequests(data || []);
+    } catch (err) {
+      alert("Lỗi: " + err.message);
+    }
+  };
+
+  // Handler đánh giá người nhận nuôi
+  const handleRateAdoption = async (adoptionRequestId, isGood) => {
+    try {
+      if (!currentUser) {
+        alert("Bạn cần đăng nhập để đánh giá");
+        return;
+      }
+
+      // Lấy thông tin adoption request
+      const { data: request, error: fetchError } = await supabase
+        .from("adoption_requests")
+        .select("*")
+        .eq("id", adoptionRequestId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Tìm deposit tương ứng
+      const { data: deposits, error: depositError } = await supabase
+        .from("deposits")
+        .select("id")
+        .eq("adoption_request_id", adoptionRequestId);
+
+      if (depositError) throw depositError;
+
+      const depositId = deposits?.[0]?.id;
+      if (!depositId) {
+        throw new Error("Không tìm thấy deposit cho yêu cầu này");
+      }
+
+      // Xác định ai đang đánh giá ai
+      const isOwnerRating = currentUser.id === request.owner_id;
+      const raterId = isOwnerRating ? request.owner_id : request.requester_id;
+      const targetId = isOwnerRating ? request.requester_id : request.owner_id;
+      
+      const comment = isOwnerRating
+        ? (isGood ? "Người nhận chăm sóc mèo tốt, có trách nhiệm" : "Người nhận không chăm sóc mèo tốt")
+        : (isGood ? "Mèo khỏe mạnh, chủ bài uy tín" : "Có vấn đề với mèo hoặc chủ bài");
+
+      // Tạo rating record
+      const { error: ratingError } = await supabase
+        .from("adoption_ratings")
+        .insert({
+          deposit_id: depositId,
+          pet_id: request.pet_id,
+          rater_id: raterId,
+          target_id: targetId,
+          score: isGood ? 1 : 0,
+          comment: comment,
+          auto_reviewed: false
+        });
+
+      if (ratingError && ratingError.code !== '23505') { // 23505 = duplicate key
+        throw ratingError;
+      }
+
+      // Gọi function refund để hoàn tiền về voucher
+      const { data: refundResult, error: refundError } = await supabase
+        .rpc('refund_deposit_as_voucher', {
+          p_adoption_request_id: adoptionRequestId
+        });
+
+      if (refundError) {
+        console.warn("Refund error:", refundError);
+      }
+
+      // Update adoption request status
+      const { error: updateError } = await supabase
+        .from("adoption_requests")
+        .update({
+          status: "completed",
+          receiver_confirmed_checkin: true,
+          receiver_confirmed_checkin_at: new Date().toISOString(),
+          owner_confirmed_checkin: true,
+          owner_confirmed_checkin_at: new Date().toISOString(),
+        })
+        .eq("id", adoptionRequestId);
+
+      if (updateError) throw updateError;
+
+      const message = isOwnerRating
+        ? (isGood 
+            ? "✅ Cảm ơn đánh giá tốt! Tiền cọc đã được hoàn về voucher cho người nhận." 
+            : "📝 Ghi nhận đánh giá. Tiền cọc sẽ được hoàn về voucher cho bạn.")
+        : (isGood 
+            ? "✅ Cảm ơn đánh giá tốt! Tiền cọc đã được hoàn về voucher cho bạn." 
+            : "📝 Ghi nhận đánh giá. Tiền cọc sẽ được hoàn về voucher cho chủ bài.");
+      
+      alert(message);
+      
+      // Reload data
+      await loadAdoption();
+      
       const { data } = await supabase
         .from("adoption_requests")
         .select(`
@@ -1165,53 +1280,183 @@ export default function PetDetailPage() {
                   >
                     📋 Xem hồ sơ nhận nuôi
                   </button>
-                  
-                  {!adoption.rating_id && (
-                    <button
-                      onClick={() => navigate(`/rate-adoption/${adoption.id}`)}
-                      style={{
-                        padding: "5px 10px",
-                        background: "#fef3c7",
-                        color: "#b45309",
-                        border: "1px solid #fcd34d",
-                        borderRadius: 4,
-                        cursor: "pointer",
-                        fontWeight: 600,
-                      }}
-                    >
-                      ⭐ Đánh giá người nhận
-                    </button>
-                  )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Adoption Requests Flow */}
+          {requests && requests.length > 0 && (
+            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12, marginTop: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#334155", marginBottom: 8 }}>
+                📋 Yêu cầu nhận nuôi
+              </div>
+              {requests.map(req => {
+                const isDelivered = req.status === 'delivered';
+                const isCompleted = req.status === 'completed';
+                
+                return (
+                  <div key={req.id} style={{ 
+                    marginBottom: 12, 
+                    padding: 12, 
+                    border: "1px solid #e2e8f0", 
+                    borderRadius: 8,
+                    background: isDelivered ? "#eff6ff" : isCompleted ? "#f0fdf4" : "#fff"
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+                      {req.profiles?.display_name || req.profiles?.email || "Người dùng"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
+                      {new Date(req.created_at).toLocaleString("vi-VN")}
+                    </div>
+                    
+                    {/* Status badge */}
+                    {isDelivered && (
+                      <span style={{ 
+                        fontSize: 11, 
+                        padding: "3px 8px", 
+                        borderRadius: 4, 
+                        background: "#dbeafe", 
+                        color: "#1e40af", 
+                        fontWeight: 600,
+                        display: "inline-block",
+                        marginBottom: 8
+                      }}>
+                        🎉 Đã giao
+                      </span>
+                    )}
+                    {isCompleted && (
+                      <span style={{ 
+                        fontSize: 11, 
+                        padding: "3px 8px", 
+                        borderRadius: 4, 
+                        background: "#dcfce7", 
+                        color: "#166534", 
+                        fontWeight: 600,
+                        display: "inline-block",
+                        marginBottom: 8
+                      }}>
+                        ✅ Hoàn tất
+                      </span>
+                    )}
+                    
+                    {/* Rating buttons for delivered requests */}
+                    {isDelivered && !isCompleted && (
+                      <div style={{ padding: 12, background: "#fef3c7", borderRadius: 8, marginTop: 8, border: "2px solid #f59e0b" }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e", marginBottom: 6 }}>
+                          ⭐ Đánh giá người nhận
+                        </div>
+                        <div style={{ fontSize: 11, color: "#d97706", marginBottom: 10, lineHeight: 1.4 }}>
+                          💡 <strong>Quan trọng:</strong> Nếu đánh giá tốt, người nhận sẽ được hoàn tiền cọc về voucher. Nếu đánh giá xấu, bạn sẽ nhận voucher bồi thường.
+                          <br/>⏰ Sau 3 ngày không đánh giá, hệ thống sẽ tự động đánh giá tốt.
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <button
+                            onClick={() => handleRateAdoption(req.id, true)}
+                            style={{
+                              padding: "10px 12px",
+                              background: "#10b981",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: 6,
+                              cursor: "pointer",
+                              fontSize: 12,
+                              fontWeight: 600,
+                            }}
+                          >
+                            👍 Tốt
+                          </button>
+                          <button
+                            onClick={() => handleRateAdoption(req.id, false)}
+                            style={{
+                              padding: "10px 12px",
+                              background: "#ef4444",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: 6,
+                              cursor: "pointer",
+                              fontSize: 12,
+                              fontWeight: 600,
+                            }}
+                          >
+                            👎 Có vấn đề
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       ) : (
       <div style={{ marginTop: 20 }}>
+        {/* ========== CHECK IF PET ALREADY ADOPTED ========== */}
+        {(() => {
+          // Kiểm tra xem đã có người nhận nuôi chưa
+          const hasAdoptedRequest = requests?.some(r => 
+            r.status === 'delivered' || r.status === 'completed'
+          );
+          
+          // Nếu đã có người nhận và không phải là người nhận đó, hiển thị thông báo
+          if (hasAdoptedRequest && !myRequest) {
+            return (
+              <div style={{
+                padding: 16,
+                background: "#fef3c7",
+                border: "2px solid #f59e0b",
+                borderRadius: 8,
+                marginBottom: 16,
+                textAlign: "center"
+              }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#92400e", marginBottom: 8 }}>
+                  🎉 Mèo này đã có người nhận nuôi
+                </div>
+                <div style={{ fontSize: 13, color: "#78716c" }}>
+                  Rất tiếc, mèo này đã được giao cho người khác rồi. Hãy tìm kiếm những bé mèo khác cần nhà nhé! 💚
+                </div>
+              </div>
+            );
+          }
+          
+          return null;
+        })()}
+
         {/* ========== ADOPTION REQUESTS - RECEIVER VIEW ========== */}
-        {!isOwner && (
-          <>
-            {/* Button "Liên hệ nhận mèo" - nếu chưa gửi request */}
-            {!myRequest && (
-              <button 
-                onClick={handleSendContactRequest}
-                style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  background: "#0369a1",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 8,
-                  fontWeight: 600,
-                  fontSize: 14,
-                  cursor: "pointer",
-                  marginBottom: 16
-                }}
-              >
-                📞 Liên hệ nhận mèo này
-              </button>
-            )}
+        {!isOwner && (() => {
+          // Kiểm tra xem đã có người nhận nuôi chưa
+          const hasAdoptedRequest = requests?.some(r => 
+            r.status === 'delivered' || r.status === 'completed'
+          );
+          
+          // Nếu đã có người nhận và không phải là user hiện tại, ẩn tất cả form
+          if (hasAdoptedRequest && !myRequest) {
+            return null; // Không hiển thị form nào cả
+          }
+          
+          return (
+            <>
+              {/* Button "Liên hệ nhận mèo" - nếu chưa gửi request */}
+              {!myRequest && (
+                <button 
+                  onClick={handleSendContactRequest}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    background: "#0369a1",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 8,
+                    fontWeight: 600,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    marginBottom: 16
+                  }}
+                >
+                  📞 Liên hệ nhận mèo này
+                </button>
+              )}
 
             {/* Request pending */}
             {myRequest && myRequest.status === 'pending' && (
@@ -1338,7 +1583,7 @@ export default function PetDetailPage() {
               </div>
             )}
           </>
-        )}
+        )})()}
 
         {/* ========== ADOPTION REQUESTS - OWNER VIEW ========== */}
         {(() => {
@@ -1512,32 +1757,47 @@ export default function PetDetailPage() {
             ℹ️ Chưa có ai đăng ký nhận mèo này
           </div>
         )}
-        <div style={{ marginBottom: 8, fontSize: 14 }}>
-          {maxDeposit != null ? (
-            <>
-              <div>
-                Cọc cao nhất hiện tại: {" "}
-                <strong>{maxDeposit.toLocaleString()} đ</strong>
-              </div>
-              <div style={{ color: "#6b7280", fontSize: 12, marginTop: 4 }}>
-                (Gợi ý: {(maxDeposit + 10000).toLocaleString()} đ)
-              </div>
-            </>
-          ) : (
-            <div>
-              Chưa có ai cọc. {" "}
-              <span style={{ color: "#6b7280", fontSize: 12 }}>
-                (Gợi ý: {(pet.deposit_amount || 50000).toLocaleString()} đ)
-              </span>
-            </div>
-          )}
-        </div>
 
-        {/* ô nhập số tiền cọc */}
-        <div style={{ marginBottom: 8 }}>
-          <label>
-            Số tiền bạn muốn cọc: {" "}
-            <input
+        {/* ========== LEGACY DEPOSIT FORM (CHỈ HIỆN NẾU CHƯA CÓ NGƯỜI NHẬN) ========== */}
+        {(() => {
+          // Kiểm tra xem đã có người nhận nuôi chưa
+          const hasAdoptedRequest = requests?.some(r => 
+            r.status === 'delivered' || r.status === 'completed'
+          );
+          
+          // Nếu đã có người nhận, không hiển thị form đặt cọc
+          if (hasAdoptedRequest) {
+            return null;
+          }
+          
+          return (
+            <>
+              <div style={{ marginBottom: 8, fontSize: 14 }}>
+                {maxDeposit != null ? (
+                  <>
+                    <div>
+                      Cọc cao nhất hiện tại: {" "}
+                      <strong>{maxDeposit.toLocaleString()} đ</strong>
+                    </div>
+                    <div style={{ color: "#6b7280", fontSize: 12, marginTop: 4 }}>
+                      (Gợi ý: {(maxDeposit + 10000).toLocaleString()} đ)
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    Chưa có ai cọc. {" "}
+                    <span style={{ color: "#6b7280", fontSize: 12 }}>
+                      (Gợi ý: {(pet.deposit_amount || 50000).toLocaleString()} đ)
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* ô nhập số tiền cọc */}
+              <div style={{ marginBottom: 8 }}>
+                <label>
+                  Số tiền bạn muốn cọc: {" "}
+                  <input
               type="number"
               step={10000}
               min={pet?.required_deposit && pet.required_deposit > 0 ? pet.required_deposit : 0}
@@ -1704,6 +1964,9 @@ export default function PetDetailPage() {
         {depositError && (
           <p style={{ color: "red", marginTop: 8 }}>{depositError}</p>
         )}
+            </>
+          );
+        })()}
       </div>
       )}
 

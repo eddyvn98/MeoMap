@@ -44,18 +44,30 @@ export default function AdoptionFlowSection({
 
   const autoComplete = async (requestId) => {
     try {
-      const { error } = await supabase
-        .from("adoption_requests")
-        .update({
-          status: "completed",
-          receiver_confirmed_checkin: true,
-          receiver_confirmed_checkin_at: new Date().toISOString(),
-          owner_confirmed_checkin: true,
-          owner_confirmed_checkin_at: new Date().toISOString(),
-        })
-        .eq("id", requestId);
+      // Gọi function SQL để auto-review và refund voucher
+      const { data, error } = await supabase.rpc('auto_review_and_refund_deposit', {
+        p_adoption_request_id: requestId
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.warn("[AdoptionFlowSection] Auto-review error:", error);
+        // Fallback: chỉ update status nếu function không tồn tại
+        const { error: updateError } = await supabase
+          .from("adoption_requests")
+          .update({
+            status: "completed",
+            receiver_confirmed_checkin: true,
+            receiver_confirmed_checkin_at: new Date().toISOString(),
+            owner_confirmed_checkin: true,
+            owner_confirmed_checkin_at: new Date().toISOString(),
+          })
+          .eq("id", requestId);
+        
+        if (updateError) throw updateError;
+      } else {
+        console.log("[AdoptionFlowSection] Auto-review success:", data);
+      }
+
       await reloadRequestsForPost();
     } catch (err) {
       console.warn("[AdoptionFlowSection] Auto-complete error:", err.message);
@@ -194,7 +206,60 @@ export default function AdoptionFlowSection({
 
   const handleRateRequest = async (requestId, isGood) => {
     try {
-      const { error } = await supabase
+      // Lấy thông tin adoption request để có deposit_id và pet_id
+      const { data: request, error: fetchError } = await supabase
+        .from("adoption_requests")
+        .select("*, deposits(id)")
+        .eq("id", requestId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const depositId = request.deposits?.[0]?.id || request.deposit_id;
+      
+      if (!depositId) {
+        throw new Error("Không tìm thấy deposit cho yêu cầu này");
+      }
+
+      // Xác định ai đang đánh giá ai
+      const isOwnerRating = user?.id === request.owner_id;
+      const raterId = isOwnerRating ? request.owner_id : request.requester_id;
+      const targetId = isOwnerRating ? request.requester_id : request.owner_id;
+      
+      const comment = isOwnerRating
+        ? (isGood ? "Người nhận chăm sóc mèo tốt, có trách nhiệm" : "Người nhận không chăm sóc mèo tốt")
+        : (isGood ? "Mèo khỏe mạnh, chủ bài uy tín" : "Có vấn đề với mèo hoặc chủ bài");
+
+      // Tạo rating record
+      const { error: ratingError } = await supabase
+        .from("adoption_ratings")
+        .insert({
+          deposit_id: depositId,
+          pet_id: request.pet_id,
+          rater_id: raterId,
+          target_id: targetId,
+          score: isGood ? 1 : 0,           // 1 = good, 0 = bad
+          comment: comment,
+          auto_reviewed: false
+        });
+
+      if (ratingError && ratingError.code !== '23505') { // 23505 = duplicate key (đã rating rồi)
+        throw ratingError;
+      }
+
+      // Gọi function refund để hoàn tiền về voucher
+      const { data: refundResult, error: refundError } = await supabase
+        .rpc('refund_deposit_as_voucher', {
+          p_adoption_request_id: requestId
+        });
+
+      if (refundError) {
+        console.warn("Refund error:", refundError);
+        // Fallback: vẫn update status
+      }
+
+      // Update adoption request status
+      const { error: updateError } = await supabase
         .from("adoption_requests")
         .update({
           status: "completed",
@@ -205,9 +270,15 @@ export default function AdoptionFlowSection({
         })
         .eq("id", requestId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      const message = isGood ? "Cảm ơn đánh giá tốt!" : "Ghi nhận đánh giá của bạn.";
+      const message = isOwnerRating
+        ? (isGood 
+            ? "✅ Cảm ơn đánh giá tốt! Tiền cọc đã được hoàn về voucher cho người nhận." 
+            : "📝 Ghi nhận đánh giá. Tiền cọc sẽ được hoàn về voucher cho bạn.")
+        : (isGood 
+            ? "✅ Cảm ơn đánh giá tốt! Tiền cọc đã được hoàn về voucher cho bạn." 
+            : "📝 Ghi nhận đánh giá. Tiền cọc sẽ được hoàn về voucher cho chủ bài.");
       alert(message);
       await reloadRequestsForPost();
     } catch (err) {
@@ -382,6 +453,9 @@ export default function AdoptionFlowSection({
                 </div>
                 <div style={{ fontSize: 14, color: "#374151", marginBottom: 12, lineHeight: 1.5 }}>
                   <strong>Đánh giá chủ bài</strong> sau khi nhận mèo. Mèo có khỏe mạnh không?
+                </div>
+                <div style={{ fontSize: 13, color: "#d97706", marginBottom: 12, background: "#fef3c7", padding: 8, borderRadius: 4 }}>
+                  ⏰ <strong>Lưu ý:</strong> Sau 3 ngày nếu không đánh giá, hệ thống sẽ tự động đánh giá tốt và hoàn tiền cọc về voucher cho bạn.
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <button
@@ -586,6 +660,10 @@ export default function AdoptionFlowSection({
                   <div style={{ padding: 12, background: "#fef3c7", borderRadius: 8, marginBottom: 12, border: "2px solid #f59e0b" }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: "#92400e", marginBottom: 8 }}>
                       ⭐ Đánh giá người nhận
+                    </div>
+                    <div style={{ fontSize: 12, color: "#d97706", marginBottom: 10, lineHeight: 1.4 }}>
+                      💡 <strong>Quan trọng:</strong> Nếu đánh giá tốt, người nhận sẽ được hoàn tiền cọc về voucher. Nếu đánh giá xấu, bạn sẽ nhận voucher bồi thường.
+                      <br/>⏰ Sau 3 ngày không đánh giá, hệ thống sẽ tự động đánh giá tốt.
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                       <button

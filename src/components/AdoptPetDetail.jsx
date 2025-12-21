@@ -15,6 +15,10 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
   const [depositAmount, setDepositAmount] = useState(pet.required_deposit || 0);
   const [loadingDeposit, setLoadingDeposit] = useState(false);
   const [depositMessage, setDepositMessage] = useState("");
+  const [showDeliveryForm, setShowDeliveryForm] = useState(false);
+  const [deliveryToken, setDeliveryToken] = useState("");
+  const [deliveryError, setDeliveryError] = useState("");
+  const [confirmingDelivery, setConfirmingDelivery] = useState(false);
 
   // Load owner info
   useEffect(() => {
@@ -91,6 +95,106 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
     navigate(`/pet/${pet.id}`);
   };
 
+  const handleAcceptRequest = async (requestId) => {
+    try {
+      const { error } = await supabase
+        .from("adoption_requests")
+        .update({
+          status: "ready_to_deliver",
+          accepted_at: new Date().toISOString(),
+          delivery_token: Math.random().toString(36).substr(2, 9).toUpperCase(),
+          token_generated_at: new Date().toISOString(),
+        })
+        .eq("id", requestId);
+
+      if (error) throw error;
+      alert("✅ Đã chấp nhận! Mã quét đã được tạo.");
+      
+      // Reload data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err) {
+      alert("❌ Lỗi: " + err.message);
+    }
+  };
+
+  const handleRejectRequest = async (requestId) => {
+    if (!confirm("Từ chối yêu cầu này?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("adoption_requests")
+        .update({ 
+          status: "rejected", 
+          rejected_at: new Date().toISOString() 
+        })
+        .eq("id", requestId);
+
+      if (error) throw error;
+      alert("✅ Đã từ chối yêu cầu");
+      
+      // Reload data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err) {
+      alert("❌ Lỗi: " + err.message);
+    }
+  };
+
+  const handleConfirmDelivery = async () => {
+    if (!deliveryToken.trim()) {
+      setDeliveryError("Vui lòng nhập mã giao mèo");
+      return;
+    }
+
+    if (!myRequest) {
+      setDeliveryError("Không tìm thấy yêu cầu của bạn");
+      return;
+    }
+
+    setConfirmingDelivery(true);
+    setDeliveryError("");
+
+    try {
+      // Verify token matches
+      const { data: request, error: reqErr } = await supabase
+        .from("adoption_requests")
+        .select("*")
+        .eq("id", myRequest.id)
+        .eq("delivery_token", deliveryToken.trim().toUpperCase())
+        .single();
+
+      if (reqErr || !request) {
+        setDeliveryError("❌ Mã không đúng. Vui lòng kiểm tra lại.");
+        return;
+      }
+
+      // Update status to delivered
+      const { error: updateErr } = await supabase
+        .from("adoption_requests")
+        .update({
+          status: "delivered",
+          delivered_at: new Date().toISOString(),
+        })
+        .eq("id", myRequest.id);
+
+      if (updateErr) throw updateErr;
+
+      alert("✅ Đã xác nhận nhận mèo thành công!\n🎉 Chúc bạn chăm sóc bé thật tốt!");
+      
+      // Reload page
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err) {
+      setDeliveryError("❌ Lỗi: " + err.message);
+    } finally {
+      setConfirmingDelivery(false);
+    }
+  };
+
   const handleSubmitDeposit = async () => {
     if (!user || !depositAmount || depositAmount <= 0) {
       setDepositMessage("❌ Vui lòng nhập số tiền cọc hợp lệ");
@@ -99,27 +203,45 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
 
     setLoadingDeposit(true);
     try {
-      // Create deposit record
-      const { data, error } = await supabase
+      // Step 1: Create deposit record
+      const { data: depositData, error: depositError } = await supabase
         .from("deposits")
         .insert({
           pet_id: pet.id,
           owner_id: pet.owner_id,
           receiver_id: user.id,
           amount: depositAmount,
-          status: "locked",
+          status: "pending",
         })
         .select()
         .single();
 
-      if (error) {
-        setDepositMessage(`❌ ${error.message}`);
+      if (depositError) {
+        setDepositMessage(`❌ ${depositError.message}`);
         return;
+      }
+
+      // Step 2: Create adoption request (để owner thấy được người muốn nhận nuôi)
+      const { error: requestError } = await supabase
+        .from("adoption_requests")
+        .insert({
+          pet_id: pet.id,
+          requester_id: user.id,
+          owner_id: pet.owner_id,
+          status: "pending",
+        })
+        .select()
+        .single();
+
+      if (requestError) {
+        console.error("Error creating adoption request:", requestError);
+        // Không throw error vì deposit đã tạo thành công rồi
+        // Có thể xử lý sau
       }
 
       setDepositMessage("✅ Đã gửi yêu cầu cọc thành công! Đang chờ chủ bài xác nhận...");
       setShowDepositForm(false);
-      setCurrentDeposit(data);
+      setCurrentDeposit(depositData);
       
       // Reload data after 2 seconds
       setTimeout(() => {
@@ -274,34 +396,148 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
       {!isOwner && myRequest && (
         <section className="p-4 border rounded-lg bg-yellow-50">
           <h3 className="font-bold text-yellow-900 mb-2">📨 Yêu cầu của bạn</h3>
-          <p className="text-sm text-yellow-800">
+          <p className="text-sm text-yellow-800 mb-2">
             Trạng thái: <strong>
-              {myRequest.status === "pending" && "Đang chờ phản hồi"}
-              {myRequest.status === "accepted" && "Đã chấp nhận"}
-              {myRequest.status === "rejected" && "Từ chối"}
-              {myRequest.status === "ready_to_deliver" && "Sẵn sàng nhận"}
+              {myRequest.status === "pending" && "⏳ Đang chờ phản hồi"}
+              {myRequest.status === "accepted" && "✅ Đã chấp nhận"}
+              {myRequest.status === "rejected" && "❌ Từ chối"}
+              {myRequest.status === "ready_to_deliver" && "🎉 Sẵn sàng nhận mèo"}
+              {myRequest.status === "delivered" && "✅ Đã nhận mèo"}
             </strong>
           </p>
+          
+          {/* Form nhập mã giao mèo khi đã được chấp nhận */}
+          {myRequest.status === "ready_to_deliver" && (
+            <div className="mt-3 p-3 bg-green-50 border border-green-300 rounded">
+              <p className="text-sm font-semibold text-green-900 mb-2">
+                🤝 Đã đến lúc gặp chủ bài để nhận mèo!
+              </p>
+              <p className="text-xs text-green-800 mb-3">
+                Chủ bài sẽ đưa cho bạn một mã. Nhập mã đó vào đây để xác nhận đã nhận mèo.
+              </p>
+              
+              {!showDeliveryForm ? (
+                <button
+                  onClick={() => setShowDeliveryForm(true)}
+                  className="w-full px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-semibold text-sm"
+                >
+                  📝 Nhập mã giao mèo
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={deliveryToken}
+                    onChange={(e) => setDeliveryToken(e.target.value.toUpperCase())}
+                    placeholder="Nhập mã (VD: ABC123XYZ)"
+                    className="w-full px-3 py-2 border border-green-300 rounded text-sm font-mono uppercase"
+                    disabled={confirmingDelivery}
+                  />
+                  
+                  {deliveryError && (
+                    <p className="text-xs text-red-600">{deliveryError}</p>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleConfirmDelivery}
+                      disabled={confirmingDelivery}
+                      className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-semibold text-sm disabled:opacity-50"
+                    >
+                      {confirmingDelivery ? "⏳ Đang xác nhận..." : "✅ Xác nhận"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowDeliveryForm(false);
+                        setDeliveryToken("");
+                        setDeliveryError("");
+                      }}
+                      disabled={confirmingDelivery}
+                      className="px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded text-sm"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Message cho các trạng thái khác */}
+          {myRequest.status === "delivered" && (
+            <p className="text-xs text-green-700 mt-2">
+              🎉 Bạn đã nhận mèo thành công! Hãy chăm sóc bé thật tốt nhé!
+            </p>
+          )}
+          {myRequest.status === "rejected" && (
+            <p className="text-xs text-red-700 mt-2">
+              Rất tiếc, chủ bài đã từ chối yêu cầu của bạn.
+            </p>
+          )}
         </section>
       )}
 
       {/* Owner view - danh sách người đăng ký */}
       {isOwner && adoptionRequests.length > 0 && (
-        <section className="p-4 border rounded-lg">
+        <section className="p-4 border rounded-lg bg-white">
           <h3 className="font-bold text-gray-900 mb-3">
             👥 Người đăng ký nhận ({adoptionRequests.length})
           </h3>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {adoptionRequests.map((req) => (
-              <div key={req.id} className="p-3 bg-gray-50 rounded border text-sm">
-                <p className="font-semibold">
-                  {req.profiles?.display_name || req.profiles?.email || "Người nhận"}
-                </p>
-                <p className="text-xs text-gray-600">
-                  Trạng thái: {req.status === "pending" ? "⏳ Chờ" : req.status === "accepted" ? "✅ Chấp nhận" : req.status}
-                </p>
-              </div>
-            ))}
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {adoptionRequests.map((req) => {
+              const isPending = req.status === "pending";
+              const isAccepted = req.status === "ready_to_deliver" || req.status === "accepted";
+              const isRejected = req.status === "rejected";
+              const isDelivered = req.status === "delivered";
+              
+              return (
+                <div key={req.id} className="p-3 bg-gray-50 rounded border">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-semibold text-sm">
+                        {req.profiles?.display_name || req.profiles?.email || "Người nhận"}
+                      </p>
+                      {req.profiles?.phone && (
+                        <p className="text-xs text-gray-600">📱 {req.profiles.phone}</p>
+                      )}
+                    </div>
+                    <div className="text-xs">
+                      {isPending && <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">⏳ Chờ</span>}
+                      {isAccepted && <span className="px-2 py-1 bg-green-100 text-green-800 rounded">✅ Đã chấp nhận</span>}
+                      {isRejected && <span className="px-2 py-1 bg-red-100 text-red-800 rounded">❌ Từ chối</span>}
+                      {isDelivered && <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">🎉 Đã giao</span>}
+                    </div>
+                  </div>
+                  
+                  {/* Action buttons cho pending requests */}
+                  {isPending && (
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => handleAcceptRequest(req.id)}
+                        className="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded font-semibold text-xs"
+                      >
+                        ✅ Chấp nhận
+                      </button>
+                      <button
+                        onClick={() => handleRejectRequest(req.id)}
+                        className="flex-1 px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded font-semibold text-xs"
+                      >
+                        ❌ Từ chối
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Show QR code cho accepted requests */}
+                  {isAccepted && req.delivery_token && (
+                    <div className="mt-3 p-2 bg-white border border-green-300 rounded text-center">
+                      <p className="text-xs text-green-700 mb-2 font-semibold">Mã giao mèo:</p>
+                      <p className="text-sm font-mono font-bold text-green-900">{req.delivery_token}</p>
+                      <p className="text-xs text-gray-600 mt-1">Người nhận sẽ quét mã này khi giao mèo</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
@@ -315,8 +551,8 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
         </section>
       )}
 
-      {/* Nút xem đầy đủ - chỉ hiển thị khi có cọc */}
-      {(pet.required_deposit && pet.required_deposit > 0) && !currentDeposit && (
+      {/* Nút đặt cọc - chỉ hiển thị cho người muốn nhận (không phải owner) */}
+      {!isOwner && (pet.required_deposit && pet.required_deposit > 0) && !currentDeposit && (
         <section className="sticky bottom-0 bg-white pt-3 border-t">
           <button
             onClick={() => setShowDepositForm(!showDepositForm)}

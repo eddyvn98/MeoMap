@@ -1,37 +1,9 @@
 import React from 'react';
 import * as ReactWindow from 'react-window';
 import PostCard from './PostCard';
+import { TYPE_LABEL, TYPE_ICON, STATUS_OPTIONS, SORT_OPTIONS } from './PostsSectionConstants';
 
 const FixedSizeList = ReactWindow.FixedSizeList;
-
-const TYPE_ORDER = ['rescue', 'lost', 'adopt'];
-const TYPE_LABEL = {
-  adopt: 'Cho nhận',
-  lost: 'Thất lạc',
-  rescue: 'Giải cứu',
-};
-
-const TYPE_ICON = {
-  adopt: '🏡',
-  lost: '📍',
-  rescue: '🚑',
-};
-
-// Status options
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'Tất cả' },
-  { value: 'available', label: 'Có sẵn' },
-  { value: 'pending_coc', label: 'Chờ cọc' },
-  { value: 'pending_qr', label: 'Chờ QR' },
-  { value: 'closed', label: 'Đã đóng' },
-  { value: 'urgent', label: 'Khẩn cấp' },
-];
-
-// Sort options
-const SORT_OPTIONS = [
-  { value: 'newest', label: 'Mới nhất' },
-  { value: 'oldest', label: 'Cũ nhất' },
-];
 
 /**
  * Virtualized list component for large post lists (>30 items)

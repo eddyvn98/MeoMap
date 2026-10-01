@@ -4,7 +4,8 @@ import * as ReactWindow from 'react-window';
 import { usePostsByType, useAllPosts } from '../hooks/usePosts';
 import { getPostsQueryKey } from '../api/posts';
 import PostCard from './PostCard';
-import { TYPE_ORDER, createPostsSectionRenderers } from './PostsSectionParts';
+import { createPostsSectionRenderers } from './PostsSectionParts';
+import { TYPE_ORDER } from './PostsSectionConstants';
 
 /**
  * PostsSection - Unified posts panel for ProfileDrawer

@@ -34,7 +34,7 @@ export default function AdoptionOwnerSection({
         )}
       </div>
 
-      <AdoptionRequestSort sortBy={sortBy} setSortBy={setSortBy} />
+      <AdoptionRequestSort adoptionRequests={adoptionRequests} sortBy={sortBy} setSortBy={setSortBy} />
 
       {!loadingRequests && adoptionRequests.length === 0 && (
         <div style={{ padding: 16, background: "#f9fafb", borderRadius: 8, textAlign: "center", color: "#6b7280", fontSize: 14 }}>

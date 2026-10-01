@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import L from "leaflet";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
-import Tooltip from "./Tooltip";
 
 const MapClickHandler = ({ onLocationSelect }) => {
   useMapEvents({

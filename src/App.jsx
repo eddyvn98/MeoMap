@@ -488,7 +488,7 @@ export default function App() {
         "Đăng và tìm thú cưng đi lạc",
         "Đăng tin nhận nuôi chó/mèo",
         "Báo tin cứu hộ, cập nhật tình trạng",
-        "Quản lý cọc, thưởng và uy tín giao dịch",
+        "Đăng, chỉnh sửa và đóng các case của bạn",
       ],
     },
     {
@@ -1119,7 +1119,7 @@ export default function App() {
                     🤝 Nhận nuôi miễn phí
                   </h4>
                   <p style={{ margin: 0, color: "#047857", fontSize: 13, lineHeight: 1.4 }}>
-                    Tiền cọc không phải mua bán. Nó dùng để đảm bảo trách nhiệm và sẽ hoàn lại bằng voucher nếu bạn chăm mèo tốt.
+                    Liên hệ trực tiếp người đăng để trao đổi việc nhận nuôi. MeoMap không thu tiền cọc.
                   </p>
                 </>
               )}
@@ -1129,7 +1129,7 @@ export default function App() {
                     🔍 Mèo đi lạc – cần báo tin
                   </h4>
                   <p style={{ margin: 0, color: "#b91c1c", fontSize: 13, lineHeight: 1.4 }}>
-                    Bạn có thể báo tin nếu thấy mèo. Chủ mèo sẽ gửi thưởng nếu xác minh đúng.
+                    Nếu có thông tin, hãy liên hệ trực tiếp người đăng. MeoMap không giữ hoặc chi trả tiền thưởng.
                   </p>
                 </>
               )}
@@ -1139,7 +1139,7 @@ export default function App() {
                     🚑 Trường hợp khẩn cấp
                   </h4>
                   <p style={{ margin: 0, color: "#b45309", fontSize: 13, lineHeight: 1.4 }}>
-                    Người cứu hộ sẽ nhận hỗ trợ và thưởng. Bạn cũng có thể quyên góp để giúp.
+                    Người cứu có thể tự đăng lời kêu gọi và thông tin nhận hỗ trợ. Quyên góp chuyển trực tiếp cho người cứu.
                   </p>
                 </>
               )}

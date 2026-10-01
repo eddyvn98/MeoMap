@@ -91,12 +91,12 @@ function MapFilters({ filters, setFilters }) {
               }}
             >
               <option value="all">Tất cả</option>
-              <option value="lost">🔍 Đi lạc – cần báo tin, có thưởng</option>
-              <option value="adopt">🤝 Nhận nuôi – miễn phí, có cọc an toàn</option>
-              <option value="rescue">🚑 Cứu hộ – khẩn cấp, có hỗ trợ</option>
+              <option value="lost">🔍 Đi lạc – liên hệ trực tiếp</option>
+              <option value="adopt">🤝 Nhận nuôi – liên hệ trực tiếp</option>
+              <option value="rescue">🚑 Cứu hộ – nhận ca & kêu gọi trực tiếp</option>
             </select>
             <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
-              Adopt: miễn phí, cọc chống kẻ xấu · Lost: báo tin nhận thưởng · Rescue: hỗ trợ ca khẩn cấp
+              Adopt/Lost: đăng và đóng case · Rescue: người cứu nhận ca và tự kêu gọi quyên góp
             </div>
           </div>
 
@@ -247,49 +247,6 @@ export default function App() {
     };
     window.addEventListener("open-qr-modal", handler);
     return () => window.removeEventListener("open-qr-modal", handler);
-  }, []);
-
-  // Listen for lost reward cancellation (voucher conversion)
-  useEffect(() => {
-    const handler = async (e) => {
-      try {
-        const { petId } = e.detail || {};
-        if (!petId) return;
-        const { data: pet, error: petErr } = await supabase
-          .from("pets")
-          .select("id, owner_id, bounty_amount")
-          .eq("id", petId)
-          .single();
-        if (petErr) {
-          console.error("Không lấy được pet:", petErr);
-          return;
-        }
-        if (!pet?.owner_id || !pet?.bounty_amount || pet.bounty_amount <= 0) {
-          console.warn("Thiếu owner hoặc không có bounty_amount để hoàn về ví", pet);
-          return;
-        }
-        const { error: txnErr } = await supabase
-          .from("wallet_transactions")
-          .insert({
-            user_id: pet.owner_id,
-            deposit_id: null,
-            amount: Math.round(pet.bounty_amount),
-            type: "reward_cancel_voucher",
-            note: "Người báo tin từ chối thưởng (lost); hoàn về ví, chỉ quy đổi voucher",
-          });
-        if (txnErr) {
-          console.error("Lỗi ghi giao dịch ví:", txnErr);
-          alert("Không thể ghi giao dịch hoàn thưởng. Vui lòng thử lại.");
-          return;
-        }
-        alert("✅ Đã hoàn thưởng về ví người đăng (dạng voucher).");
-      } catch (err) {
-        console.error("Lỗi xử lý hủy nhận thưởng:", err);
-        alert("Có lỗi khi xử lý hủy nhận thưởng.");
-      }
-    };
-    window.addEventListener("lost-cancel-reward", handler);
-    return () => window.removeEventListener("lost-cancel-reward", handler);
   }, []);
 
   // Run reminder scheduler periodically (every hour)
@@ -505,16 +462,9 @@ export default function App() {
           description: formData.description,
           image_url: imageUrl,
           status: "available",
-          required_deposit:
-            formData.category === "adopt" && formData.requiredDeposit
-              ? Number(formData.requiredDeposit)
-              : null,
-          allow_custom_deposit:
-            formData.category === "adopt" ? !!formData.allowCustomDeposit : true,
-          bounty_amount:
-            (formData.category === "lost" || formData.category === "rescue") && formData.bountyAmount
-              ? Number(formData.bountyAmount)
-              : null,
+          required_deposit: null,
+          allow_custom_deposit: true,
+          bounty_amount: null,
           owner_id: userData.user.id,
           created_at: new Date().toISOString(),
         },

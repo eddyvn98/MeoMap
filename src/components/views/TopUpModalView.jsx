@@ -1,6 +1,7 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
-import { supabase } from "../supabaseClient";
-import { createTopupRequest, formatVND } from "../services/walletService";
+import { supabase } from "../../supabaseClient";
+import { createTopupRequest, formatVND } from "../../services/walletService";
 
 export default function TopUpModalView({ scope }) {
   const {

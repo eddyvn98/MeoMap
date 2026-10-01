@@ -1,7 +1,8 @@
+/* eslint-disable no-unused-vars */
 import { useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
-import { supabase } from "../supabaseClient";
-import { addDonation, uploadReceiptImage } from "../donation";
+import { supabase } from "../../supabaseClient";
+import { addDonation, uploadReceiptImage } from "../../donation";
 
 export default function DonationModalView({ scope }) {
   const {

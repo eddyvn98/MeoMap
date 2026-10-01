@@ -1,7 +1,8 @@
+/* eslint-disable no-unused-vars */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
-import { formatVND } from "../services/walletService";
+import { supabase } from "../../supabaseClient";
+import { formatVND } from "../../services/walletService";
 
 export default function AdminTopupsPageView({ scope }) {
   const {

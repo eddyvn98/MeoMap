@@ -30,7 +30,6 @@ export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDel
       .eq("owner_id", user.id);
     setClosing(false);
     if (error) return alert("Không thể đóng case: " + error.message);
-    onMarkAsFound?.();
     window.location.reload();
   };
 

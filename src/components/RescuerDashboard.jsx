@@ -104,7 +104,7 @@ export default function RescuerDashboard() {
 
       if (updateError) throw updateError;
 
-      alert("✅ Bạn đã nhận ca cứu hộ! Hãy bước vào Trung tâm cứu hộ để quản lý.");
+      alert("✅ Bạn đã nhận ca cứu hộ! Bạn có thể cập nhật tình hình và tự đăng lời kêu gọi quyên góp trực tiếp.");
       setAvailableCases(availableCases.filter((c) => c.id !== caseId));
       setMyCases([
         ...myCases,
@@ -206,26 +206,6 @@ export default function RescuerDashboard() {
                   </div>
                 )}
 
-                {/* Tiền hỗ trợ */}
-                {caseItem.bounty_amount > 0 && (
-                  <div className="mb-3 flex gap-2 items-center">
-                    <div className="p-3 bg-orange-100 rounded flex-1 border border-orange-300">
-                      <p className="text-xs text-orange-700 font-semibold">💰 Hỗ trợ cứu hộ</p>
-                      <p className="text-xl font-bold text-orange-900">
-                        {caseItem.bounty_amount.toLocaleString()}đ
-                      </p>
-                    </div>
-                    {caseItem.total_donations > 0 && (
-                      <div className="p-3 bg-purple-100 rounded flex-1 border border-purple-300">
-                        <p className="text-xs text-purple-700 font-semibold">💜 Quyên góp</p>
-                        <p className="text-xl font-bold text-purple-900">
-                          {caseItem.total_donations.toLocaleString()}đ
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
                 {/* Thông tin chủ bài */}
                 {caseItem.profiles && (
                   <div className="mb-3 p-2 bg-gray-100 rounded text-sm">
@@ -308,21 +288,7 @@ export default function RescuerDashboard() {
                     </p>
                   )}
 
-                  {/* Tiền thống kê */}
-                  <div className="grid grid-cols-2 gap-2 mb-3">
-                    <div className="p-2 bg-orange-100 rounded border border-orange-300">
-                      <p className="text-xs text-orange-700 font-semibold">💰 Hỗ trợ ban đầu</p>
-                      <p className="text-lg font-bold text-orange-900">
-                        {(caseItem.bounty_amount || 0).toLocaleString()}đ
-                      </p>
-                    </div>
-                    <div className="p-2 bg-purple-100 rounded border border-purple-300">
-                      <p className="text-xs text-purple-700 font-semibold">💜 Quyên góp</p>
-                      <p className="text-lg font-bold text-purple-900">
-                        {(caseItem.total_donations || 0).toLocaleString()}đ
-                      </p>
-                    </div>
-                  </div>
+                  <div className="mb-3 rounded border bg-blue-50 p-2 text-xs text-blue-800">MeoMap không quản lý tiền. Bạn có thể tự đăng lời kêu gọi và thông tin chuyển khoản của mình trong ca cứu hộ.</div>
 
                   {/* Nút hành động */}
                   <button

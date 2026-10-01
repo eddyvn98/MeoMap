@@ -15,6 +15,9 @@ import {
   getWithdrawalStatusDisplayP2P,
   generateVietQRData
 } from "../services/walletService";
+import WalletOverviewTab from "./WalletOverviewTab";
+import WalletWithdrawalTab from "./WalletWithdrawalTab";
+import WalletHistoryTab from "./WalletHistoryTab";
 
 export default function MyWalletPage() {
   const navigate = useNavigate();
@@ -207,263 +210,37 @@ export default function MyWalletPage() {
         </button>
       </div>
 
-      {/* Overview Tab */}
-      {selectedTab === "overview" && (
-        <div className="space-y-4">
-          <div className="p-6 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg">
-            <div className="text-sm opacity-90">Số dư COC (Cọc)</div>
-            <div className="text-3xl font-bold">{formatVND(balanceCoc)}</div>
-            <div className="text-xs opacity-75 mt-2">Tiền cọc (không rút được)</div>
-          </div>
-
-          <div className="p-6 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg">
-            <div className="text-sm opacity-90">Số dư THƯỞNG (Rút được)</div>
-            <div className="text-3xl font-bold">{formatVND(balanceThuong)}</div>
-            <div className="text-xs opacity-75 mt-2">Tiền thưởng (có thể rút)</div>
-          </div>
-
-          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h3 className="font-semibold text-blue-900 mb-2">ℹ️ Cách hoạt động</h3>
-            <ul className="text-sm text-blue-800 space-y-1">
-              <li>• <strong>Balance COC:</strong> Tiền cọc khi nhận nuôi mèo. Không thể rút.</li>
-              <li>• <strong>Balance THƯỞNG:</strong> Tiền thưởng từ hệ thống. Có thể rút.</li>
-              <li>• Tạo lệnh rút → Admin chuyển tiền → Bạn xác nhận nhận tiền → Hoàn thành</li>
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {/* Withdrawal Tab */}
-      {selectedTab === "withdrawal" && (
-        <div className="space-y-4">
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded">
-            <h3 className="font-semibold text-amber-900 mb-2">⚠️ Lưu ý</h3>
-            <ul className="text-sm text-amber-800 space-y-1">
-              <li>• Số tài khoản <strong>không thể thay đổi</strong> sau khi tạo lệnh</li>
-              <li>• Chỉ có thể rút từ Balance THƯỞNG</li>
-              <li>• Quá 24h chưa nhận được tiền? Mở tranh chấp ngay</li>
-            </ul>
-          </div>
-
-          <form onSubmit={handleCreateWithdrawal} className="space-y-4">
-            {formError && (
-              <div className="p-4 bg-red-100 text-red-800 rounded">{formError}</div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Số tiền rút (VND)</label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="Nhập số tiền"
-                className="w-full px-3 py-2 border rounded-lg"
-                disabled={formLoading}
-              />
-              <div className="text-xs text-gray-600 mt-1">Có thể rút: {formatVND(balanceThuong)}</div>
-            </div>
-
-            {/* Quick amount buttons */}
-            <div className="grid grid-cols-4 gap-2">
-              {quickAmounts.map((q) => (
-                <button
-                  key={q}
-                  type="button"
-                  onClick={() => setAmount(q.toString())}
-                  disabled={q > balanceThuong || formLoading}
-                  className={`py-2 text-xs font-medium rounded ${
-                    q > balanceThuong
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-                  }`}
-                >
-                  {formatVND(q).replace(" đ", "")}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setAmount(balanceThuong.toString())}
-              disabled={balanceThuong === 0 || formLoading}
-              className="w-full py-2 bg-blue-600 text-white rounded font-medium disabled:bg-gray-400"
-            >
-              Rút tất cả ({formatVND(balanceThuong)})
-            </button>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Tên ngân hàng</label>
-              <input
-                type="text"
-                value={bankName}
-                onChange={(e) => setBankName(e.target.value)}
-                placeholder="VCB, TCB, ACB, ..."
-                className="w-full px-3 py-2 border rounded-lg"
-                disabled={formLoading}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Số tài khoản</label>
-              <input
-                type="text"
-                value={bankAccount}
-                onChange={(e) => setBankAccount(e.target.value)}
-                placeholder="Số tài khoản"
-                className="w-full px-3 py-2 border rounded-lg"
-                disabled={formLoading}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Tên chủ tài khoản</label>
-              <input
-                type="text"
-                value={accountHolder}
-                onChange={(e) => setAccountHolder(e.target.value)}
-                placeholder="Tên đầy đủ"
-                className="w-full px-3 py-2 border rounded-lg"
-                disabled={formLoading}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={formLoading}
-              className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-400"
-            >
-              {formLoading ? "Đang tạo..." : "Tạo lệnh rút"}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* History Tab */}
-      {selectedTab === "history" && (
-        <div className="space-y-4">
-          {withdrawals.length === 0 ? (
-            <div className="p-4 text-center text-gray-600">Chưa có lệnh rút nào</div>
-          ) : (
-            withdrawals.map((wd) => {
-              const status = getWithdrawalStatusDisplayP2P(wd.status);
-              return (
-                <div key={wd.id} className="p-4 border rounded-lg bg-white space-y-3">
-                  {/* Header */}
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="font-bold text-lg">{formatVND(wd.amount)}</div>
-                      <div className="text-sm text-gray-600">Mã lệnh: <span className="font-mono font-bold text-gray-900">{wd.order_code}</span></div>
-                    </div>
-                    <span className={`px-3 py-1 rounded-lg text-sm font-medium ${status.color}`}>
-                      {status.icon} {status.text}
-                    </span>
-                  </div>
-
-                  {/* Bank Info */}
-                  <div className="p-3 bg-gray-50 rounded border border-gray-200">
-                    <div className="text-sm space-y-1">
-                      <div><strong>Ngân hàng:</strong> {wd.bank_name}</div>
-                      <div><strong>STK:</strong> {wd.bank_account}</div>
-                      <div><strong>Tên chủ:</strong> {wd.account_holder}</div>
-                    </div>
-                  </div>
-
-                  {/* QR Code for Admin (info only) */}
-                  {wd.status !== 'PENDING' && (
-                    <div className="p-3 bg-blue-50 rounded border border-blue-200">
-                      <div className="text-xs text-blue-700 mb-2">
-                        <strong>Nội dung chuyển khoản để ghi vào:</strong><br />
-                        <code className="bg-white px-2 py-1 rounded">{`PAY ${wd.order_code}`}</code>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Trace ID (Admin provided) */}
-                  {wd.bank_trace_id && (
-                    <div className="p-3 bg-green-50 rounded border border-green-200">
-                      <div className="text-xs space-y-1 text-green-800">
-                        <div><strong>Mã giao dịch:</strong> {wd.bank_trace_id}</div>
-                        {wd.transfer_time && (
-                          <div><strong>Thời gian:</strong> {new Date(wd.transfer_time).toLocaleString("vi-VN")}</div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Timestamps */}
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <div>Tạo lệnh: {new Date(wd.created_at).toLocaleString("vi-VN")}</div>
-                    {wd.user_confirmed_at && (
-                      <div className="text-green-700">✅ Xác nhận nhận tiền: {new Date(wd.user_confirmed_at).toLocaleString("vi-VN")}</div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="space-y-2 pt-2">
-                    {wd.status === "AWAITING_USER_CONFIRMATION" && (
-                      <>
-                        <button
-                          onClick={() => handleConfirmReceipt(wd.id)}
-                          className="w-full py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700"
-                        >
-                          ✅ Đã nhận tiền
-                        </button>
-                        {!disputeWithdrawalId && (
-                          <button
-                            onClick={() => setDisputeWithdrawalId(wd.id)}
-                            className="w-full py-2 bg-red-600 text-white rounded font-medium hover:bg-red-700"
-                          >
-                            ⚠️ Mở tranh chấp
-                          </button>
-                        )}
-                      </>
-                    )}
-
-                    {/* Dispute Form */}
-                    {disputeWithdrawalId === wd.id && (
-                      <div className="p-3 bg-red-50 border border-red-200 rounded space-y-2">
-                        <textarea
-                          value={disputeReason}
-                          onChange={(e) => setDisputeReason(e.target.value)}
-                          placeholder="Mô tả lý do tranh chấp..."
-                          className="w-full px-3 py-2 border rounded text-sm"
-                          rows="3"
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleOpenDispute(wd.id)}
-                            className="flex-1 py-2 bg-red-600 text-white rounded font-medium hover:bg-red-700"
-                          >
-                            Gửi tranh chấp
-                          </button>
-                          <button
-                            onClick={() => {
-                              setDisputeWithdrawalId(null);
-                              setDisputeReason("");
-                            }}
-                            className="flex-1 py-2 bg-gray-400 text-white rounded font-medium hover:bg-gray-500"
-                          >
-                            Hủy
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Admin Notes */}
-                  {wd.admin_notes && (
-                    <div className="p-3 bg-yellow-50 rounded border border-yellow-200">
-                      <div className="text-xs text-yellow-800">
-                        <strong>Ghi chú từ admin:</strong><br />
-                        {wd.admin_notes}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
+      <WalletOverviewTab
+        selectedTab={selectedTab}
+        balanceCoc={balanceCoc}
+        balanceThuong={balanceThuong}
+      />
+      <WalletWithdrawalTab
+        selectedTab={selectedTab}
+        handleCreateWithdrawal={handleCreateWithdrawal}
+        formError={formError}
+        amount={amount}
+        setAmount={setAmount}
+        formLoading={formLoading}
+        balanceThuong={balanceThuong}
+        quickAmounts={quickAmounts}
+        bankName={bankName}
+        setBankName={setBankName}
+        bankAccount={bankAccount}
+        setBankAccount={setBankAccount}
+        accountHolder={accountHolder}
+        setAccountHolder={setAccountHolder}
+      />
+      <WalletHistoryTab
+        selectedTab={selectedTab}
+        withdrawals={withdrawals}
+        handleConfirmReceipt={handleConfirmReceipt}
+        disputeWithdrawalId={disputeWithdrawalId}
+        setDisputeWithdrawalId={setDisputeWithdrawalId}
+        disputeReason={disputeReason}
+        setDisputeReason={setDisputeReason}
+        handleOpenDispute={handleOpenDispute}
+      />
     </div>
   );
 }

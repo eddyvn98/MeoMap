@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { closeRescueCase } from "../donation";
-import { finalizeBounties } from "../bounty";
-import BountyWidget from "./BountyWidget";
-import DonorList from "./DonorList";
 import ContextualHelpCard from "./ContextualHelpCard";
 import RescueActivityPanel from "./RescueActivityPanel";
 import RescueUpdatesTimeline from "./RescueUpdatesTimeline";
@@ -13,10 +9,11 @@ import RescueAppealsList from "./RescueAppealsList";
 /**
  * Chi tiết bài đăng cứu hộ (rescue category)
  * 
- * Hiển thị 2 dòng tiền rõ ràng:
- * 1. BOUNTY WIDGET - Tiền treo thưởng / hỗ trợ ban đầu (để thu hút người cứu)
- * 2. DONATION WIDGET - Tiền hỗ trợ chi phí cứu hộ (để giúp chi phí điều trị)
- * 3. Timeline hoạt động (check-in, báo cáo, ảnh, hóa đơn)
+ * MeoMap không nhận, giữ hoặc giải ngân tiền:
+ * 1. Người cứu nhận ca.
+ * 2. Người cứu tự công khai thông tin quyên góp của chính mình.
+ * 3. Cộng đồng chuyển trực tiếp cho người cứu ngoài hệ thống.
+ * 4. Người cứu đăng cập nhật và đóng ca.
  */
 export default function RescuePetDetail({ pet, user, isOwner }) {
   const navigate = useNavigate();
@@ -83,36 +80,16 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
   };
 
   const handleCloseCase = async () => {
-    if (
-      !confirm(
-        "Bạn có chắc muốn kết thúc ca cứu hộ? Toàn bộ tiền trong ví + tiền thưởng đã nhận sẽ được chuyển cho bạn."
-      )
-    )
-      return;
-
+    if (!user || (!isOwner && !isRescuer)) return;
+    if (!confirm("Kết thúc ca cứu hộ này?")) return;
     setLoading(true);
-    try {
-      // 1. Finalize bounties (mark accepted as transferred, reject unaccepted)
-      const { success: bountySuccess, error: bountyError } = await finalizeBounties(
-        pet.id,
-        pet.owner_id
-      );
-      if (!bountySuccess) console.warn("Warning: Could not finalize bounties", bountyError);
-
-      // 2. Close rescue case (transfer wallet balance)
-      const { success: caseSuccess, error: caseError } = await closeRescueCase(
-        pet.id,
-        pet.owner_id
-      );
-      if (!caseSuccess) throw new Error(caseError);
-
-      alert("✅ Đã kết thúc ca cứu hộ. Toàn bộ tiền đã được chuyển.");
-      window.location.reload();
-    } catch (err) {
-      alert("Lỗi: " + err.message);
-    } finally {
-      setLoading(false);
-    }
+    const { error } = await supabase
+      .from("pets")
+      .update({ status: "delivered", completed_at: new Date().toISOString() })
+      .eq("id", pet.id);
+    setLoading(false);
+    if (error) return alert("Không thể kết thúc ca: " + error.message);
+    window.location.reload();
   };
 
   const handleSaveBankInfo = async () => {
@@ -588,7 +565,7 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
           <button
             onClick={() => {
               const link = window.location.href;
-              const message = `🔥 CẦN CỨU HỘ KHẨN CẤP!\n\n🐱 ${pet.name}\n${pet.description ? `📝 ${pet.description.substring(0, 100)}${pet.description.length > 100 ? '...' : ''}\n` : ''}${pet.bounty_amount ? `💰 Hỗ trợ: ${pet.bounty_amount.toLocaleString()}đ\n` : ''}\n📍 Xem chi tiết: ${link}`;
+              const message = `🔥 CẦN CỨU HỘ KHẨN CẤP!\n\n🐱 ${pet.name}\n${pet.description ? `📝 ${pet.description.substring(0, 100)}${pet.description.length > 100 ? '...' : ''}\n` : ''}\n📍 Xem chi tiết: ${link}`;
               
               if (navigator.share) {
                 navigator.share({ 

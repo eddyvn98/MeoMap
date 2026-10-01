@@ -43,5 +43,4 @@ export default {
           a: 'MeoMap cập nhật tính năng mới hàng tháng. Bạn sẽ nhận thông báo khi có bản cập nhật. Hãy cập nhật để nhận tính năng mới & sửa lỗi.',
         },
       ],
-    },
-  };
+};

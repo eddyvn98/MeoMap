@@ -1,4 +1,4 @@
-export default function AdoptionRequestSort({ sortBy, setSortBy }) {
+export default function AdoptionRequestSort({ adoptionRequests, sortBy, setSortBy }) {
   return (
     <>
       {/* Sort Buttons */}

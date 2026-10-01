@@ -16,10 +16,6 @@ export default function ReportPage() {
   const [description, setDescription] = useState("");
   const [file, setFile] = useState(null);
   
-  // Deposit/Bounty fields (new)
-  const [requiredDeposit, setRequiredDeposit] = useState("");
-  const [allowCustomDeposit, setAllowCustomDeposit] = useState(true);
-  const [bountyAmount, setBountyAmount] = useState("");
   
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -44,39 +40,7 @@ export default function ReportPage() {
     let imageUrl = null;
 
     try {
-      // 1) Check wallet balance if bounty is set
-      const bountyValue = (category === "lost" || category === "rescue") && bountyAmount ? parseInt(bountyAmount) : 0;
-      
-      if (bountyValue > 0) {
-        // Get current user
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-          setError("Bạn phải đăng nhập để treo thưởng.");
-          setSubmitting(false);
-          return;
-        }
-
-        // Get wallet balance
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("balance_thuong")
-          .eq("id", user.id)
-          .single();
-
-        if (profileError || !profile) {
-          setError("Không thể kiểm tra số dư ví.");
-          setSubmitting(false);
-          return;
-        }
-
-        if (profile.balance_thuong < bountyValue) {
-          setError(`Số dư ví không đủ. Bạn có ${profile.balance_thuong.toLocaleString()}đ, cần ${bountyValue.toLocaleString()}đ.`);
-          setSubmitting(false);
-          return;
-        }
-      }
-
-      // 2) Upload ảnh nếu có
+      // 1) Upload ảnh nếu có
       if (file) {
         const ext = file.name.split(".").pop();
         const filePath = `pets/${Date.now()}.${ext}`;
@@ -99,23 +63,7 @@ export default function ReportPage() {
         imageUrl = publicData?.publicUrl || null;
       }
 
-      // 3) Deduct bounty_amount from wallet if set
-      if (bountyValue > 0) {
-        const { data: result, error: deductError } = await supabase.rpc("decrease_balance_thuong", {
-          p_user_id: (await supabase.auth.getUser()).data.user.id,
-          p_amount: bountyValue,
-          p_description: `Khóa tiền treo thưởng khi tạo bài "${name}"`,
-        });
-
-        if (deductError || !result?.success) {
-          console.error("Deduct bounty error:", deductError || result);
-          setError("Khóa tiền treo thưởng thất bại: " + (result?.message || deductError?.message || "Lỗi không xác định"));
-          setSubmitting(false);
-          return;
-        }
-      }
-
-      // 4) Ghi bản ghi vào bảng pets (insert trả về row mới bằng .select())
+      // 2) Ghi bản ghi vào bảng pets (insert trả về row mới bằng .select())
       const petData = {
         name,
         status,
@@ -126,11 +74,9 @@ export default function ReportPage() {
         lng: position.lng,
         image_url: imageUrl,
         created_at: new Date().toISOString(),
-        
-        // Add deposit/bounty fields based on category
-        required_deposit: category === "adopt" && requiredDeposit ? parseInt(requiredDeposit) : null,
-        allow_custom_deposit: category === "adopt" ? allowCustomDeposit : true,
-        bounty_amount: bountyValue > 0 ? bountyValue : null,
+        required_deposit: null,
+        allow_custom_deposit: true,
+        bounty_amount: null,
       };
 
       console.log("Attempting to insert pet:", petData);
@@ -171,7 +117,7 @@ export default function ReportPage() {
   return (
     <div style={{ paddingBottom: 80 }}>
       <div style={{ padding: 20 }}>
-        <h2>Báo mèo / chó thất lạc</h2>
+        <h2>Đăng case thú cưng</h2>
 
         <PetMap
           pets={[]}
@@ -230,83 +176,6 @@ export default function ReportPage() {
             />
           </div>
 
-          {/* ADOPTION: Deposit fields */}
-          {category === "adopt" && (
-            <>
-              <div style={{ marginBottom: 10, padding: 12, background: "#fff7ed", border: "2px solid #fb923c", borderRadius: 6 }}>
-                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: "#c2410c" }}>
-                  💰 Thiết lập cọc (Rất được khuyến khích!)
-                </div>
-                <div style={{ fontSize: 12, color: "#c2410c", marginBottom: 8, fontWeight: 500 }}>
-                  Cọc giúp chắc chắn người nhận nuôi thật sự nghiêm túc & hạn chế giao dịch trá hình
-                </div>
-                
-                <div style={{ marginBottom: 8 }}>
-                  <label style={{ fontSize: 13 }}>Mức cọc tối thiểu (đ)</label>
-                  <input
-                    type="number"
-                    style={{ width: "100%", padding: 8, border: "1px solid #d1d5db", borderRadius: 4 }}
-                    value={requiredDeposit}
-                    onChange={(e) => setRequiredDeposit(e.target.value)}
-                    placeholder="VD: 50000 (để trống nếu không yêu cầu cọc)"
-                    min="0"
-                  />
-                  <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
-                    💡 Gợi ý: Cọc 50k-200k rất tốt để kiểm soát chất lượng người nhận
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input
-                    type="checkbox"
-                    id="allowCustomDeposit"
-                    checked={allowCustomDeposit}
-                    onChange={(e) => setAllowCustomDeposit(e.target.checked)}
-                  />
-                  <label htmlFor="allowCustomDeposit" style={{ fontSize: 13, cursor: "pointer" }}>
-                    Cho phép người nhận nhập mức cọc khác
-                  </label>
-                </div>
-                <div style={{ fontSize: 11, color: "#666", marginTop: 4, marginLeft: 28 }}>
-                  Nếu tắt, người nhận chỉ có thể đặt cọc đúng số tiền bạn yêu cầu
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* LOST/RESCUE: Bounty fields */}
-          {(category === "lost" || category === "rescue") && (
-            <div style={{ marginBottom: 10, padding: 12, background: "#fef3c7", border: "2px solid #fcd34d", borderRadius: 6 }}>
-              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: "#b45309" }}>
-                {category === "lost" ? "🎁 Treo thưởng tìm kiếm (Khuyến khích!)" : "🔥 Hỗ trợ cứu hộ (Quan trọng!)"}
-              </div>
-              <div style={{ fontSize: 12, color: "#b45309", marginBottom: 8, fontWeight: 500 }}>
-                {category === "lost" 
-                  ? "Tiền thưởng sẽ khuyến khích mọi người chủ động tìm kiếm thú cưng của bạn"
-                  : "Tiền hỗ trợ giúp tăng động lực cho người cứu hộ khi thú cưng gặp nguy cấp"}
-              </div>
-              
-              <div style={{ marginBottom: 8 }}>
-                <label style={{ fontSize: 13 }}>
-                  {category === "lost" ? "Tiền thưởng cho người tìm thấy (đ)" : "Số tiền hỗ trợ cứu hộ (đ)"}
-                </label>
-                <input
-                  type="number"
-                  style={{ width: "100%", padding: 8, border: "1px solid #d1d5db", borderRadius: 4 }}
-                  value={bountyAmount}
-                  onChange={(e) => setBountyAmount(e.target.value)}
-                  placeholder={category === "lost" ? "VD: 1000000" : "VD: 500000"}
-                  min="0"
-                />
-                <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
-                  💡 {category === "lost" 
-                    ? "Gợi ý: 100k-1M phù hợp để tìm mèo" 
-                    : "Gợi ý: 200k-1M phù hợp để hỗ trợ cứu hộ"}
-                </div>
-              </div>
-            </div>
-          )}
-
           <div style={{ marginBottom: 10 }}>
             <label>Mô tả ngắn</label>
             <textarea
@@ -345,7 +214,7 @@ export default function ReportPage() {
               fontWeight: "bold",
             }}
           >
-            {submitting ? "Đang gửi..." : "Gửi báo cáo"}
+            {submitting ? "Đang gửi..." : "Đăng case"}
           </button>
         </form>
       </div>

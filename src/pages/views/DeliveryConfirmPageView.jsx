@@ -1,6 +1,7 @@
+/* eslint-disable no-unused-vars */
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
+import { supabase } from "../../supabaseClient";
 
 export default function DeliveryConfirmPageView({ scope }) {
   const {

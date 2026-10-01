@@ -1,7 +1,8 @@
+/* eslint-disable no-unused-vars */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
-import PetMap from "../components/PetMap";
+import { supabase } from "../../supabaseClient";
+import PetMap from "../../components/PetMap";
 
 export default function ReportPageView({ scope }) {
   const {

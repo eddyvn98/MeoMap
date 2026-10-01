@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 
 
 export default function AdminDepositsPageView({ scope }: { scope: any }) {

@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import L from "leaflet";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
-import Tooltip from "./Tooltip";
 
 const MapClickHandler = ({ onLocationSelect }) => {
   useMapEvents({
@@ -22,9 +21,6 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
     category: "lost",
     description: "",
     photo: null,
-    requiredDeposit: "",
-    allowCustomDeposit: true,
-    bountyAmount: "",
     lat: null,
     lng: null,
     ward: "",
@@ -258,9 +254,6 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
       category: "lost",
       description: "",
       photo: null,
-      requiredDeposit: "",
-      allowCustomDeposit: true,
-      bountyAmount: "",
       lat: null,
       lng: null,
       ward: "",
@@ -393,7 +386,7 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
           <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "bold" }}>
-            Báo cáo thú cưng
+            Đăng case thú cưng
           </h2>
           <button
             onClick={() => {
@@ -478,91 +471,7 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
               </select>
             </div>
 
-            {/* Deposit for adoption */}
-            {formData.category === "adopt" && (
-              <div style={{ marginBottom: "16px", padding: "12px", background: "#fff7ed", border: "2px solid #fb923c", borderRadius: "8px" }}>
-                <div style={{ fontWeight: 700, fontSize: "14px", color: "#c2410c", marginBottom: 6 }}>
-                  💰 Thiết lập tiền cọc (Khuyến khích)
-                </div>
-                <p style={{ fontSize: "12px", color: "#c2410c", marginBottom: 8 }}>
-                  Cọc giúp chắc chắn người nhận nuôi nghiêm túc và tránh giao dịch trá hình.
-                </p>
-
-                <div style={{ marginBottom: 8 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, fontWeight: 600, fontSize: "12px", color: "#374151" }}>
-                    Mức cọc tối thiểu (đ)
-                    <Tooltip text="Số tiền tối thiểu mà người nhận phải nộp. Tiền sẽ hoàn lại 100% khi hoàn thành. Từ 50k-200k là hợp lý.">
-                      <span style={{ fontSize: 14, cursor: 'help' }}>❓</span>
-                    </Tooltip>
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.requiredDeposit}
-                    onChange={(e) => setFormData(prev => ({ ...prev, requiredDeposit: e.target.value }))}
-                    placeholder="Ví dụ: 50000 (để trống nếu không cọc)"
-                    min="0"
-                    style={{ width: "100%", padding: 8, border: "1px solid #d1d5db", borderRadius: 6, fontSize: "14px" }}
-                  />
-                  <div style={{ fontSize: "11px", color: "#6b7280", marginTop: 4 }}>
-                    💡 Gợi ý: 50k-200k là mức tối ưu.
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input
-                    id="allowCustomDeposit"
-                    type="checkbox"
-                    checked={formData.allowCustomDeposit}
-                    onChange={(e) => setFormData(prev => ({ ...prev, allowCustomDeposit: e.target.checked }))}
-                  />
-                  <label htmlFor="allowCustomDeposit" style={{ fontSize: "13px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                    Cho phép người nhận tự nhập mức cọc khác
-                    <Tooltip text="Nếu bật: Người nhận có thể đề xuất mức cọc khác thay vì đúng số bạn yêu cầu. Nếu tắt: Bắt buộc đúng số bạn đặt.">
-                      <span style={{ fontSize: 12, cursor: 'help' }}>❓</span>
-                    </Tooltip>
-                  </label>
-                </div>
-                <div style={{ fontSize: "11px", color: "#6b7280", marginTop: 4, marginLeft: 28 }}>
-                  Nếu tắt: Người nhận chỉ đặt đúng số tiền bạn đặt ra.
-                </div>
-              </div>
-            )}
-
-            {/* Bounty for lost / rescue */}
-            {(formData.category === "lost" || formData.category === "rescue") && (
-              <div style={{ marginBottom: "16px", padding: "12px", background: "#fef3c7", border: "2px solid #fcd34d", borderRadius: "8px" }}>
-                <div style={{ fontWeight: 700, fontSize: "14px", color: "#b45309", marginBottom: 6 }}>
-                  {formData.category === "lost" ? "🎁 Treo thưởng tìm kiếm (Khuyến khích)" : "🔥 Hỗ trợ cứu hộ (Quan trọng)"}
-                </div>
-                <p style={{ fontSize: "12px", color: "#b45309", marginBottom: 8 }}>
-                  {formData.category === "lost"
-                    ? "Thưởng khuyến khích cộng đồng tìm kiếm và báo tin."
-                    : "Hỗ trợ chi phí và động lực cho người cứu hộ khi nguy cấp."}
-                </p>
-
-                <div>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, fontWeight: 600, fontSize: "12px", color: "#374151" }}>
-                    {formData.category === "lost" ? "Tiền thưởng (đ)" : "Số tiền hỗ trợ (đ)"}
-                    <Tooltip text={formData.category === "lost" ? "Thưởng khuyến khích người khác tìm kiếm và báo tin cho bạn. Càng cao = càng nhiều người tìm." : "Hỗ trợ chi phí cho người cứu hộ. Người cứu sẽ nhận tiền này khi hoàn thành."}>
-                      <span style={{ fontSize: 14, cursor: 'help' }}>❓</span>
-                    </Tooltip>
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.bountyAmount}
-                    onChange={(e) => setFormData(prev => ({ ...prev, bountyAmount: e.target.value }))}
-                    placeholder={formData.category === "lost" ? "Ví dụ: 500000" : "Ví dụ: 300000"}
-                    min="0"
-                    style={{ width: "100%", padding: 8, border: "1px solid #d1d5db", borderRadius: 6, fontSize: "14px" }}
-                  />
-                  <div style={{ fontSize: "11px", color: "#6b7280", marginTop: 4 }}>
-                    💡 {formData.category === "lost" ? "Gợi ý: 100k-1M" : "Gợi ý: 200k-1M"}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div style={{ marginBottom: "16px" }}>
+            <div style={{ marginBottom: "16px", padding: "10px", background: "#eff6ff", borderRadius: "8px", fontSize: "12px", color: "#1e40af" }}>MeoMap không thu cọc, giữ thưởng hoặc nhận tiền quyên góp.</div>\n\n            <div style={{ marginBottom: "16px" }}>
               <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "14px" }}>
                 Mô tả chi tiết
               </label>
@@ -1061,7 +970,7 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
                 transition: "background-color 0.2s",
               }}
             >
-              ✓ Gửi báo cáo
+              ✓ Đăng case
             </button>
             <button
               type="button"

@@ -91,12 +91,12 @@ function MapFilters({ filters, setFilters }) {
               }}
             >
               <option value="all">Tất cả</option>
-              <option value="lost">🔍 Đi lạc – cần báo tin, có thưởng</option>
-              <option value="adopt">🤝 Nhận nuôi – miễn phí, có cọc an toàn</option>
-              <option value="rescue">🚑 Cứu hộ – khẩn cấp, có hỗ trợ</option>
+              <option value="lost">🔍 Đi lạc – liên hệ trực tiếp</option>
+              <option value="adopt">🤝 Nhận nuôi – liên hệ trực tiếp</option>
+              <option value="rescue">🚑 Cứu hộ – nhận ca & kêu gọi trực tiếp</option>
             </select>
             <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
-              Adopt: miễn phí, cọc chống kẻ xấu · Lost: báo tin nhận thưởng · Rescue: hỗ trợ ca khẩn cấp
+              Adopt/Lost: đăng và đóng case · Rescue: người cứu nhận ca và tự kêu gọi quyên góp
             </div>
           </div>
 
@@ -247,49 +247,6 @@ export default function App() {
     };
     window.addEventListener("open-qr-modal", handler);
     return () => window.removeEventListener("open-qr-modal", handler);
-  }, []);
-
-  // Listen for lost reward cancellation (voucher conversion)
-  useEffect(() => {
-    const handler = async (e) => {
-      try {
-        const { petId } = e.detail || {};
-        if (!petId) return;
-        const { data: pet, error: petErr } = await supabase
-          .from("pets")
-          .select("id, owner_id, bounty_amount")
-          .eq("id", petId)
-          .single();
-        if (petErr) {
-          console.error("Không lấy được pet:", petErr);
-          return;
-        }
-        if (!pet?.owner_id || !pet?.bounty_amount || pet.bounty_amount <= 0) {
-          console.warn("Thiếu owner hoặc không có bounty_amount để hoàn về ví", pet);
-          return;
-        }
-        const { error: txnErr } = await supabase
-          .from("wallet_transactions")
-          .insert({
-            user_id: pet.owner_id,
-            deposit_id: null,
-            amount: Math.round(pet.bounty_amount),
-            type: "reward_cancel_voucher",
-            note: "Người báo tin từ chối thưởng (lost); hoàn về ví, chỉ quy đổi voucher",
-          });
-        if (txnErr) {
-          console.error("Lỗi ghi giao dịch ví:", txnErr);
-          alert("Không thể ghi giao dịch hoàn thưởng. Vui lòng thử lại.");
-          return;
-        }
-        alert("✅ Đã hoàn thưởng về ví người đăng (dạng voucher).");
-      } catch (err) {
-        console.error("Lỗi xử lý hủy nhận thưởng:", err);
-        alert("Có lỗi khi xử lý hủy nhận thưởng.");
-      }
-    };
-    window.addEventListener("lost-cancel-reward", handler);
-    return () => window.removeEventListener("lost-cancel-reward", handler);
   }, []);
 
   // Run reminder scheduler periodically (every hour)
@@ -505,16 +462,9 @@ export default function App() {
           description: formData.description,
           image_url: imageUrl,
           status: "available",
-          required_deposit:
-            formData.category === "adopt" && formData.requiredDeposit
-              ? Number(formData.requiredDeposit)
-              : null,
-          allow_custom_deposit:
-            formData.category === "adopt" ? !!formData.allowCustomDeposit : true,
-          bounty_amount:
-            (formData.category === "lost" || formData.category === "rescue") && formData.bountyAmount
-              ? Number(formData.bountyAmount)
-              : null,
+          required_deposit: null,
+          allow_custom_deposit: true,
+          bounty_amount: null,
           owner_id: userData.user.id,
           created_at: new Date().toISOString(),
         },
@@ -538,7 +488,7 @@ export default function App() {
         "Đăng và tìm thú cưng đi lạc",
         "Đăng tin nhận nuôi chó/mèo",
         "Báo tin cứu hộ, cập nhật tình trạng",
-        "Quản lý cọc, thưởng và uy tín giao dịch",
+        "Đăng, chỉnh sửa và đóng các case của bạn",
       ],
     },
     {
@@ -751,80 +701,6 @@ export default function App() {
                     pet={pet} 
                     user={user} 
                     isOwner={isOwner}
-                    onMarkAsFound={async () => {
-                      if (!confirm("Bạn có chắc muốn đánh dấu bài này là 'Đã tìm thấy'?")) return;
-                      
-                      try {
-                        // 1. Get verified sighting (người tìm thấy)
-                        const { data: verifiedSightings, error: sightingError } = await supabase
-                          .from("adoption_activities")
-                          .select("actor_id")
-                          .eq("pet_id", pet.id)
-                          .eq("activity_type", "sighting")
-                          .eq("metadata->>verified", "true")
-                          .order("created_at", { ascending: false })
-                          .limit(1);
-
-                        if (sightingError) throw sightingError;
-
-                        // 2. Transfer bounty to finder if exists
-                        const finder = verifiedSightings?.[0];
-                        const bountyAmount = pet.bounty_amount || 0;
-
-                        if (finder && bountyAmount > 0) {
-                          // Credit finder's wallet
-                          const { error: walletError } = await supabase.rpc('increase_balance_thuong', {
-                            p_user_id: finder.actor_id,
-                            p_amount: bountyAmount,
-                            p_note: `Nhận thưởng tìm thấy mèo: ${pet.name}`,
-                            p_related_id: pet.id,
-                            p_source: 'lost_pet_bounty'
-                          });
-
-                          if (walletError) throw walletError;
-
-                          // Create transaction record
-                          const { error: txnError } = await supabase
-                            .from("wallet_transactions")
-                            .insert({
-                              user_id: finder.actor_id,
-                              amount: bountyAmount,
-                              type: "lost_pet_bounty",
-                              source_type: "thuong",
-                              related_id: pet.id,
-                              created_at: new Date().toISOString(),
-                            });
-
-                          if (txnError) console.error("Transaction record error:", txnError);
-                        }
-
-                        // 3. Update pet status to delivered
-                        const { error } = await supabase
-                          .from("pets")
-                          .update({ status: "delivered" })
-                          .eq("id", pet.id);
-
-                        if (error) throw error;
-
-                        // 4. Reload pets list
-                        const { data: updatedPets } = await supabase
-                          .from("pets")
-                          .select("*")
-                          .order("created_at", { ascending: false });
-                        
-                        setPets(updatedPets || []);
-                        setSelectedPetId(null);
-                        
-                        if (finder && bountyAmount > 0) {
-                          alert(`Đã cập nhật trạng thái. Người tìm thấy đã nhận ${bountyAmount.toLocaleString()}đ! 🎉`);
-                        } else {
-                          alert("Đã cập nhật trạng thái. Cảm ơn cộng đồng đã giúp đỡ! 🎉");
-                        }
-                      } catch (err) {
-                        console.error(err);
-                        alert("Lỗi: " + err.message);
-                      }
-                    }}
                     onDelete={async () => {
                       if (!confirm("Bạn có chắc muốn XÓA bài đăng này?")) return;
                       
@@ -1169,7 +1045,7 @@ export default function App() {
                     🤝 Nhận nuôi miễn phí
                   </h4>
                   <p style={{ margin: 0, color: "#047857", fontSize: 13, lineHeight: 1.4 }}>
-                    Tiền cọc không phải mua bán. Nó dùng để đảm bảo trách nhiệm và sẽ hoàn lại bằng voucher nếu bạn chăm mèo tốt.
+                    Liên hệ trực tiếp người đăng để trao đổi việc nhận nuôi. MeoMap không thu tiền cọc.
                   </p>
                 </>
               )}
@@ -1179,7 +1055,7 @@ export default function App() {
                     🔍 Mèo đi lạc – cần báo tin
                   </h4>
                   <p style={{ margin: 0, color: "#b91c1c", fontSize: 13, lineHeight: 1.4 }}>
-                    Bạn có thể báo tin nếu thấy mèo. Chủ mèo sẽ gửi thưởng nếu xác minh đúng.
+                    Nếu có thông tin, hãy liên hệ trực tiếp người đăng. MeoMap không giữ hoặc chi trả tiền thưởng.
                   </p>
                 </>
               )}
@@ -1189,7 +1065,7 @@ export default function App() {
                     🚑 Trường hợp khẩn cấp
                   </h4>
                   <p style={{ margin: 0, color: "#b45309", fontSize: 13, lineHeight: 1.4 }}>
-                    Người cứu hộ sẽ nhận hỗ trợ và thưởng. Bạn cũng có thể quyên góp để giúp.
+                    Người cứu có thể tự đăng lời kêu gọi và thông tin nhận hỗ trợ. Quyên góp chuyển trực tiếp cho người cứu.
                   </p>
                 </>
               )}

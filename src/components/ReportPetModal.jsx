@@ -22,9 +22,6 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
     category: "lost",
     description: "",
     photo: null,
-    requiredDeposit: "",
-    allowCustomDeposit: true,
-    bountyAmount: "",
     lat: null,
     lng: null,
     ward: "",
@@ -393,7 +390,7 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
           <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "bold" }}>
-            Báo cáo thú cưng
+            Đăng case thú cưng
           </h2>
           <button
             onClick={() => {
@@ -1061,7 +1058,7 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
                 transition: "background-color 0.2s",
               }}
             >
-              ✓ Gửi báo cáo
+              ✓ Đăng case
             </button>
             <button
               type="button"

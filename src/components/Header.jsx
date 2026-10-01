@@ -131,23 +131,6 @@ export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenPro
               >
                 Trang cá nhân
               </button>
-              <Link to="/wallet">
-                <button
-                  style={{
-                    ...buttonStyle,
-                    background: "#f0f0f0",
-                    color: "#333",
-                  }}
-                  onMouseOver={(e) =>
-                    (e.currentTarget.style.background = "#e0e0e0")
-                  }
-                  onMouseOut={(e) =>
-                    (e.currentTarget.style.background = "#f0f0f0")
-                  }
-                >
-                  💰 Ví của tôi
-                </button>
-              </Link>
               <Link to="/rescuer">
                 <button
                   style={{
@@ -163,23 +146,6 @@ export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenPro
                   }
                 >
                   🚑 Cứu hộ
-                </button>
-              </Link>
-              <Link to="/store">
-                <button
-                  style={{
-                    ...buttonStyle,
-                    background: "#f0f0f0",
-                    color: "#333",
-                  }}
-                  onMouseOver={(e) =>
-                    (e.currentTarget.style.background = "#e0e0e0")
-                  }
-                  onMouseOut={(e) =>
-                    (e.currentTarget.style.background = "#f0f0f0")
-                  }
-                >
-                  🛍️ Cửa hàng
                 </button>
               </Link>
 
@@ -218,30 +184,6 @@ export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenPro
                       }}
                     >
                       <div style={{ padding: 8 }}>
-                        <Link
-                          to="/admin/deposits"
-                          style={{ textDecoration: "none" }}
-                          onClick={() => setShowAdminMenu(false)}
-                        >
-                          <div
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: 6,
-                              cursor: "pointer",
-                              transition: "background 0.2s",
-                            }}
-                            onMouseOver={(e) =>
-                              (e.currentTarget.style.background = "#f3f4f6")
-                            }
-                            onMouseOut={(e) =>
-                              (e.currentTarget.style.background = "transparent")
-                            }
-                          >
-                            <div style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>
-                              💰 Quản lý cọc
-                            </div>
-                          </div>
-                        </Link>
 
                         <Link
                           to="/admin/reports"
@@ -268,80 +210,8 @@ export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenPro
                           </div>
                         </Link>
 
-                        <Link
-                          to="/admin/topups"
-                          style={{ textDecoration: "none" }}
-                          onClick={() => setShowAdminMenu(false)}
-                        >
-                          <div
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: 6,
-                              cursor: "pointer",
-                              transition: "background 0.2s",
-                            }}
-                            onMouseOver={(e) =>
-                              (e.currentTarget.style.background = "#f3f4f6")
-                            }
-                            onMouseOut={(e) =>
-                              (e.currentTarget.style.background = "transparent")
-                            }
-                          >
-                            <div style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>
-                              💵 Duyệt nạp tiền
-                            </div>
-                          </div>
-                        </Link>
 
-                        <Link
-                          to="/admin/withdrawals-p2p"
-                          style={{ textDecoration: "none" }}
-                          onClick={() => setShowAdminMenu(false)}
-                        >
-                          <div
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: 6,
-                              cursor: "pointer",
-                              transition: "background 0.2s",
-                            }}
-                            onMouseOver={(e) =>
-                              (e.currentTarget.style.background = "#f3f4f6")
-                            }
-                            onMouseOut={(e) =>
-                              (e.currentTarget.style.background = "transparent")
-                            }
-                          >
-                            <div style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>
-                              💸 Duyệt rút tiền P2P
-                            </div>
-                          </div>
-                        </Link>
 
-                        <Link
-                          to="/admin/shop"
-                          style={{ textDecoration: "none" }}
-                          onClick={() => setShowAdminMenu(false)}
-                        >
-                          <div
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: 6,
-                              cursor: "pointer",
-                              transition: "background 0.2s",
-                            }}
-                            onMouseOver={(e) =>
-                              (e.currentTarget.style.background = "#f3f4f6")
-                            }
-                            onMouseOut={(e) =>
-                              (e.currentTarget.style.background = "transparent")
-                            }
-                          >
-                            <div style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>
-                              🛍️ Quản lý cửa hàng
-                            </div>
-                          </div>
-                        </Link>
                       </div>
                     </div>
                   )}

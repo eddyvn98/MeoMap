@@ -93,11 +93,11 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         });
       }
 
-      setMessage("Tạo tài khoản thành công! Vui lòng kiểm tra email xác nhận.");
+      setMessage("Tạo tài khoản local thành công!");
       setTimeout(() => {
+        onSuccess?.();
         resetForm();
-        setMode("login");
-      }, 2000);
+      }, 800);
     } catch (err) {
       setError(err.message || "Tạo tài khoản thất bại");
     } finally {

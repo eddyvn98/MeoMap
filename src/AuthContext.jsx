@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
     // Check session khi mount
     const checkSession = async () => {
       try {
-        const { data, error } = await localApi.auth.getSession();
+        const { data } = await localApi.auth.getSession();
         if (data?.session?.user) {
           setUser(data.session.user);
           await ensureProfile(data.session.user);
@@ -50,7 +50,7 @@ export function AuthProvider({ children }) {
 
     // Simple auth state change listener
     try {
-      const { data } = localApi.auth.onAuthStateChanged(async (session) => {
+      localApi.auth.onAuthStateChanged(async (session) => {
         if (session?.user) {
           setUser(session.user);
           await ensureProfile(session.user);

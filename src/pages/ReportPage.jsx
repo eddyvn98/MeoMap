@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 import PetMap from "../components/PetMap";
 
-console.log("ReportPage module loaded, supabase:", supabase ? "✅ OK" : "❌ undefined");
+console.log("ReportPage module loaded, localApi:", localApi ? "✅ OK" : "❌ undefined");
 
 export default function ReportPage() {
   const navigate = useNavigate();
@@ -45,7 +45,7 @@ export default function ReportPage() {
         const ext = file.name.split(".").pop();
         const filePath = `pets/${Date.now()}.${ext}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await localApi.storage
           .from("pet-images")
           .upload(filePath, file);
 
@@ -56,7 +56,7 @@ export default function ReportPage() {
           return;
         }
 
-        const { data: publicData } = supabase.storage
+        const { data: publicData } = localApi.storage
           .from("pet-images")
           .getPublicUrl(filePath);
 
@@ -78,7 +78,7 @@ export default function ReportPage() {
 
       console.log("Attempting to insert pet:", petData);
 
-      const { data: insertedData, error: insertError } = await supabase
+      const { data: insertedData, error: insertError } = await localApi
         .from("pets")
         .insert([petData])
         .select();

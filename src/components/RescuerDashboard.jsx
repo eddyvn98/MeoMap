@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 
 /**
  * Component cho người cứu hộ (rescuer) quản lý các ca cứu hộ
@@ -21,7 +21,7 @@ export default function RescuerDashboard() {
   // Load user từ localStorage hoặc auth
   useEffect(() => {
     const getUser = async () => {
-      const { data } = await supabase.auth.getUser();
+      const { data } = await localApi.auth.getUser();
       setSelectedUser(data?.user);
     };
     getUser();
@@ -35,7 +35,7 @@ export default function RescuerDashboard() {
       setLoadingAvailable(true);
       setError("");
 
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await localApi
         .from("pets")
         .select("*, profiles(name, avatar_url)")
         .eq("category", "rescue")
@@ -63,7 +63,7 @@ export default function RescuerDashboard() {
       setLoadingMy(true);
       setError("");
 
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await localApi
         .from("pets")
         .select("*")
         .eq("category", "rescue")
@@ -97,7 +97,7 @@ export default function RescuerDashboard() {
       return;
 
     try {
-      const { error: updateError } = await supabase
+      const { error: updateError } = await localApi
         .from("pets")
         .update({ rescuer_id: selectedUser.id })
         .eq("id", caseId);

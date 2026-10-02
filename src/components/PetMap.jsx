@@ -9,7 +9,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
-import { supabase } from '../supabaseClient';
+import { localApi } from '../localClient';
 
 const defaultCenter = { lat: 10.8019, lng: 106.7147 };
 
@@ -202,7 +202,7 @@ export default forwardRef(function PetMap({
   // Get current user ID
   useEffect(() => {
     const getUser = async () => {
-      const { data } = await supabase.auth.getUser();
+      const { data } = await localApi.auth.getUser();
       setCurrentUserId(data?.user?.id || null);
     };
     getUser();
@@ -379,16 +379,6 @@ export default forwardRef(function PetMap({
                   {tooltipTextByCategory((p.category || "").toLowerCase())}
                 </div>
               </Tooltip>
-              {badge && (
-                <Popup>
-                  <div style={{ fontWeight: 600, color: badge.color }}>
-                    {badge.text}
-                  </div>
-                  {badge.sub && (
-                    <div style={{ fontSize: 12, marginTop: 4 }}>{badge.sub}</div>
-                  )}
-                </Popup>
-              )}
             </Marker>
           );
         })}

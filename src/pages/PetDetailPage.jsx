@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 import AdoptPetDetail from "../components/AdoptPetDetail";
 import LostPetDetail from "../components/LostPetDetail";
 import RescuePetDetail from "../components/RescuePetDetail";
@@ -17,8 +17,8 @@ export default function PetDetailPage() {
     const load = async () => {
       setLoading(true);
       const [{ data: auth }, { data: petData, error: petError }] = await Promise.all([
-        supabase.auth.getUser(),
-        supabase.from("pets").select("*").eq("id", id).maybeSingle(),
+        localApi.auth.getUser(),
+        localApi.from("pets").select("*").eq("id", id).maybeSingle(),
       ]);
       setUser(auth?.user || null);
       if (petError || !petData) setError("Không tìm thấy case.");

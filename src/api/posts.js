@@ -1,7 +1,7 @@
-import { supabase } from '../supabaseClient';
+import { localApi } from '../localClient';
 
 /**
- * Fetch posts from Supabase with filters
+ * Fetch posts from local server with filters
  * @param {Object} options - Query options
  * @param {string} options.type - Post type: 'rescue', 'lost', 'adopt'
  * @param {string} options.userId - Filter by owner_id
@@ -10,7 +10,7 @@ import { supabase } from '../supabaseClient';
  * @returns {Promise<Array>} Array of posts
  */
 export async function fetchPosts({ type, userId, bbox, status }) {
-  let query = supabase.from('pets').select('*');
+  let query = localApi.from('pets').select('*');
 
   // Filter by type (category)
   if (type && type !== 'all') {

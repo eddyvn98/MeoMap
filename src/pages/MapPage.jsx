@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PetMap from "../components/PetMap";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 
 export default function MapPage() {
   const navigate = useNavigate();
@@ -88,13 +88,13 @@ export default function MapPage() {
     try {
       let imageUrl = null;
 
-      // 1) Upload ảnh lên Supabase nếu có chọn file
+      // 1) Upload ảnh lên local server nếu có chọn file
       if (file) {
         const ext = file.name.split(".").pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
         const filePath = fileName;
 
-        const { error: uploadError } = await supabase
+        const { error: uploadError } = await localApi
           .storage
           .from("pet-images")
           .upload(filePath, file);
@@ -107,7 +107,7 @@ export default function MapPage() {
         }
 
         // 2) Lấy public URL
-        const { data } = supabase
+        const { data } = localApi
           .storage
           .from("pet-images")
           .getPublicUrl(filePath);
@@ -115,8 +115,8 @@ export default function MapPage() {
         imageUrl = data.publicUrl;
       }
 
-      // 3) Lưu vào Supabase
-      const { data: insertedData, error: insertError } = await supabase
+      // 3) Lưu vào local server
+      const { data: insertedData, error: insertError } = await localApi
         .from("pets")
         .insert([
           {
@@ -234,7 +234,7 @@ export default function MapPage() {
         </div>
 
         <div style={{ marginBottom: 8 }}>
-          <label>Upload ảnh lên Supabase</label>
+          <label>Upload ảnh lên local server</label>
           <br />
           <input type="file" accept="image/*" onChange={handleFileChange} />
           {file && <small style={{ marginTop: 4, display: "block" }}>File chọn: {file.name}</small>}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 
 export default function EditPostPanel({ post, onClose, onSuccess }) {
   const [name, setName] = useState(post.name || "");
@@ -24,9 +24,9 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
       if (file) {
         const ext = file.name.split(".").pop();
         const path = `pets/${Date.now()}.${ext}`;
-        const { error: uploadError } = await supabase.storage.from("pet-images").upload(path, file);
+        const { error: uploadError } = await localApi.storage.from("pet-images").upload(path, file);
         if (uploadError) throw uploadError;
-        nextImage = supabase.storage.from("pet-images").getPublicUrl(path).data?.publicUrl || nextImage;
+        nextImage = localApi.storage.from("pet-images").getPublicUrl(path).data?.publicUrl || nextImage;
       }
 
       const update = {
@@ -43,7 +43,7 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
         update.bank_name = bankName.trim() || null;
       }
 
-      const { error: updateError } = await supabase.from("pets").update(update).eq("id", post.id);
+      const { error: updateError } = await localApi.from("pets").update(update).eq("id", post.id);
       if (updateError) throw updateError;
       onSuccess?.();
     } catch (err) {

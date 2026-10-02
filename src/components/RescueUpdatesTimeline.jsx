@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 
 /**
  * Timeline hiển thị tất cả cập nhật từ người cứu
@@ -15,7 +15,7 @@ export default function RescueUpdatesTimeline({ caseId }) {
       setLoading(true);
       setError("");
 
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await localApi
         .from("rescue_updates")
         .select("*")
         .eq("case_id", caseId)

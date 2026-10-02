@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 
 export default function RescueAppealsList({ caseId }) {
   const [appeals, setAppeals] = useState([]);
@@ -8,7 +8,7 @@ export default function RescueAppealsList({ caseId }) {
   useEffect(() => {
     const loadAppeals = async () => {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await localApi
         .from("rescue_appeals")
         .select("id,title,content,status,created_at")
         .eq("case_id", caseId)

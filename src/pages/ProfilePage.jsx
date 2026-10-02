@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 
 export default function ProfilePage() {
   const { userId } = useParams();
@@ -12,8 +12,8 @@ export default function ProfilePage() {
     const load = async () => {
       setLoading(true);
       const [{ data: p }, { data: ps }] = await Promise.all([
-        supabase.from("profiles").select("id,display_name,email,phone,avatar_url").eq("id", userId).maybeSingle(),
-        supabase.from("pets").select("id,name,category,status,image_url").eq("owner_id", userId).order("created_at", { ascending:false }),
+        localApi.from("profiles").select("id,display_name,email,phone,avatar_url").eq("id", userId).maybeSingle(),
+        localApi.from("pets").select("id,name,category,status,image_url").eq("owner_id", userId).order("created_at", { ascending:false }),
       ]);
       setProfile(p || null);
       setPosts(ps || []);

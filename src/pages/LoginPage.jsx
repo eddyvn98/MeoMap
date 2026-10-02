@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -14,7 +14,7 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await localApi.auth.signInWithPassword({
         email,
         password,
       });
@@ -25,14 +25,14 @@ export default function LoginPage() {
 
       // Ensure profile exists after login
       if (data?.user) {
-        const { data: existingProfile } = await supabase
+        const { data: existingProfile } = await localApi
           .from("profiles")
           .select("id")
           .eq("id", data.user.id)
           .single();
 
         if (!existingProfile) {
-          await supabase.from("profiles").insert({
+          await localApi.from("profiles").insert({
             id: data.user.id,
             email: data.user.email,
             display_name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',

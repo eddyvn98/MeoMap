@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 
 const AuthModal = ({ isOpen, onClose, onSuccess }) => {
   const [mode, setMode] = useState("login"); // "login" | "signup"
@@ -18,7 +18,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
     setMessage("");
 
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error: signInError } = await localApi.auth.signInWithPassword({
         email,
         password,
       });
@@ -27,14 +27,14 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
 
       // Ensure profile exists after login
       if (data?.user) {
-        const { data: existingProfile } = await supabase
+        const { data: existingProfile } = await localApi
           .from("profiles")
           .select("id")
           .eq("id", data.user.id)
           .single();
 
         if (!existingProfile) {
-          await supabase.from("profiles").insert({
+          await localApi.from("profiles").insert({
             id: data.user.id,
             email: data.user.email,
             display_name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
@@ -72,7 +72,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await localApi.auth.signUp({
         email,
         password,
         options: {
@@ -86,18 +86,18 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
 
       // Create profile immediately after signup
       if (data?.user) {
-        await supabase.from("profiles").insert({
+        await localApi.from("profiles").insert({
           id: data.user.id,
           email: data.user.email,
           display_name: name || data.user.email?.split('@')[0] || 'User',
         });
       }
 
-      setMessage("Tạo tài khoản thành công! Vui lòng kiểm tra email xác nhận.");
+      setMessage("Tạo tài khoản local thành công!");
       setTimeout(() => {
+        onSuccess?.();
         resetForm();
-        setMode("login");
-      }, 2000);
+      }, 800);
     } catch (err) {
       setError(err.message || "Tạo tài khoản thất bại");
     } finally {

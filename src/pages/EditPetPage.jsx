@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 
 export default function EditPetPage() {
   const { id } = useParams();
@@ -11,9 +11,9 @@ export default function EditPetPage() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: auth } = await supabase.auth.getUser();
+      const { data: auth } = await localApi.auth.getUser();
       if (!auth?.user) return navigate("/login");
-      const { data } = await supabase.from("pets").select("*").eq("id", id).maybeSingle();
+      const { data } = await localApi.from("pets").select("*").eq("id", id).maybeSingle();
       if (!data || (data.owner_id !== auth.user.id && data.user_id !== auth.user.id)) return navigate("/");
       setPet(data);
       setForm({ name: data.name || "", district: data.district || "", description: data.description || "" });
@@ -24,7 +24,7 @@ export default function EditPetPage() {
   const save = async (e) => {
     e.preventDefault();
     setSaving(true);
-    const { error } = await supabase.from("pets").update({
+    const { error } = await localApi.from("pets").update({
       name: form.name.trim(),
       district: form.district.trim(),
       description: form.description.trim(),

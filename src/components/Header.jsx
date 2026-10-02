@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 
 export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenProfilePanel, onOpenGuide }) {
   const [user, setUser] = useState(null);
@@ -8,13 +8,13 @@ export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenPro
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data?.user || null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user || null));
+    localApi.auth.getUser().then(({ data }) => setUser(data?.user || null));
+    const { data: sub } = localApi.auth.onAuthStateChange((_event, session) => setUser(session?.user || null));
     return () => sub?.subscription?.unsubscribe?.();
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await localApi.auth.signOut();
     navigate("/");
   };
 

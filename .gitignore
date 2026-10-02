@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# MeoMap local runtime data
+server/data/db.json
+server/data/db.json.tmp
+server/data/uploads/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

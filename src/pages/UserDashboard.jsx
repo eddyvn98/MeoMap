@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 import { useAuth } from "../AuthContext";
 
 export default function UserDashboard() {
@@ -15,8 +15,8 @@ export default function UserDashboard() {
     const load = async () => {
       setLoading(true);
       const [{ data: myPosts }, { data: myRescues }] = await Promise.all([
-        supabase.from("pets").select("*").eq("owner_id", user.id).order("created_at", { ascending: false }),
-        supabase.from("pets").select("*").eq("rescuer_id", user.id).eq("category", "rescue").order("created_at", { ascending: false }),
+        localApi.from("pets").select("*").eq("owner_id", user.id).order("created_at", { ascending: false }),
+        localApi.from("pets").select("*").eq("rescuer_id", user.id).eq("category", "rescue").order("created_at", { ascending: false }),
       ]);
       setPosts(myPosts || []);
       setRescues(myRescues || []);

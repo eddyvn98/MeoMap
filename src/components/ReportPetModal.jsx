@@ -8,20 +8,10 @@ import {
   contactLabel,
   contactPlaceholder,
 } from "./report/ReportPetFields";
-
-const EMPTY_FORM = {
-  name: "",
-  category: "lost",
-  description: "",
-  photo: null,
-  lat: null,
-  lng: null,
-  ward: "",
-  street: "",
-  houseNumber: "",
-  contact: "",
-  contactType: "phone",
-};
+import {
+  EMPTY_REPORT_FORM,
+  geocodeReportAddress,
+} from "./report/reportPetModel";
 
 export default function ReportPetModal({
   isOpen,
@@ -29,7 +19,7 @@ export default function ReportPetModal({
   onSubmit,
 }) {
   const [locationMode, setLocationMode] = useState("auto");
-  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [formData, setFormData] = useState(EMPTY_REPORT_FORM);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [locationError, setLocationError] = useState("");
   const photoInputRef = useRef(null);
@@ -71,7 +61,7 @@ export default function ReportPetModal({
 
   const resetForm = () => {
     setLocationMode("auto");
-    setFormData(EMPTY_FORM);
+    setFormData(EMPTY_REPORT_FORM);
     setLocationError("");
     if (photoInputRef.current) photoInputRef.current.value = "";
   };
@@ -88,28 +78,12 @@ export default function ReportPetModal({
     }
 
     try {
-      const query = [
-        formData.houseNumber,
-        formData.street,
-        formData.ward,
-        "Ho Chi Minh City, Vietnam",
-      ]
-        .filter(Boolean)
-        .join(" ");
-
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
-      );
-      const data = await response.json();
-
-      if (!data?.length) {
+      const location = await geocodeReportAddress(formData);
+      if (!location) {
         setLocationError("Không tìm thấy địa chỉ này. Vui lòng kiểm tra lại.");
         return;
       }
-
-      const lat = Math.round(Number(data[0].lat) * 100) / 100;
-      const lng = Math.round(Number(data[0].lon) * 100) / 100;
-      setFormData((current) => ({ ...current, lat, lng }));
+      setFormData((current) => ({ ...current, ...location }));
       setLocationError("");
     } catch (error) {
       console.error("Lỗi geocode:", error);

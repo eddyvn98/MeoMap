@@ -7,9 +7,9 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
   const [category, setCategory] = useState(post.category || "lost");
   const [file, setFile] = useState(null);
   const [imageUrl, setImageUrl] = useState(post.image_url || "");
-  const [bankAccountNumber, setBankAccountNumber] = useState(post.rescuer_bank_account_number || post.bank_account_number || "");
-  const [bankAccountName, setBankAccountName] = useState(post.rescuer_bank_account_name || post.bank_account_name || "");
-  const [bankName, setBankName] = useState(post.rescuer_bank_name || post.bank_name || "");
+  const [bankAccountNumber, setBankAccountNumber] = useState(post.bank_account_number || "");
+  const [bankAccountName, setBankAccountName] = useState(post.bank_account_name || "");
+  const [bankName, setBankName] = useState(post.bank_name || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -38,9 +38,9 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
       };
 
       if (category === "rescue") {
-        update.rescuer_bank_account_number = bankAccountNumber.trim() || null;
-        update.rescuer_bank_account_name = bankAccountName.trim() || null;
-        update.rescuer_bank_name = bankName.trim() || null;
+        update.bank_account_number = bankAccountNumber.trim() || null;
+        update.bank_account_name = bankAccountName.trim() || null;
+        update.bank_name = bankName.trim() || null;
       }
 
       const { error: updateError } = await supabase.from("pets").update(update).eq("id", post.id);

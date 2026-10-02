@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await localApi.auth.signUp({
         email,
         password,
       });
@@ -26,7 +26,7 @@ export default function RegisterPage() {
 
       // Create profile immediately after signup
       if (data?.user) {
-        await supabase.from("profiles").insert({
+        await localApi.from("profiles").insert({
           id: data.user.id,
           email: data.user.email,
           display_name: data.user.email?.split('@')[0] || 'User',

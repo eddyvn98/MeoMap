@@ -14,7 +14,6 @@ import ProfileDrawer from "./components/ProfileDrawer";
 import RescuePetDetail from "./components/RescuePetDetail";
 import LostPetDetail from "./components/LostPetDetail";
 import AdoptPetDetail from "./components/AdoptPetDetail";
-import { useReminderScheduler } from "./hooks/useReminderScheduler";
 import EditPostPanel from "./components/EditPostPanel";
 
 function MapFilters({ filters, setFilters }) {
@@ -238,8 +237,6 @@ export default function App() {
 
   // Listen for global QR modal event
 
-  // Run reminder scheduler periodically (every hour)
-  useReminderScheduler(60 * 60 * 1000);
 
   const loadPets = useCallback(async () => {
     if (!bounds) {

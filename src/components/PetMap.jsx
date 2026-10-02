@@ -149,30 +149,7 @@ const makeStatusIcon = (status, category, imageUrl, pet = {}, currentUserId = nu
 
   const imgSrc = imageUrl || "https://cdn-icons-png.flaticon.com/512/2127/2127645.png";
 
-  // Check for deposit/bounty
-  const hasDeposit = pet.required_deposit && pet.required_deposit > 0;
-  const hasBounty = pet.bounty_amount && pet.bounty_amount > 0;
   const isOwner = currentUserId && pet.owner_id === currentUserId;
-  
-  // Format money (100000 -> 100k)
-  const formatMoney = (amount) => {
-    if (amount >= 1000000) return `${(amount / 1000000).toFixed(1)}tr`;
-    if (amount >= 1000) return `${Math.floor(amount / 1000)}k`;
-    return amount;
-  };
-  
-  // Money badge with amount text and pulsing animation
-  // Note: All users can see bounty amounts on lost/rescue posts
-  let moneyBadge = '';
-  if (cat === 'lost' && hasBounty) {
-    moneyBadge = `<div style="position:absolute;top:-8px;right:-8px;background:#fbbf24;color:#fff;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.4);white-space:nowrap;animation:pulse-money 2s infinite;">🎁 ${formatMoney(pet.bounty_amount)}</div>`;
-  } else if (cat === 'rescue' && hasBounty) {
-    console.log('🔥 Rescue with bounty:', { category: cat, bountyAmount: pet.bounty_amount, hasBounty });
-    moneyBadge = `<div style="position:absolute;top:-8px;right:-8px;background:#ef4444;color:#fff;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.4);white-space:nowrap;animation:pulse-money 2s infinite;">🔥 ${formatMoney(pet.bounty_amount)}</div>`;
-  } else if (cat === 'rescue') {
-    console.log('🟠 Rescue WITHOUT bounty:', { category: cat, bountyAmount: pet.bounty_amount, hasBounty });
-  }
-  // Removed deposit badge for adopt category (internal info only)
 
   // Owner badge - show "OWNER" text instead of icon
   const ownerBadge = isOwner ? '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#8b5cf6;color:#fff;padding:3px 10px;border-radius:12px;font-size:9px;font-weight:bold;box-shadow:0 3px 8px rgba(0,0,0,0.5);white-space:nowrap;letter-spacing:0.5px;">OWNER</div>' : '';
@@ -188,7 +165,6 @@ const makeStatusIcon = (status, category, imageUrl, pet = {}, currentUserId = nu
           ${badgeText}
         </div>
         ${ownerBadge}
-        ${moneyBadge}
       </div>
     `,
     iconSize: [112, 130],
@@ -198,9 +174,9 @@ const makeStatusIcon = (status, category, imageUrl, pet = {}, currentUserId = nu
 };
 
 const tooltipTextByCategory = (cat) => {
-  if (cat === "adopt") return "Nhận nuôi miễn phí, có cọc đảm bảo an toàn.";
-  if (cat === "lost") return "Mèo đi lạc – báo tin để nhận thưởng.";
-  if (cat === "rescue") return "Cứu hộ – mọi người cùng hỗ trợ.";
+  if (cat === "adopt") return "Nhận nuôi – liên hệ trực tiếp người đăng.";
+  if (cat === "lost") return "Đi lạc – liên hệ trực tiếp nếu có thông tin.";
+  if (cat === "rescue") return "Cứu hộ – nhận ca và hỗ trợ trực tiếp người cứu.";
   return "Bài đăng thú cưng";
 };
 

@@ -74,9 +74,6 @@ export default function ReportPage() {
         lng: position.lng,
         image_url: imageUrl,
         created_at: new Date().toISOString(),
-        required_deposit: null,
-        allow_custom_deposit: true,
-        bounty_amount: null,
       };
 
       console.log("Attempting to insert pet:", petData);

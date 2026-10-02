@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 
 export default function AdoptPetDetail({ pet, user, isOwner }) {
   const [owner, setOwner] = useState(null);
@@ -9,7 +9,7 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
   useEffect(() => {
     const loadOwner = async () => {
       if (!pet.owner_id) return;
-      const { data } = await supabase
+      const { data } = await localApi
         .from("profiles")
         .select("display_name,email,phone")
         .eq("id", pet.owner_id)
@@ -23,7 +23,7 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
     if (!isOwner || isClosed) return;
     if (!confirm("Đóng bài nhận nuôi này? Bài sẽ được đánh dấu là đã kết thúc.")) return;
     setClosing(true);
-    const { error } = await supabase
+    const { error } = await localApi
       .from("pets")
       .update({ status: "closed" })
       .eq("id", pet.id)

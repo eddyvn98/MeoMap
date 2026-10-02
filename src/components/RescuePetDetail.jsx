@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 import RescueAppealsList from "./RescueAppealsList";
 
 export default function RescuePetDetail({ pet, user, isOwner }) {
@@ -19,7 +19,7 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
     if (!confirm("Bạn xác nhận nhận ca cứu hộ này?")) return;
 
     setBusy(true);
-    const { data: claimed, error } = await supabase.rpc("claim_rescue_case", {
+    const { data: claimed, error } = await localApi.rpc("claim_rescue_case", {
       p_case_id: pet.id,
     });
     setBusy(false);
@@ -33,7 +33,7 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
     if (!isRescuer) return;
 
     setBusy(true);
-    const { data: saved, error } = await supabase.rpc("update_rescue_support_info", {
+    const { data: saved, error } = await localApi.rpc("update_rescue_support_info", {
       p_case_id: pet.id,
       p_bank_account_number: bank.bank_account_number,
       p_bank_account_name: bank.bank_account_name,
@@ -51,7 +51,7 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
     if (!isRescuer || !appeal.trim()) return;
 
     setBusy(true);
-    const { error } = await supabase.from("rescue_appeals").insert({
+    const { error } = await localApi.from("rescue_appeals").insert({
       case_id: pet.id,
       rescuer_id: user.id,
       title: "Kêu gọi hỗ trợ",
@@ -71,7 +71,7 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
     if (!confirm("Kết thúc ca cứu hộ này?")) return;
 
     setBusy(true);
-    const { data: closed, error } = await supabase.rpc("close_rescue_case_simple", {
+    const { data: closed, error } = await localApi.rpc("close_rescue_case_simple", {
       p_case_id: pet.id,
     });
     setBusy(false);

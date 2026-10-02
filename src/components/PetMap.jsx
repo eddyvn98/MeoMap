@@ -149,30 +149,7 @@ const makeStatusIcon = (status, category, imageUrl, pet = {}, currentUserId = nu
 
   const imgSrc = imageUrl || "https://cdn-icons-png.flaticon.com/512/2127/2127645.png";
 
-  // Check for deposit/bounty
-  const hasDeposit = pet.required_deposit && pet.required_deposit > 0;
-  const hasBounty = pet.bounty_amount && pet.bounty_amount > 0;
   const isOwner = currentUserId && pet.owner_id === currentUserId;
-  
-  // Format money (100000 -> 100k)
-  const formatMoney = (amount) => {
-    if (amount >= 1000000) return `${(amount / 1000000).toFixed(1)}tr`;
-    if (amount >= 1000) return `${Math.floor(amount / 1000)}k`;
-    return amount;
-  };
-  
-  // Money badge with amount text and pulsing animation
-  // Note: All users can see bounty amounts on lost/rescue posts
-  let moneyBadge = '';
-  if (cat === 'lost' && hasBounty) {
-    moneyBadge = `<div style="position:absolute;top:-8px;right:-8px;background:#fbbf24;color:#fff;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.4);white-space:nowrap;animation:pulse-money 2s infinite;">🎁 ${formatMoney(pet.bounty_amount)}</div>`;
-  } else if (cat === 'rescue' && hasBounty) {
-    console.log('🔥 Rescue with bounty:', { category: cat, bountyAmount: pet.bounty_amount, hasBounty });
-    moneyBadge = `<div style="position:absolute;top:-8px;right:-8px;background:#ef4444;color:#fff;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.4);white-space:nowrap;animation:pulse-money 2s infinite;">🔥 ${formatMoney(pet.bounty_amount)}</div>`;
-  } else if (cat === 'rescue') {
-    console.log('🟠 Rescue WITHOUT bounty:', { category: cat, bountyAmount: pet.bounty_amount, hasBounty });
-  }
-  // Removed deposit badge for adopt category (internal info only)
 
   // Owner badge - show "OWNER" text instead of icon
   const ownerBadge = isOwner ? '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#8b5cf6;color:#fff;padding:3px 10px;border-radius:12px;font-size:9px;font-weight:bold;box-shadow:0 3px 8px rgba(0,0,0,0.5);white-space:nowrap;letter-spacing:0.5px;">OWNER</div>' : '';
@@ -188,7 +165,6 @@ const makeStatusIcon = (status, category, imageUrl, pet = {}, currentUserId = nu
           ${badgeText}
         </div>
         ${ownerBadge}
-        ${moneyBadge}
       </div>
     `,
     iconSize: [112, 130],
@@ -198,9 +174,9 @@ const makeStatusIcon = (status, category, imageUrl, pet = {}, currentUserId = nu
 };
 
 const tooltipTextByCategory = (cat) => {
-  if (cat === "adopt") return "Nhận nuôi miễn phí, có cọc đảm bảo an toàn.";
-  if (cat === "lost") return "Mèo đi lạc – báo tin để nhận thưởng.";
-  if (cat === "rescue") return "Cứu hộ – mọi người cùng hỗ trợ.";
+  if (cat === "adopt") return "Nhận nuôi – liên hệ trực tiếp người đăng.";
+  if (cat === "lost") return "Đi lạc – liên hệ trực tiếp nếu có thông tin.";
+  if (cat === "rescue") return "Cứu hộ – nhận ca và hỗ trợ trực tiếp người cứu.";
   return "Bài đăng thú cưng";
 };
 
@@ -220,7 +196,6 @@ export default forwardRef(function PetMap({
   const [center] = useState(defaultCenter);
   const [selectedPos, setSelectedPos] = useState(null);
   const [map, setMap] = useState(null);
-  const [adoptRequests, setAdoptRequests] = useState({});
   const [openPopupMarkerRef, setOpenPopupMarkerRef] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
 
@@ -305,49 +280,6 @@ export default forwardRef(function PetMap({
     );
   };
 
-  useEffect(() => {
-    if (!pets || pets.length === 0) return;
-    const adoptPets = pets.filter(p => p.category === 'adopt');
-    if (adoptPets.length === 0) return;
-
-    const load = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('adoption_requests')
-          .select('pet_id, status, receiver_confirmed_checkin, checkin_required_at')
-          .in('pet_id', adoptPets.map(p => p.id || p.pet_id))
-          .in('status', ['delivered', 'completed']);
-
-        // If table doesn't exist (404 PGRST205), silently skip
-        if (error) {
-          if (error.code === 'PGRST205') {
-            console.warn('[PetMap] adoption_requests table not found; skipping badge load');
-            return;
-          }
-          console.error('[PetMap] Error loading adoption requests:', error);
-          return;
-        }
-
-        const map = {};
-        (data || []).forEach(r => {
-          map[r.pet_id] = r;
-        });
-        setAdoptRequests(map);
-      } catch (err) {
-        console.warn('[PetMap] Exception loading adoptions:', err.message);
-      }
-    };
-    load();
-  }, [pets]);
-
-  const computeBadge = (request) => {
-    if (!request) return null;
-    const due = request.checkin_required_at ? new Date(request.checkin_required_at) : null;
-    const now = new Date();
-    if (due && now > due) return { label: '🟥', bg: '#fee2e2' };
-    if (request.receiver_confirmed_checkin) return { label: '🟨', bg: '#fef3c7' };
-    return { label: '🟧', bg: '#fef3c7' };
-  };
 
   useImperativeHandle(ref, () => map);
 
@@ -427,43 +359,8 @@ export default forwardRef(function PetMap({
 
           const petId = p.id || p.pet_id;
 
-          // Ẩn pet adopt nếu đã có người nhận (delivered/completed)
-          const req = adoptRequests[petId];
-          if (p.category === 'adopt' && req && (req.status === 'delivered' || req.status === 'completed')) {
-            return null; // Không hiển thị pet này trên map
-          }
-
-          const badge = req ? computeBadge(req) : null;
-
           let markerIcon = makeStatusIcon(p.status, p.category, p.image_url, p, currentUserId);
 
-          // If adopt pet with follow-up badge, overlay badge on marker
-          if (badge) {
-            const imgSrc = p.image_url || "https://cdn-icons-png.flaticon.com/512/2127/2127645.png";
-            const isOwner = currentUserId && p.owner_id === currentUserId;
-            const ownerBadge = isOwner ? '<div style="position:absolute;top:-8px;left:-8px;width:24px;height:24px;border-radius:50%;background:#8b5cf6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.4);">👤</div>' : '';
-            
-            markerIcon = L.divIcon({
-              className: "pet-marker-icon",
-              html: `
-                <div style="position:relative;width:80px;height:80px;">
-                  <div style="width:80px;height:80px;border-radius:50%;overflow:hidden;border:5px solid #10b981;box-shadow:0 4px 12px rgba(0,0,0,0.3);background:#fff;">
-                    <img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;" />
-                  </div>
-                  <div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;padding:4px 12px;border-radius:14px;font-size:11px;font-weight:bold;white-space:nowrap;box-shadow:0 3px 6px rgba(0,0,0,0.4);">
-                    Adopt
-                  </div>
-                  <div style="position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;background:${badge.bg};display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
-                    ${badge.label}
-                  </div>
-                  ${ownerBadge}
-                </div>
-              `,
-              iconSize: [112, 130],
-              iconAnchor: [56, 130],
-              popupAnchor: [0, -130],
-            });
-          }
 
           return (
             <Marker

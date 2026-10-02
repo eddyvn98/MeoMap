@@ -14,9 +14,7 @@ import ProfileDrawer from "./components/ProfileDrawer";
 import RescuePetDetail from "./components/RescuePetDetail";
 import LostPetDetail from "./components/LostPetDetail";
 import AdoptPetDetail from "./components/AdoptPetDetail";
-import { useReminderScheduler } from "./hooks/useReminderScheduler";
 import EditPostPanel from "./components/EditPostPanel";
-import QrConfirmModal from "./components/QrConfirmModal";
 
 function MapFilters({ filters, setFilters }) {
   const [expanded, setExpanded] = useState(false);
@@ -216,8 +214,6 @@ export default function App() {
   });
   const [showBanner, setShowBanner] = useState(null);
   const [globalEditingPost, setGlobalEditingPost] = useState(null);
-  const [qrModalOpen, setQrModalOpen] = useState(false);
-  const [qrPayload, setQrPayload] = useState(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -240,17 +236,7 @@ export default function App() {
   }, []);
 
   // Listen for global QR modal event
-  useEffect(() => {
-    const handler = (e) => {
-      setQrPayload(e.detail);
-      setQrModalOpen(true);
-    };
-    window.addEventListener("open-qr-modal", handler);
-    return () => window.removeEventListener("open-qr-modal", handler);
-  }, []);
 
-  // Run reminder scheduler periodically (every hour)
-  useReminderScheduler(60 * 60 * 1000);
 
   const loadPets = useCallback(async () => {
     if (!bounds) {
@@ -299,33 +285,6 @@ export default function App() {
     }
 
     let newPets = data || [];
-
-    // Filter out adopt pets that already have delivered/completed adoption requests
-    if (newPets.length > 0) {
-      const adoptPetIds = newPets
-        .filter(p => p.category === 'adopt')
-        .map(p => p.id);
-      
-      if (adoptPetIds.length > 0) {
-        try {
-          const { data: adoptedRequests, error: adoptError } = await supabase
-            .from('adoption_requests')
-            .select('pet_id')
-            .in('pet_id', adoptPetIds)
-            .in('status', ['delivered', 'completed']);
-          
-          if (!adoptError && adoptedRequests && adoptedRequests.length > 0) {
-            const adoptedPetIds = new Set(adoptedRequests.map(r => r.pet_id));
-            newPets = newPets.filter(p => {
-              // Giữ lại pet nếu không phải adopt hoặc chưa có người nhận
-              return p.category !== 'adopt' || !adoptedPetIds.has(p.id);
-            });
-          }
-        } catch (err) {
-          console.warn('[App] Error filtering adopted pets:', err.message);
-        }
-      }
-    }
 
     // Client-side search filter by name
     if (filters.searchName && filters.searchName.trim()) {
@@ -462,9 +421,6 @@ export default function App() {
           description: formData.description,
           image_url: imageUrl,
           status: "available",
-          required_deposit: null,
-          allow_custom_deposit: true,
-          bounty_amount: null,
           owner_id: userData.user.id,
           created_at: new Date().toISOString(),
         },
@@ -492,19 +448,11 @@ export default function App() {
       ],
     },
     {
-      title: "Tiền cọc hoạt động ra sao?",
+      title: "MeoMap không quản lý tiền",
       bullets: [
-        "Khuyến khích dùng cọc để lọc người xấu",
-        "Người nhận được hoàn cọc nếu chăm mèo tốt",
-        "Người đăng nhận cọc nếu người nhận bị đánh giá không tốt",
-      ],
-    },
-    {
-      title: "Tiền thưởng Lost & Rescue",
-      bullets: [
-        "Chủ mèo lạc treo thưởng để khuyến khích tìm kiếm",
-        "Bài cứu hộ được cộng đồng treo thưởng để tăng động lực cứu, cập nhật tình hình",
-        "Tất cả minh bạch qua hệ thống ví",
+        "Nhận nuôi và đi lạc chỉ đăng, liên hệ trực tiếp và đóng case",
+        "Cứu hộ: người cứu tự đăng lời kêu gọi và thông tin nhận hỗ trợ",
+        "Mọi khoản hỗ trợ chuyển trực tiếp cho người cứu ngoài MeoMap",
       ],
     },
   ];
@@ -1017,7 +965,6 @@ export default function App() {
       <QuickGuideModal isOpen={showGuideModal} onClose={() => setShowGuideModal(false)} />
 
       {/* Global QR Modal */}
-      <QrConfirmModal isOpen={qrModalOpen} onClose={() => setQrModalOpen(false)} payload={qrPayload} />
 
       {/* First-Click Banner */}
       {showBanner && (

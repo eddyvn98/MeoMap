@@ -1,45 +1,9 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient';
-
 export default function PetList({
   pets,
   selectedPetId,
   setSelectedPetId,
   onFocusPet,
 }) {
-  const [adoptRequests, setAdoptRequests] = useState({});
-
-  useEffect(() => {
-    if (!pets || pets.length === 0) return;
-    const adoptPets = pets.filter(p => p.category === 'adopt');
-    if (adoptPets.length === 0) return;
-
-    const load = async () => {
-      const { data, error } = await supabase
-        .from('adoption_requests')
-        .select('pet_id, status, receiver_confirmed_checkin, checkin_required_at')
-        .in('pet_id', adoptPets.map(p => p.id || p.pet_id))
-        .eq('status', 'delivered');
-
-      if (error) { console.error(error); return; }
-      const map = {};
-      (data || []).forEach(r => {
-        map[r.pet_id] = r;
-      });
-      setAdoptRequests(map);
-    };
-    load();
-  }, [pets]);
-
-  const computeBadge = (request) => {
-    if (!request) return null;
-    const due = request.checkin_required_at ? new Date(request.checkin_required_at) : null;
-    const now = new Date();
-    if (due && now > due) return { label: '🟥 Quá hạn', bg: '#fee2e2', color: '#991b1b' };
-    if (request.receiver_confirmed_checkin) return { label: '🟨 Chờ chủ', bg: '#fef3c7', color: '#92400e' };
-    return { label: '🟧 Chờ xác nhận', bg: '#fef3c7', color: '#92400e' };
-  };
-
   if (!pets || pets.length === 0) {
     return (
       <div style={{ padding: 12, fontSize: 12, color: "#6b7280" }}>
@@ -74,8 +38,6 @@ export default function PetList({
             ? "Cứu hộ"
             : "Khác";
 
-        const req = adoptRequests[petId];
-        const badge = req ? computeBadge(req) : null;
 
         return (
           <div
@@ -98,11 +60,6 @@ export default function PetList({
             <div style={{ fontSize: 11, color: "#6b7280" }}>
               Trạng thái: {pet.status || "-"}
             </div>
-            {badge && (
-              <div style={{ marginTop: 6, display: 'inline-flex', padding: '3px 8px', borderRadius: 12, background: badge.bg, color: badge.color, fontSize: 10, fontWeight: 600 }}>
-                {badge.label}
-              </div>
-            )}
           </div>
         );
       })}

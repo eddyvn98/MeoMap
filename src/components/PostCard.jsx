@@ -107,9 +107,7 @@ export default function PostCard({
                 const link = `${window.location.origin}/pet/${post.id}`;
                 const emoji = post.category === 'adopt' ? '💚' : post.category === 'lost' ? '🆘' : '🔥';
                 const action = post.category === 'adopt' ? 'MÈO CẦN NHÀ MỚI!' : post.category === 'lost' ? 'GIÚP TÌM MÈO!' : 'CẦN CỨU HỘ!';
-                const money = post.category === 'adopt' && post.required_deposit ? `\n💰 Cọc: ${post.required_deposit.toLocaleString()}đ` : 
-                             (post.category !== 'adopt' && post.bounty_amount ? `\n🎁 Thưởng: ${post.bounty_amount.toLocaleString()}đ` : '');
-                const message = `${emoji} ${action}\n\n🐱 ${post.name}\n${post.description ? `📝 ${post.description.substring(0, 80)}...\n` : ''}${money}\n\n📍 ${link}`;
+                const message = `${emoji} ${action}\n\n🐱 ${post.name}\n${post.description ? `📝 ${post.description.substring(0, 80)}...\n` : ''}\n\n📍 ${link}`;
                 
                 if (navigator.share) {
                   navigator.share({ 

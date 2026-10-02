@@ -174,7 +174,7 @@ export default function HomePage() {
           <ul style={{ fontSize: 14, lineHeight: 1.6, color: "#555" }}>
             <li>Chọn các tiêu chí lọc để tìm bé yêu của bạn</li>
             <li>Bấm "Tìm kiếm trên bản đồ" để xem vị trí các bé trên bản đồ</li>
-            <li>Click vào marker hoặc thẻ mèo để xem chi tiết và đặt cọc</li>
+            <li>Click vào marker hoặc thẻ thú cưng để xem chi tiết và liên hệ</li>
             <li>Nếu tìm được bé của mình, hãy báo cáo để cập nhật tình trạng</li>
           </ul>
         </div>

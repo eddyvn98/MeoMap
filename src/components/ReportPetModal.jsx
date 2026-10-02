@@ -471,7 +471,9 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
               </select>
             </div>
 
-            <div style={{ marginBottom: "16px", padding: "10px", background: "#eff6ff", borderRadius: "8px", fontSize: "12px", color: "#1e40af" }}>MeoMap không thu cọc, giữ thưởng hoặc nhận tiền quyên góp.</div>\n\n            <div style={{ marginBottom: "16px" }}>
+            <div style={{ marginBottom: "16px", padding: "10px", background: "#eff6ff", borderRadius: "8px", fontSize: "12px", color: "#1e40af" }}>MeoMap không thu cọc, giữ thưởng hoặc nhận tiền quyên góp.</div>
+
+            <div style={{ marginBottom: "16px" }}>
               <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "14px" }}>
                 Mô tả chi tiết
               </label>

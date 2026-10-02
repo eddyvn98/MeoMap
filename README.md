@@ -1,195 +1,47 @@
-# 🐱 MeoMap - Hệ thống Bản đồ Thú cưng
+# MeoMap
 
-MeoMap là nền tảng bản đồ tương tác giúp cộng đồng tìm kiếm, nhận nuôi và cứu hộ thú cưng. Dự án được xây dựng với React, Leaflet Maps, và Supabase.
+MeoMap là web app cộng đồng để đăng và tìm các case thú cưng theo bản đồ.
 
-## 🎯 Tính năng chính
+## Luồng sản phẩm
 
-### 📍 Bản đồ tương tác
-- **Carto Voyager tiles**: Giao diện bản đồ hiện đại, dễ nhìn
-- **Real-time markers**: Hiển thị thú cưng theo category (adopt/lost/rescue)
-- **Left panel**: Xem chi tiết nhanh mà không rời khỏi bản đồ
-- **Filters**: Lọc theo trạng thái, màu, loại, khu vực
+### Nhận nuôi
+Đăng case → người quan tâm liên hệ trực tiếp → chủ bài đóng case khi đã tìm được người nhận.
 
-### 🏠 Hệ thống Nhận nuôi (Adoption)
-- **Đăng bài nhận nuôi** với ảnh, mô tả, vị trí
-- **Đăng ký nhận nuôi** ngay trong left panel
-- **Hệ thống cọc** (deposit): Người nhận trả cọc, được hoàn lại khi giao thành công
-- **Quản lý requests**: Chủ bài duyệt/từ chối, liên hệ người nhận
-- **Thông tin liên hệ**: Tự động hiện khi request được chấp nhận
+### Đi lạc
+Đăng case → cộng đồng liên hệ trực tiếp khi có thông tin → chủ bài đóng case khi đã tìm thấy.
 
-### 🔍 Hệ thống Thú cưng đi lạc (Lost)
-- **Báo mất thú cưng** với vị trí cuối cùng
-- **Sighting reports**: Cộng đồng báo nhìn thấy
-- **Ảnh bằng chứng**: Upload ảnh khi thấy
-- **Verify/reject**: Chủ bài xác minh báo cáo
+### Cứu hộ
+Người dùng nhận ca → cập nhật tình hình → tự đăng lời kêu gọi và thông tin nhận hỗ trợ → đóng ca khi hoàn thành.
 
-### 🚒 Hệ thống Cứu hộ (Rescue)
-- **Bounty system**: Treo thưởng để khuyến khích cứu hộ
-- **Donation system**: Quyên góp hỗ trợ chi phí điều trị
-- **Timeline hoạt động**: Theo dõi tiến trình cứu hộ
-- **Donor list**: Danh sách người quyên góp
+## Nguyên tắc tài chính
 
-### 💰 Hệ thống Ví (Wallet)
-- **Ví cá nhân**: Lưu trữ credit cho giao dịch
-- **Split calculation**: Tự động chia tiền từ ví + tiền mặt
-- **Transaction history**: Lịch sử giao dịch đầy đủ
-- **Refund system**: Tự động hoàn cọc khi giao thành công
+MeoMap không quản lý tiền của người dùng:
+- không ví;
+- không cọc;
+- không voucher;
+- không cửa hàng;
+- không giữ hoặc trả thưởng;
+- không nhận, đối soát hoặc giải ngân quyên góp.
 
-### 👤 Profile & Authentication
-- **Supabase Auth**: Đăng nhập/đăng ký
-- **Profile management**: Quản lý thông tin cá nhân
-- **User reputation**: Điểm uy tín (tính năng mở rộng)
+Với cứu hộ, người cứu có thể đăng thông tin tài khoản của chính mình. Người ủng hộ chuyển trực tiếp cho người cứu ngoài hệ thống MeoMap.
 
-## 🛠️ Tech Stack
+## Công nghệ
 
-- **Frontend**: React 18, React Router, Vite
-- **Maps**: Leaflet, React-Leaflet
-- **Backend**: Supabase (PostgreSQL, Auth, Storage, RPC)
-- **Styling**: Tailwind CSS (utility-first)
-- **Icons**: Emojis + custom SVG
+- React + Vite
+- React Router
+- Leaflet / React Leaflet
+- Supabase Auth, Database và Storage
 
-## 📂 Cấu trúc dự án
+## Route chính
 
-```
-meo-map/
-├── src/
-│   ├── components/
-│   │   ├── PetMap.jsx              # Bản đồ chính với markers
-│   │   ├── AdoptionDetail.jsx      # Chi tiết adoption (left panel)
-│   │   ├── LostPetDetail.jsx       # Chi tiết lost pet
-│   │   ├── RescuePetDetail.jsx     # Chi tiết rescue pet
-│   │   ├── Header.jsx              # Header với auth
-│   │   ├── BottomNav.jsx           # Navigation bar
-│   │   └── ...
-│   ├── pages/
-│   │   ├── PetDetailPage.jsx       # Trang chi tiết đầy đủ
-│   │   ├── MyWalletPage.jsx        # Trang ví cá nhân
-│   │   ├── AdoptApplicantsPage.jsx # Danh sách người đăng ký
-│   │   └── ...
-│   ├── App.jsx                     # Main app với map & left panel
-│   ├── router.jsx                  # Route configuration
-│   └── supabaseClient.js           # Supabase setup
-├── database/                       # SQL schemas
-│   ├── pets.sql
-│   ├── adoption_requests.sql
-│   ├── deposits.sql
-│   ├── wallet_transactions.sql
-│   └── ...
-└── public/                         # Static assets
-```
+- `/`, `/map` — bản đồ và danh sách case
+- `/pet/:id` — chi tiết case
+- `/report` — đăng case
+- `/account` — case của tôi
+- `/rescuer` — tìm và quản lý ca cứu hộ
+- `/profile/:userId` — hồ sơ người dùng
+- `/how-it-works`, `/faq` — hướng dẫn
 
-## 🚀 Khởi động dự án
+## Database
 
-### Prerequisites
-- Node.js 18+
-- npm hoặc yarn
-- Supabase account
-
-### Installation
-
-```bash
-# Clone repository
-git clone https://github.com/eddyvn98/MeoMap.git
-cd meo-map
-
-# Install dependencies
-npm install
-
-# Setup environment variables
-cp .env.example .env
-# Thêm VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY vào .env
-
-# Start development server
-npm run dev
-```
-
-### Database Setup
-
-1. Tạo Supabase project mới
-2. Chạy các SQL files trong `database/` theo thứ tự:
-   - `pets.sql`
-   - `profiles.sql`
-   - `adoption_requests.sql`
-   - `deposits.sql`
-   - `wallet_transactions.sql`
-   - `adoption_activities.sql`
-   - Các files khác...
-
-3. Chạy migrations (nếu có):
-   - `ADD_CATEGORY_COLUMN.sql`
-   - `ADD_WALLET_COLUMNS_TO_DEPOSITS.sql`
-   - `WALLET_TRANSACTIONS_MIGRATION.sql`
-
-## 📋 User Flow
-
-### Flow nhận nuôi (Adoption)
-1. User A đăng bài nhận nuôi → Marker hiện trên map (xanh lá)
-2. User B click marker → Popup hiện → Click "Xem chi tiết"
-3. Left panel mở → Hiển thị form đăng ký
-4. User B điền lời nhắn → Gửi request
-5. User A vào "Danh sách người đăng ký" → Duyệt/từ chối
-6. Nếu chấp nhận → User B thấy thông tin liên hệ User A
-7. User B trả cọc → Giao mèo → Hoàn cọc
-
-### Flow thú cưng đi lạc (Lost)
-1. User đăng bài mất mèo → Marker đỏ trên map
-2. Cộng đồng nhìn thấy → Báo sighting với ảnh
-3. Chủ bài verify → Update vị trí
-4. Tìm thấy → Mark as found
-
-### Flow cứu hộ (Rescue)
-1. User đăng bài cứu hộ → Marker cam trên map
-2. Treo bounty → Thu hút người cứu
-3. Cộng đồng donate → Hỗ trợ chi phí
-4. Upload ảnh/hóa đơn → Minh bạch
-5. Kết thúc ca → Tiền về ví
-
-## 🔧 Các sửa lỗi gần đây
-
-### Infinite render loops (Fixed)
-- Wrapped `handleBoundsChange` với `useCallback`
-- Remove dependencies gây re-render vô hạn
-
-### 404 adoption_activities errors (Fixed)
-- Thêm error handling khi table chưa tồn tại
-- Graceful fallback với empty data
-
-### Adoption detail rendering (Fixed)
-- Tách riêng `AdoptionDetail` component
-- Hiển thị đầy đủ trong left panel
-
-### Wallet flow issues (Fixed)
-- Fix transaction history display
-- Split calculation logic
-- Re-fetch after decrease
-
-## 📚 Documentation
-
-- `WALLET_README.md` - Hướng dẫn hệ thống ví
-- `DEBUG_ADOPTION_DETAIL_PAGE.md` - Troubleshooting adoption
-- `database/README.md` - Database schema guide
-
-## 🤝 Contributing
-
-1. Fork repository
-2. Create feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open Pull Request
-
-## 📝 License
-
-MIT License - xem file LICENSE để biết thêm chi tiết
-
-## 👥 Team
-
-- **Owner**: eddyvn98
-- **Repository**: [MeoMap](https://github.com/eddyvn98/MeoMap)
-
-## 📞 Support
-
-Nếu có vấn đề hoặc câu hỏi, vui lòng tạo issue trên GitHub.
-
----
-
-Made with ❤️ for the pet community 🐱🐶
+Schema đang được đơn giản hóa quanh các bảng cốt lõi như `profiles`, `pets`, cùng dữ liệu cập nhật cứu hộ. Các bảng tài chính legacy đã bị loại khỏi codebase và có migration cleanup riêng.

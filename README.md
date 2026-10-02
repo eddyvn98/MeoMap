@@ -1,47 +1,91 @@
-# MeoMap
+# MeoMap — Local Server
 
-MeoMap là web app cộng đồng để đăng và tìm các case thú cưng theo bản đồ.
+MeoMap chạy hoàn toàn trên máy/local server. Không dùng Supabase, Firebase hoặc database cloud.
+
+## Kiến trúc
+
+```
+Browser / LAN clients
+        │
+        ▼
+Vite/React frontend
+        │  /api + /uploads
+        ▼
+Node local server (server/index.js)
+        │
+        ├── server/data/db.json
+        └── server/data/uploads/
+```
+
+Backend chỉ dùng module built-in của Node.js, không cần Docker và không cần cài database riêng.
 
 ## Luồng sản phẩm
 
-### Nhận nuôi
-Đăng case → người quan tâm liên hệ trực tiếp → chủ bài đóng case khi đã tìm được người nhận.
+- **Nhận nuôi:** đăng case → liên hệ trực tiếp → chủ bài đóng case.
+- **Đi lạc:** đăng case → liên hệ trực tiếp → chủ bài đóng case.
+- **Cứu hộ:** user nhận ca → tự đăng lời kêu gọi + thông tin tài khoản → cộng đồng hỗ trợ trực tiếp → đóng ca.
+- MeoMap không quản lý ví, cọc, voucher, cửa hàng hoặc tiền quyên góp.
 
-### Đi lạc
-Đăng case → cộng đồng liên hệ trực tiếp khi có thông tin → chủ bài đóng case khi đã tìm thấy.
+## Cài đặt
 
-### Cứu hộ
-Người dùng nhận ca → cập nhật tình hình → tự đăng lời kêu gọi và thông tin nhận hỗ trợ → đóng ca khi hoàn thành.
+Yêu cầu Node.js 20+.
 
-## Nguyên tắc tài chính
+```bash
+npm install
+npm run dev
+```
 
-MeoMap không quản lý tiền của người dùng:
-- không ví;
-- không cọc;
-- không voucher;
-- không cửa hàng;
-- không giữ hoặc trả thưởng;
-- không nhận, đối soát hoặc giải ngân quyên góp.
+- Web dev: `http://localhost:5173`
+- Local API: `http://localhost:8787`
+- Health check: `http://localhost:8787/api/health`
 
-Với cứu hộ, người cứu có thể đăng thông tin tài khoản của chính mình. Người ủng hộ chuyển trực tiếp cho người cứu ngoài hệ thống MeoMap.
+`npm run dev` chạy đồng thời frontend và local API.
 
-## Công nghệ
+## Chạy như local server production
 
-- React + Vite
-- React Router
-- Leaflet / React Leaflet
-- Supabase Auth, Database và Storage
+```bash
+npm install
+npm run build
+npm start
+```
 
-## Route chính
+Sau khi build, Node server tự phục vụ thư mục `dist/`, API và ảnh upload trên cùng một cổng (mặc định `8787`).
 
-- `/`, `/map` — bản đồ và danh sách case
-- `/pet/:id` — chi tiết case
-- `/report` — đăng case
-- `/account` — case của tôi
-- `/rescuer` — tìm và quản lý ca cứu hộ
-- `/profile/:userId` — hồ sơ người dùng
-- `/how-it-works`, `/faq` — hướng dẫn
+Máy khác trong LAN có thể truy cập:
 
-## Database
+```
+http://IP-MAY-CHU:8787
+```
 
-Schema đang được đơn giản hóa quanh các bảng cốt lõi như `profiles`, `pets`, cùng dữ liệu cập nhật cứu hộ. Các bảng tài chính legacy đã bị loại khỏi codebase và có migration cleanup riêng.
+Nếu dùng Cloudflare Tunnel, tunnel trực tiếp tới `http://localhost:8787`.
+
+## Dữ liệu
+
+Dữ liệu runtime được tạo tự động:
+
+- `server/data/db.json`: users, profiles, cases, rescue appeals/updates, sessions.
+- `server/data/uploads/`: ảnh upload.
+
+Hai vị trí này đã được git-ignore để không đẩy dữ liệu cá nhân lên GitHub.
+
+### Backup
+
+Chỉ cần sao lưu:
+
+```
+server/data/db.json
+server/data/uploads/
+```
+
+## Auth local
+
+- Tài khoản được lưu trong local JSON database.
+- Password không lưu plaintext; server hash bằng `scrypt`.
+- Session token có hạn 30 ngày và lưu local.
+- Không có xác nhận email vì không còn dịch vụ email/auth cloud.
+
+## API nội bộ
+
+Frontend dùng `src/localClient.js`. Local client cung cấp auth, query, upload và các action rescue cần thiết qua `/api`.
+
+Không cần API key hoặc secret cloud.

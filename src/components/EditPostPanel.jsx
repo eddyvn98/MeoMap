@@ -6,7 +6,7 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
   const [description, setDescription] = useState(post.description || "");
   const [category, setCategory] = useState(post.category || "lost");
   const [file, setFile] = useState(null);
-  const [imageUrl, setImageUrl] = useState(post.image_url || "");
+  const imageUrl = post.image_url || "";
   const [bankAccountNumber, setBankAccountNumber] = useState(post.bank_account_number || "");
   const [bankAccountName, setBankAccountName] = useState(post.bank_account_name || "");
   const [bankName, setBankName] = useState(post.bank_name || "");

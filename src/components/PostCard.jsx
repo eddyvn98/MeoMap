@@ -18,11 +18,6 @@ const TYPE_BORDER = {
   rescue: 'border-l-4 border-orange-400',
 };
 
-const TYPE_ICON = {
-  adopt: '🏡',
-  lost: '📍',
-  rescue: '🚑',
-};
 
 export default function PostCard({
   post,
@@ -37,7 +32,6 @@ export default function PostCard({
   const typeLabel = TYPE_LABEL[postType] || 'Khác';
   const colorClass = TYPE_COLOR[postType] || 'bg-gray-100 text-gray-700';
   const borderClass = TYPE_BORDER[postType] || 'border-l-4 border-gray-300';
-  const icon = TYPE_ICON[postType] || '📦';
 
   return (
     <article className={`flex gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow ${borderClass}`}>

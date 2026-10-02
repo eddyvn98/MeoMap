@@ -1,3 +1,4 @@
+import L from "leaflet";
 import {
   MapContainer,
   TileLayer,
@@ -5,13 +6,11 @@ import {
   Popup,
   Circle,
   Tooltip,
-  useMapEvents,
 } from "react-leaflet";
 import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { localApi } from "../localClient";
 import {
   DEFAULT_CENTER,
-  getDistanceKm,
   makeStatusIcon,
   tooltipTextByCategory,
 } from "./map/petMapHelpers";
@@ -30,14 +29,12 @@ export default forwardRef(function PetMap({
   selectedPetId,
   onSelectPet,
   height = 180,
-  selectedPet,
   onSelectPetDetail,
 }, ref) {
   const [userPos, setUserPos] = useState(null);
   const [center] = useState(DEFAULT_CENTER);
   const [selectedPos, setSelectedPos] = useState(null);
   const [map, setMap] = useState(null);
-  const [openPopupMarkerRef, setOpenPopupMarkerRef] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
 
   // Get current user ID
@@ -48,78 +45,6 @@ export default forwardRef(function PetMap({
     };
     getUser();
   }, []);
-
-  const renderPopover = (p) => {
-    const petId = p.id || p.pet_id;
-    const statusText = (p.category || p.status || "").toLowerCase();
-    const statusLabel = statusText === 'lost' ? 'Lost' : statusText === 'adopt' ? 'Available' : statusText === 'adopted' ? 'Adopted' : p.status || 'Unknown';
-    const badgeColor = statusText === 'lost' ? '#ef4444' : statusText === 'adopt' ? '#10b981' : statusText === 'adopted' ? '#3b82f6' : '#6b7280';
-    const distanceKm = userPos ? getDistanceKm(userPos, { lat: p.lat, lng: p.lng }) : null;
-    const distanceLabel = distanceKm ? `${distanceKm.toFixed(distanceKm >= 10 ? 0 : 1)} km` : '—';
-
-    const actionLabel = statusText === 'lost' ? 'Report Found' : 'Adopt';
-
-    return (
-      <div style={{ width: 220 }}>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', background: '#f3f4f6' }}>
-            {p.image_url ? (
-              <img src={p.image_url} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#9ca3af', fontSize: 12 }}>No image</div>
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name || 'Chưa đặt tên'}</div>
-            <div style={{ margin: '4px 0', fontSize: 12, color: '#6b7280' }}>{p.district || p.area || 'Không rõ khu vực'}</div>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
-              <span style={{ padding: '4px 8px', background: badgeColor, color: '#fff', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>{statusLabel}</span>
-              <span style={{ fontSize: 12, color: '#4b5563' }}>• {distanceLabel}</span>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button
-            style={{
-              flex: 1,
-              padding: '8px 10px',
-              background: '#2563eb',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-            onClick={() => {
-              onSelectPetDetail?.(p);
-              // Close popup by closing any open popups
-              if (openPopupMarkerRef) {
-                openPopupMarkerRef.closePopup?.();
-              }
-            }}
-          >
-            Xem chi tiết
-          </button>
-          <button
-            style={{
-              flex: 1,
-              padding: '8px 10px',
-              background: statusText === 'lost' ? '#f59e0b' : '#10b981',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-            onClick={() => onSelectPetDetail?.(p)}
-          >
-            {actionLabel}
-          </button>
-        </div>
-      </div>
-    );
-  };
 
 
   useImperativeHandle(ref, () => map);

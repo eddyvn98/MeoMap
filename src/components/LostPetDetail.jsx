@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { localApi } from "../localClient";
 
-export default function LostPetDetail({ pet, user, isOwner, onMarkAsFound, onDelete, onEdit }) {
+export default function LostPetDetail({ pet, user, isOwner, onEdit }) {
   const [owner, setOwner] = useState(null);
   const [closing, setClosing] = useState(false);
   const isClosed = ["closed", "delivered", "completed", "found"].includes(String(pet.status || "").toLowerCase());

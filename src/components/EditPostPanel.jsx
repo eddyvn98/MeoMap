@@ -34,9 +34,6 @@ export default function EditPostPanel({ post, onClose, onSuccess }) {
         description: description.trim(),
         category,
         image_url: nextImage || null,
-        required_deposit: null,
-        bounty_amount: null,
-        allow_custom_deposit: true,
         updated_at: new Date().toISOString(),
       };
 

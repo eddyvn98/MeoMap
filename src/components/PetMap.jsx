@@ -379,16 +379,6 @@ export default forwardRef(function PetMap({
                   {tooltipTextByCategory((p.category || "").toLowerCase())}
                 </div>
               </Tooltip>
-              {badge && (
-                <Popup>
-                  <div style={{ fontWeight: 600, color: badge.color }}>
-                    {badge.text}
-                  </div>
-                  {badge.sub && (
-                    <div style={{ fontSize: 12, marginTop: 4 }}>{badge.sub}</div>
-                  )}
-                </Popup>
-              )}
             </Marker>
           );
         })}

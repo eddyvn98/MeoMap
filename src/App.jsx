@@ -16,7 +16,6 @@ import LostPetDetail from "./components/LostPetDetail";
 import AdoptPetDetail from "./components/AdoptPetDetail";
 import { useReminderScheduler } from "./hooks/useReminderScheduler";
 import EditPostPanel from "./components/EditPostPanel";
-import QrConfirmModal from "./components/QrConfirmModal";
 
 function MapFilters({ filters, setFilters }) {
   const [expanded, setExpanded] = useState(false);
@@ -216,8 +215,6 @@ export default function App() {
   });
   const [showBanner, setShowBanner] = useState(null);
   const [globalEditingPost, setGlobalEditingPost] = useState(null);
-  const [qrModalOpen, setQrModalOpen] = useState(false);
-  const [qrPayload, setQrPayload] = useState(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -240,14 +237,6 @@ export default function App() {
   }, []);
 
   // Listen for global QR modal event
-  useEffect(() => {
-    const handler = (e) => {
-      setQrPayload(e.detail);
-      setQrModalOpen(true);
-    };
-    window.addEventListener("open-qr-modal", handler);
-    return () => window.removeEventListener("open-qr-modal", handler);
-  }, []);
 
   // Run reminder scheduler periodically (every hour)
   useReminderScheduler(60 * 60 * 1000);
@@ -1017,7 +1006,6 @@ export default function App() {
       <QuickGuideModal isOpen={showGuideModal} onClose={() => setShowGuideModal(false)} />
 
       {/* Global QR Modal */}
-      <QrConfirmModal isOpen={qrModalOpen} onClose={() => setQrModalOpen(false)} payload={qrPayload} />
 
       {/* First-Click Banner */}
       {showBanner && (

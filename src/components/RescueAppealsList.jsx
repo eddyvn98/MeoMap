@@ -117,7 +117,7 @@ export default function RescueAppealsList({ caseId }) {
           <li>✓ Nhập số tiền bạn muốn quyên góp ở ô "Quyên góp"</li>
           <li>✓ Tiền sẽ được ghi nhận là "Quyên góp" vào ví ca cứu hộ</li>
           <li>✓ Tất cả quyên góp được công khai, minh bạch</li>
-          <li>✓ Tiền sẽ được giải ngân cho người cứu khi hoàn thành ca</li>
+          <li>✓ Hỗ trợ chuyển trực tiếp cho người cứu theo thông tin họ cung cấp</li>
         </ul>
       </div>
     </div>

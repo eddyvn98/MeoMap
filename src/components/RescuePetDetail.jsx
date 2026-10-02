@@ -19,14 +19,13 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
     if (!confirm("Bạn xác nhận nhận ca cứu hộ này?")) return;
 
     setBusy(true);
-    const { error } = await supabase
-      .from("pets")
-      .update({ rescuer_id: user.id })
-      .eq("id", pet.id)
-      .is("rescuer_id", null);
+    const { data: claimed, error } = await supabase.rpc("claim_rescue_case", {
+      p_case_id: pet.id,
+    });
     setBusy(false);
 
     if (error) return alert("Không thể nhận ca: " + error.message);
+    if (!claimed) return alert("Ca này đã có người khác nhận hoặc đã kết thúc.");
     window.location.reload();
   };
 
@@ -34,14 +33,16 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
     if (!isRescuer) return;
 
     setBusy(true);
-    const { error } = await supabase
-      .from("pets")
-      .update(bank)
-      .eq("id", pet.id)
-      .eq("rescuer_id", user.id);
+    const { data: saved, error } = await supabase.rpc("update_rescue_support_info", {
+      p_case_id: pet.id,
+      p_bank_account_number: bank.bank_account_number,
+      p_bank_account_name: bank.bank_account_name,
+      p_bank_name: bank.bank_name,
+    });
     setBusy(false);
 
     if (error) return alert("Không thể lưu thông tin: " + error.message);
+    if (!saved) return alert("Bạn không còn là người phụ trách ca này.");
     alert("Đã lưu thông tin nhận hỗ trợ trực tiếp.");
     window.location.reload();
   };
@@ -70,16 +71,13 @@ export default function RescuePetDetail({ pet, user, isOwner }) {
     if (!confirm("Kết thúc ca cứu hộ này?")) return;
 
     setBusy(true);
-    const { error } = await supabase
-      .from("pets")
-      .update({
-        status: "delivered",
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", pet.id);
+    const { data: closed, error } = await supabase.rpc("close_rescue_case_simple", {
+      p_case_id: pet.id,
+    });
     setBusy(false);
 
     if (error) return alert("Không thể kết thúc ca: " + error.message);
+    if (!closed) return alert("Ca đã kết thúc hoặc bạn không có quyền đóng ca.");
     window.location.reload();
   };
 

@@ -24,7 +24,6 @@ const TYPE_ICON = {
 const STATUS_OPTIONS = [
   { value: 'all', label: 'Tất cả' },
   { value: 'available', label: 'Có sẵn' },
-  { value: 'pending_coc', label: 'Chờ cọc' },
   { value: 'pending_qr', label: 'Chờ QR' },
   { value: 'closed', label: 'Đã đóng' },
   { value: 'urgent', label: 'Khẩn cấp' },

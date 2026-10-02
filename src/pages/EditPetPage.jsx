@@ -28,8 +28,6 @@ export default function EditPetPage() {
       name: form.name.trim(),
       district: form.district.trim(),
       description: form.description.trim(),
-      required_deposit: null,
-      bounty_amount: null,
     }).eq("id", id);
     setSaving(false);
     if (error) return alert("Không thể lưu: " + error.message);

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import RescuerDashboard from "../components/RescuerDashboard";
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef, use } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import debounce from "lodash.debounce";
 import { localApi } from "./localClient";
@@ -15,174 +15,13 @@ import RescuePetDetail from "./components/RescuePetDetail";
 import LostPetDetail from "./components/LostPetDetail";
 import AdoptPetDetail from "./components/AdoptPetDetail";
 import EditPostPanel from "./components/EditPostPanel";
-
-function MapFilters({ filters, setFilters }) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        top: 12,
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 1200,
-        background: "#fff",
-        border: "1px solid #e5e7eb",
-        borderRadius: 12,
-        boxShadow: "0 8px 30px rgba(0,0,0,0.16)",
-        maxHeight: expanded ? 520 : 56,
-        overflow: "hidden",
-        transition: "max-height 0.3s ease, box-shadow 0.2s ease",
-        width: 320,
-      }}
-    >
-      <div
-        onClick={() => setExpanded(!expanded)}
-        style={{
-          padding: 12,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          cursor: "pointer",
-          borderBottom: expanded ? "1px solid #e5e7eb" : "none",
-          background: "#f9fafb",
-        }}
-      >
-        <span style={{ fontWeight: 600, fontSize: 13 }}>🔍 Tìm kiếm</span>
-        <span style={{ fontSize: 16 }}>{expanded ? "▼" : "▶"}</span>
-      </div>
-
-      {expanded && (
-        <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10, maxHeight: 440, overflowY: "auto" }}>
-          {/* Tìm kiếm theo tên */}
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Tìm theo tên</label>
-            <input
-              type="text"
-              placeholder="Nhập Tiêu đề bài viết..."
-              value={filters.searchName || ""}
-              onChange={(e) => setFilters((f) => ({ ...f, searchName: e.target.value }))}
-              style={{
-                width: "100%",
-                padding: "6px 10px",
-                border: "1px solid #d1d5db",
-                borderRadius: 4,
-                fontSize: 12,
-                outline: "none",
-              }}
-            />
-          </div>
-
-          {/* Nhóm bài */}
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Nhóm bài</label>
-            <select
-              value={filters.category}
-              onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}
-              style={{
-                width: "100%",
-                padding: 6,
-                border: "1px solid #d1d5db",
-                borderRadius: 4,
-                fontSize: 12,
-              }}
-            >
-              <option value="all">Tất cả</option>
-              <option value="lost">🔍 Đi lạc – liên hệ trực tiếp</option>
-              <option value="adopt">🤝 Nhận nuôi – liên hệ trực tiếp</option>
-              <option value="rescue">🚑 Cứu hộ – nhận ca & kêu gọi trực tiếp</option>
-            </select>
-            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
-              Adopt/Lost: đăng và đóng case · Rescue: người cứu nhận ca và tự kêu gọi quyên góp
-            </div>
-          </div>
-
-          {/* Loại */}
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Loại</label>
-            <select
-              value={filters.animal || "all"}
-              onChange={(e) => setFilters((f) => ({ ...f, animal: e.target.value }))}
-              style={{
-                width: "100%",
-                padding: 6,
-                border: "1px solid #d1d5db",
-                borderRadius: 4,
-                fontSize: 12,
-              }}
-            >
-              <option value="all">Tất cả</option>
-              <option value="cat">Mèo</option>
-              <option value="dog">Chó</option>
-            </select>
-          </div>
-
-          {/* Khu vực */}
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Quận / Huyện</label>
-            <select
-              value={filters.ward || "all"}
-              onChange={(e) => setFilters((f) => ({ ...f, ward: e.target.value }))}
-              style={{
-                width: "100%",
-                padding: 6,
-                border: "1px solid #d1d5db",
-                borderRadius: 4,
-                fontSize: 12,
-              }}
-            >
-              <option value="all">Tất cả</option>
-              <option value="q1">Quận 1</option>
-              <option value="q2">Quận 2</option>
-              <option value="q3">Quận 3</option>
-              <option value="q4">Quận 4</option>
-              <option value="q5">Quận 5</option>
-              <option value="q6">Quận 6</option>
-              <option value="q7">Quận 7</option>
-              <option value="q8">Quận 8</option>
-              <option value="q9">Quận 9</option>
-              <option value="q10">Quận 10</option>
-              <option value="q11">Quận 11</option>
-              <option value="q12">Quận 12</option>
-              <option value="qbn">Quận Bình Nhật</option>
-              <option value="qbt">Quận Bình Tân</option>
-              <option value="qbth">Quận Bình Thạnh</option>
-              <option value="qgg">Quận Gò Vấp</option>
-              <option value="qtb">Quận Tân Bình</option>
-              <option value="qtp">Quận Tân Phú</option>
-              <option value="qth">Thủ Đức</option>
-            </select>
-          </div>
-
-          <button
-            onClick={() => setExpanded(false)}
-            style={{
-              padding: 8,
-              background: "#3b82f6",
-              color: "#fff",
-              border: "none",
-              borderRadius: 4,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              marginTop: 4,
-            }}
-          >
-            Đóng bộ lọc
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
+import MapFilters from "./components/MapFilters";
 
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const mapRef = useRef(null);
   const [pets, setPets] = useState([]);
-  const [recentPets, setRecentPets] = useState([]);
   const [filters, setFilters] = useState({
     status: "available",
     category: location.state?.filters?.category || "all",
@@ -192,10 +31,8 @@ export default function App() {
   });
   const [bounds, setBounds] = useState(null);
   const [selectedPetId, setSelectedPetId] = useState(null);
-  const [selectedPet, setSelectedPet] = useState(null);
   const [selectedPetFull, setSelectedPetFull] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [loadingRecent, setLoadingRecent] = useState(true);
   const [error, setError] = useState("");
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -234,9 +71,6 @@ export default function App() {
     window.addEventListener("open-edit-post", handler);
     return () => window.removeEventListener("open-edit-post", handler);
   }, []);
-
-  // Listen for global QR modal event
-
 
   const loadPets = useCallback(async () => {
     if (!bounds) {
@@ -342,27 +176,6 @@ export default function App() {
 
     loadPetFull();
   }, [selectedPetId]);
-
-  useEffect(() => {
-    const loadRecentPets = async () => {
-      setLoadingRecent(true);
-      const { data, error } = await localApi
-        .from("pets")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(20);
-
-      if (error) {
-        console.error("Lỗi load recent pets:", error);
-        setRecentPets([]);
-      } else {
-        setRecentPets(data || []);
-      }
-      setLoadingRecent(false);
-    };
-
-    loadRecentPets();
-  }, []);
 
   const handleFocusPetOnMap = (pet) => {
     if (!pet) return;
@@ -544,10 +357,6 @@ export default function App() {
         onOpenProfilePanel={openProfilePanel}
         onOpenGuide={() => setShowGuideModal(true)}
       />
-      {/* Compact Header */}
-
-      {/* Removed floating center card to avoid double popups; popover buttons now open detail directly */}
-
       {/* Global Edit Post Panel Overlay (triggered via window event) */}
       {globalEditingPost && (
         <div
@@ -675,7 +484,7 @@ export default function App() {
                       }
                     }}
                     onEdit={() => {
-                      setEditingPost(pet);
+                      setGlobalEditingPost(pet);
                     }}
                   />
                 ) : (
@@ -963,8 +772,6 @@ export default function App() {
 
       {/* Quick Guide Modal */}
       <QuickGuideModal isOpen={showGuideModal} onClose={() => setShowGuideModal(false)} />
-
-      {/* Global QR Modal */}
 
       {/* First-Click Banner */}
       {showBanner && (

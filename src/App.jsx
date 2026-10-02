@@ -448,9 +448,6 @@ export default function App() {
           description: formData.description,
           image_url: imageUrl,
           status: "available",
-          required_deposit: null,
-          allow_custom_deposit: true,
-          bounty_amount: null,
           owner_id: userData.user.id,
           created_at: new Date().toISOString(),
         },
@@ -478,19 +475,11 @@ export default function App() {
       ],
     },
     {
-      title: "Tiền cọc hoạt động ra sao?",
+      title: "MeoMap không quản lý tiền",
       bullets: [
-        "Khuyến khích dùng cọc để lọc người xấu",
-        "Người nhận được hoàn cọc nếu chăm mèo tốt",
-        "Người đăng nhận cọc nếu người nhận bị đánh giá không tốt",
-      ],
-    },
-    {
-      title: "Tiền thưởng Lost & Rescue",
-      bullets: [
-        "Chủ mèo lạc treo thưởng để khuyến khích tìm kiếm",
-        "Bài cứu hộ được cộng đồng treo thưởng để tăng động lực cứu, cập nhật tình hình",
-        "Tất cả minh bạch qua hệ thống ví",
+        "Nhận nuôi và đi lạc chỉ đăng, liên hệ trực tiếp và đóng case",
+        "Cứu hộ: người cứu tự đăng lời kêu gọi và thông tin nhận hỗ trợ",
+        "Mọi khoản hỗ trợ chuyển trực tiếp cho người cứu ngoài MeoMap",
       ],
     },
   ];

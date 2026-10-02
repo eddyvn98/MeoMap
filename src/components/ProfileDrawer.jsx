@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { localApi } from "../localClient";
 
 const WIDTH_MAP = {
   compact: "clamp(320px, 26vw, 440px)",
@@ -25,7 +25,7 @@ export default function ProfileDrawer({
     if (!isOpen) return;
     const load = async () => {
       setLoading(true);
-      const { data: auth } = await supabase.auth.getUser();
+      const { data: auth } = await localApi.auth.getUser();
       const currentUser = auth?.user || null;
       setUser(currentUser);
       if (!currentUser) {
@@ -36,8 +36,8 @@ export default function ProfileDrawer({
       }
 
       const [{ data: profileData }, { data: postData }] = await Promise.all([
-        supabase.from("profiles").select("id,display_name,email,phone,avatar_url,role").eq("id", currentUser.id).maybeSingle(),
-        supabase.from("pets").select("*").eq("owner_id", currentUser.id).order("created_at", { ascending: false }),
+        localApi.from("profiles").select("id,display_name,email,phone,avatar_url,role").eq("id", currentUser.id).maybeSingle(),
+        localApi.from("pets").select("*").eq("owner_id", currentUser.id).order("created_at", { ascending: false }),
       ]);
       setProfile(profileData || null);
       setPosts(postData || []);

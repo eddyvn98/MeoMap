@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useRef, use } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import debounce from "lodash.debounce";
-import { supabase } from "./supabaseClient";
+import { localApi } from "./localClient";
 import PetMap from "./components/PetMap";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
@@ -217,7 +217,7 @@ export default function App() {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: userData } = await supabase.auth.getUser();
+      const { data: userData } = await localApi.auth.getUser();
       setUser(userData.user);
     };
     fetchUser();
@@ -247,7 +247,7 @@ export default function App() {
     setLoading(true);
     setError("");
 
-    let query = supabase.from("pets").select("*");
+    let query = localApi.from("pets").select("*");
 
     // Filter status - check for both 'open' and 'Lost' (legacy)
     if (filters.status === "available") {
@@ -326,7 +326,7 @@ export default function App() {
       }
 
       try {
-        const { data, error } = await supabase
+        const { data, error } = await localApi
           .from("pets")
           .select("*")
           .eq("id", selectedPetId)
@@ -346,7 +346,7 @@ export default function App() {
   useEffect(() => {
     const loadRecentPets = async () => {
       setLoadingRecent(true);
-      const { data, error } = await supabase
+      const { data, error } = await localApi
         .from("pets")
         .select("*")
         .order("created_at", { ascending: false })
@@ -388,7 +388,7 @@ export default function App() {
 
   const handleReportPetSubmit = async (formData) => {
     try {
-      const { data: userData } = await supabase.auth.getUser();
+      const { data: userData } = await localApi.auth.getUser();
       if (!userData.user) {
         alert("Vui lòng đăng nhập để báo cáo");
         return;
@@ -398,21 +398,21 @@ export default function App() {
       
       if (formData.photo) {
         const fileName = `${Date.now()}-${formData.photo.name}`;
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await localApi.storage
           .from("pet-images")
           .upload(`reports/${fileName}`, formData.photo);
 
         if (uploadError) {
           console.error("Lỗi upload ảnh:", uploadError);
         } else {
-          const { data } = supabase.storage
+          const { data } = localApi.storage
             .from("pet-images")
             .getPublicUrl(`reports/${fileName}`);
           imageUrl = data.publicUrl;
         }
       }
 
-      const { error } = await supabase.from("pets").insert([
+      const { error } = await localApi.from("pets").insert([
         {
           name: formData.name,
           category: formData.category,
@@ -653,7 +653,7 @@ export default function App() {
                       if (!confirm("Bạn có chắc muốn XÓA bài đăng này?")) return;
                       
                       try {
-                        const { error } = await supabase
+                        const { error } = await localApi
                           .from("pets")
                           .delete()
                           .eq("id", pet.id);
@@ -661,7 +661,7 @@ export default function App() {
                         if (error) throw error;
 
                         // Reload pets list
-                        const { data: updatedPets } = await supabase
+                        const { data: updatedPets } = await localApi
                           .from("pets")
                           .select("*")
                           .order("created_at", { ascending: false });

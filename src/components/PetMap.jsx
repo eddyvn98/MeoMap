@@ -196,7 +196,6 @@ export default forwardRef(function PetMap({
   const [center] = useState(defaultCenter);
   const [selectedPos, setSelectedPos] = useState(null);
   const [map, setMap] = useState(null);
-  const [adoptRequests, setAdoptRequests] = useState({});
   const [openPopupMarkerRef, setOpenPopupMarkerRef] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
 
@@ -281,49 +280,6 @@ export default forwardRef(function PetMap({
     );
   };
 
-  useEffect(() => {
-    if (!pets || pets.length === 0) return;
-    const adoptPets = pets.filter(p => p.category === 'adopt');
-    if (adoptPets.length === 0) return;
-
-    const load = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('adoption_requests')
-          .select('pet_id, status, receiver_confirmed_checkin, checkin_required_at')
-          .in('pet_id', adoptPets.map(p => p.id || p.pet_id))
-          .in('status', ['delivered', 'completed']);
-
-        // If table doesn't exist (404 PGRST205), silently skip
-        if (error) {
-          if (error.code === 'PGRST205') {
-            console.warn('[PetMap] adoption_requests table not found; skipping badge load');
-            return;
-          }
-          console.error('[PetMap] Error loading adoption requests:', error);
-          return;
-        }
-
-        const map = {};
-        (data || []).forEach(r => {
-          map[r.pet_id] = r;
-        });
-        setAdoptRequests(map);
-      } catch (err) {
-        console.warn('[PetMap] Exception loading adoptions:', err.message);
-      }
-    };
-    load();
-  }, [pets]);
-
-  const computeBadge = (request) => {
-    if (!request) return null;
-    const due = request.checkin_required_at ? new Date(request.checkin_required_at) : null;
-    const now = new Date();
-    if (due && now > due) return { label: '🟥', bg: '#fee2e2' };
-    if (request.receiver_confirmed_checkin) return { label: '🟨', bg: '#fef3c7' };
-    return { label: '🟧', bg: '#fef3c7' };
-  };
 
   useImperativeHandle(ref, () => map);
 
@@ -403,43 +359,8 @@ export default forwardRef(function PetMap({
 
           const petId = p.id || p.pet_id;
 
-          // Ẩn pet adopt nếu đã có người nhận (delivered/completed)
-          const req = adoptRequests[petId];
-          if (p.category === 'adopt' && req && (req.status === 'delivered' || req.status === 'completed')) {
-            return null; // Không hiển thị pet này trên map
-          }
-
-          const badge = req ? computeBadge(req) : null;
-
           let markerIcon = makeStatusIcon(p.status, p.category, p.image_url, p, currentUserId);
 
-          // If adopt pet with follow-up badge, overlay badge on marker
-          if (badge) {
-            const imgSrc = p.image_url || "https://cdn-icons-png.flaticon.com/512/2127/2127645.png";
-            const isOwner = currentUserId && p.owner_id === currentUserId;
-            const ownerBadge = isOwner ? '<div style="position:absolute;top:-8px;left:-8px;width:24px;height:24px;border-radius:50%;background:#8b5cf6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.4);">👤</div>' : '';
-            
-            markerIcon = L.divIcon({
-              className: "pet-marker-icon",
-              html: `
-                <div style="position:relative;width:80px;height:80px;">
-                  <div style="width:80px;height:80px;border-radius:50%;overflow:hidden;border:5px solid #10b981;box-shadow:0 4px 12px rgba(0,0,0,0.3);background:#fff;">
-                    <img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;" />
-                  </div>
-                  <div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;padding:4px 12px;border-radius:14px;font-size:11px;font-weight:bold;white-space:nowrap;box-shadow:0 3px 6px rgba(0,0,0,0.4);">
-                    Adopt
-                  </div>
-                  <div style="position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;background:${badge.bg};display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
-                    ${badge.label}
-                  </div>
-                  ${ownerBadge}
-                </div>
-              `,
-              iconSize: [112, 130],
-              iconAnchor: [56, 130],
-              popupAnchor: [0, -130],
-            });
-          }
 
           return (
             <Marker

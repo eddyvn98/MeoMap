@@ -33,6 +33,14 @@ export default function RescueUpdatesTimeline({ caseId }) {
     if (caseId) loadUpdates();
   }, [caseId]);
 
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 rounded border text-center">
+        <p className="text-red-700 text-sm">{error}</p>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="p-4 text-center">

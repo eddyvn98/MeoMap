@@ -33,9 +33,8 @@ export default function RegisterPage() {
         });
       }
 
-      // registration ok — you may require email confirmation depending on project
-      alert('Đã tạo tài khoản. Vui lòng kiểm tra email để xác nhận (nếu có).');
-      navigate('/login');
+      alert("Đã tạo tài khoản local thành công.");
+      navigate("/account");
     } catch (err) {
       setError(err.message || String(err));
     } finally {

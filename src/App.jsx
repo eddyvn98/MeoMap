@@ -286,33 +286,6 @@ export default function App() {
 
     let newPets = data || [];
 
-    // Filter out adopt pets that already have delivered/completed adoption requests
-    if (newPets.length > 0) {
-      const adoptPetIds = newPets
-        .filter(p => p.category === 'adopt')
-        .map(p => p.id);
-      
-      if (adoptPetIds.length > 0) {
-        try {
-          const { data: adoptedRequests, error: adoptError } = await supabase
-            .from('adoption_requests')
-            .select('pet_id')
-            .in('pet_id', adoptPetIds)
-            .in('status', ['delivered', 'completed']);
-          
-          if (!adoptError && adoptedRequests && adoptedRequests.length > 0) {
-            const adoptedPetIds = new Set(adoptedRequests.map(r => r.pet_id));
-            newPets = newPets.filter(p => {
-              // Giữ lại pet nếu không phải adopt hoặc chưa có người nhận
-              return p.category !== 'adopt' || !adoptedPetIds.has(p.id);
-            });
-          }
-        } catch (err) {
-          console.warn('[App] Error filtering adopted pets:', err.message);
-        }
-      }
-    }
-
     // Client-side search filter by name
     if (filters.searchName && filters.searchName.trim()) {
       const searchTerm = filters.searchName.toLowerCase().trim();

@@ -132,6 +132,11 @@ GRANT EXECUTE ON FUNCTION public.claim_rescue_case(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_rescue_support_info(UUID, TEXT, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.close_rescue_case_simple(UUID) TO authenticated;
 
+GRANT SELECT ON public.rescue_appeals TO anon, authenticated;
+GRANT INSERT, UPDATE ON public.rescue_appeals TO authenticated;
+GRANT SELECT ON public.rescue_updates TO anon, authenticated;
+GRANT INSERT, UPDATE ON public.rescue_updates TO authenticated;
+
 ALTER TABLE public.rescue_appeals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rescue_updates ENABLE ROW LEVEL SECURITY;
 

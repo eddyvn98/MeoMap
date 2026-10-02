@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "./supabaseClient";
+import { localApi } from "./localClient";
 
 const AuthContext = createContext(null);
 
@@ -13,14 +13,14 @@ export function AuthProvider({ children }) {
       if (!user) return;
       
       try {
-        const { data: existingProfile } = await supabase
+        const { data: existingProfile } = await localApi
           .from("profiles")
           .select("id")
           .eq("id", user.id)
           .single();
 
         if (!existingProfile) {
-          await supabase.from("profiles").insert({
+          await localApi.from("profiles").insert({
             id: user.id,
             email: user.email,
             display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
     // Check session khi mount
     const checkSession = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
+        const { data, error } = await localApi.auth.getSession();
         if (data?.session?.user) {
           setUser(data.session.user);
           await ensureProfile(data.session.user);
@@ -50,7 +50,7 @@ export function AuthProvider({ children }) {
 
     // Simple auth state change listener
     try {
-      const { data } = supabase.auth.onAuthStateChanged(async (session) => {
+      const { data } = localApi.auth.onAuthStateChanged(async (session) => {
         if (session?.user) {
           setUser(session.user);
           await ensureProfile(session.user);

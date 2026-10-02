@@ -1,234 +1,99 @@
-import React, { useState, useRef, useEffect } from "react";
-import L from "leaflet";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { useEffect, useRef, useState } from "react";
+import {
+  Field,
+  ManualAddress,
+  ModeButton,
+  Notice,
+  Section,
+  contactLabel,
+  contactPlaceholder,
+} from "./report/ReportPetFields";
+import {
+  EMPTY_REPORT_FORM,
+  geocodeReportAddress,
+} from "./report/reportPetModel";
 
-const MapClickHandler = ({ onLocationSelect }) => {
-  useMapEvents({
-    click(e) {
-      const { lat, lng } = e.latlng;
-      onLocationSelect([lat, lng]);
-    },
-  });
-  return null;
-};
-
-const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
-  const [locationMode, setLocationMode] = useState("auto"); // "auto" | "map" | "manual" | "pin-map"
-  const [isPinningMode, setIsPinningMode] = useState(false); // true when pinning on main map
-  const [wasOpenBeforePinning, setWasOpenBeforePinning] = useState(false); // Save isOpen state
-  const [formData, setFormData] = useState({
-    name: "",
-    category: "lost",
-    description: "",
-    photo: null,
-    lat: null,
-    lng: null,
-    ward: "",
-    street: "",
-    houseNumber: "",
-    contact: "", // SĐT hoặc Facebook/Google
-    contactType: "phone", // "phone" | "facebook" | "google"
-  });
-  const [markerPos, setMarkerPos] = useState(null);
-  const markerRef = useRef(null);
-  const photoInputRef = useRef(null);
+export default function ReportPetModal({
+  isOpen,
+  onClose,
+  onSubmit,
+}) {
+  const [locationMode, setLocationMode] = useState("auto");
+  const [formData, setFormData] = useState(EMPTY_REPORT_FORM);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [locationError, setLocationError] = useState("");
-  const [mapContainer, setMapContainer] = useState(null);
-  const mapInModalRef = useRef(null);
+  const photoInputRef = useRef(null);
 
-  // Auto-load user location khi mở modal
   useEffect(() => {
-    if (!isOpen && !isPinningMode) return;
+    if (!isOpen || locationMode !== "auto") return;
 
-    if (isOpen && !isPinningMode) {
-      setLoadingLocation(true);
-      setLocationError("");
+    setLoadingLocation(true);
+    setLocationError("");
 
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude } = position.coords;
-            setFormData(prev => ({ ...prev, lat: latitude, lng: longitude }));
-            setMarkerPos([latitude, longitude]);
-            setLoadingLocation(false);
-          },
-          (error) => {
-            console.error("Lỗi lấy vị trí:", error);
-            setLocationError("Không thể lấy vị trí. Vui lòng cấp quyền định vị.");
-            setLoadingLocation(false);
-          }
+    if (!navigator.geolocation) {
+      setLocationError("Trình duyệt không hỗ trợ định vị.");
+      setLoadingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setFormData((current) => ({
+          ...current,
+          lat: coords.latitude,
+          lng: coords.longitude,
+        }));
+        setLoadingLocation(false);
+      },
+      (error) => {
+        console.error("Lỗi lấy vị trí:", error);
+        setLocationError(
+          "Không thể lấy vị trí. Vui lòng cấp quyền định vị hoặc nhập địa chỉ.",
         );
-      }
-    }
-  }, [isOpen, isPinningMode]);
+        setLoadingLocation(false);
+      },
+    );
+  }, [isOpen, locationMode]);
 
-  // Handle pinning on main map - setup click listener
-  useEffect(() => {
-    if (!isPinningMode) {
-      console.log("🔴 Pinning mode OFF");
+  const update = (key, value) => {
+    setFormData((current) => ({ ...current, [key]: value }));
+  };
+
+  const resetForm = () => {
+    setLocationMode("auto");
+    setFormData(EMPTY_REPORT_FORM);
+    setLocationError("");
+    if (photoInputRef.current) photoInputRef.current.value = "";
+  };
+
+  const close = () => {
+    onClose();
+    resetForm();
+  };
+
+  const geocodeAddress = async () => {
+    if (!formData.ward && !formData.street) {
+      setLocationError("Vui lòng nhập ít nhất phường hoặc đường");
       return;
     }
 
-    console.log("🟡 Pinning mode ON - waiting for map click");
-    
-    if (!mapRef?.current) {
-      console.error("❌ No mapRef.current available for pinning");
-      return;
-    }
-
-    const map = mapRef.current;
-    console.log("Map object:", map);
-    console.log("Map._container:", map._container);
-    
-    const handleMapClick = (e) => {
-      console.log("✅✅✅ MAP CLICKED! Event:", e);
-      
-      let lat, lng;
-      
-      if (e.latlng) {
-        lat = e.latlng.lat;
-        lng = e.latlng.lng;
-        console.log("✅ Got from e.latlng");
-      } else {
-        console.error("❌ No latlng in event");
+    try {
+      const location = await geocodeReportAddress(formData);
+      if (!location) {
+        setLocationError("Không tìm thấy địa chỉ này. Vui lòng kiểm tra lại.");
         return;
       }
-      
-      console.log(`📍 Setting coordinates: Lat: ${lat}, Lng: ${lng}`);
-      
-      setMarkerPos([lat, lng]);
-      setFormData(prev => ({ 
-        ...prev, 
-        lat: Math.round(lat * 100) / 100,
-        lng: Math.round(lng * 100) / 100
-      }));
-      
-      console.log("✅ Exiting pinning mode");
-      setIsPinningMode(false);
-      map.off("click", handleMapClick);
-    };
-
-    try {
-      console.log("📌 Adding click listener via map.on()");
-      map.on("click", handleMapClick);
-      
-      // Also try adding to the container as fallback
-      const container = map._container;
-      if (container) {
-        console.log("📌 Adding click listener to container as fallback");
-        const containerClickHandler = (e) => {
-          console.log("🎯 Container clicked:", e);
-          const clickPoint = L.point(e.clientX, e.clientY);
-          const latLng = map.containerPointToLatLng(clickPoint);
-          handleMapClick({ latlng: latLng });
-        };
-        L.DomEvent.on(container, "click", containerClickHandler);
-        
-        return () => {
-          map.off("click", handleMapClick);
-          L.DomEvent.off(container, "click", containerClickHandler);
-        };
-      }
-    } catch (err) {
-      console.error("❌ Error setting up click listener:", err);
-    }
-
-    return () => {
-      try {
-        map.off("click", handleMapClick);
-      } catch (err) {
-        console.error("Error removing listener:", err);
-      }
-    };
-  }, [isPinningMode]);
-
-  const handleZoomToUserLocation = () => {
-    if (!mapRef.current || !formData.lat || !formData.lng) return;
-
-    const map = mapRef.current;
-    map.setView([formData.lat, formData.lng], 16);
-
-    if (markerRef.current) {
-      markerRef.current.setLatLng([formData.lat, formData.lng]);
-    } else {
-      markerRef.current = L.marker([formData.lat, formData.lng], {
-        icon: L.icon({
-          iconUrl: "https://cdn-icons-png.flaticon.com/512/566/566126.png",
-          iconSize: [40, 40],
-          iconAnchor: [20, 40],
-        }),
-        draggable: true,
-      }).addTo(map);
-
-      markerRef.current.on("dragend", () => {
-        const pos = markerRef.current.getLatLng();
-        setMarkerPos([pos.lat, pos.lng]);
-        setFormData(prev => ({ ...prev, lat: pos.lat, lng: pos.lng }));
-      });
-    }
-  };
-
-  const handlePinOnMap = () => {
-    setWasOpenBeforePinning(true); // Save that modal was open
-    setIsPinningMode(true);
-    onClose(); // Close modal
-  };
-
-  const handleLocationSelect = (location) => {
-    setMarkerPos(location);
-    setFormData(prev => ({ ...prev, lat: location[0], lng: location[1] }));
-  };
-
-  const geocodeAddress = async (ward, street, houseNumber) => {
-    try {
-      let query = "";
-      if (houseNumber) query += houseNumber + " ";
-      if (street) query += street + " ";
-      if (ward) query += ward + " ";
-      query += "Ho Chi Minh City, Vietnam";
-
-      console.log("Geocoding:", query);
-
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`
-      );
-      const data = await response.json();
-
-      if (data && data.length > 0) {
-        const { lat, lon } = data[0];
-        const lat_num = parseFloat(lat);
-        const lon_num = parseFloat(lon);
-
-        const rounded_lat = Math.round(lat_num * 100) / 100;
-        const rounded_lon = Math.round(lon_num * 100) / 100;
-
-        setMarkerPos([rounded_lat, rounded_lon]);
-        setFormData(prev => ({
-          ...prev,
-          lat: rounded_lat,
-          lng: rounded_lon,
-        }));
-        setLocationError("");
-        console.log("Geocoded successfully:", [rounded_lat, rounded_lon]);
-      } else {
-        setLocationError("Không tìm thấy địa chỉ này. Vui lòng kiểm tra lại.");
-      }
+      setFormData((current) => ({ ...current, ...location }));
+      setLocationError("");
     } catch (error) {
       console.error("Lỗi geocode:", error);
       setLocationError("Lỗi tìm kiếm địa chỉ. Vui lòng thử lại.");
     }
   };
 
-  const handlePhotoUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData(prev => ({ ...prev, photo: file }));
-    }
-  };
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
     if (!formData.lat || !formData.lng) {
       alert("Vui lòng chọn vị trí");
       return;
@@ -241,756 +106,186 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
       alert("Vui lòng nhập thông tin liên hệ");
       return;
     }
+
     await onSubmit(formData);
     resetForm();
   };
 
-  const resetForm = () => {
-    setLocationMode("auto");
-    setIsPinningMode(false);
-    setWasOpenBeforePinning(false);
-    setFormData({
-      name: "",
-      category: "lost",
-      description: "",
-      photo: null,
-      lat: null,
-      lng: null,
-      ward: "",
-      street: "",
-      houseNumber: "",
-      contact: "",
-      contactType: "phone",
-    });
-    setMarkerPos(null);
-    if (markerRef.current && mapRef.current) {
-      try {
-        mapRef.current.removeLayer(markerRef.current);
-      } catch (e) {
-        // ignore
-      }
-      markerRef.current = null;
-    }
-  };
+  if (!isOpen) return null;
 
-  // Return null only if modal should be completely hidden
-  const shouldShow = isOpen || isPinningMode || wasOpenBeforePinning;
-  if (!shouldShow) return null;
-
-  // Pinning mode overlay
-  if (isPinningMode) {
-    return (
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.7)",
-          zIndex: 49999,
-          textAlign: "center",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-        onClick={(e) => {
-          // Capture clicks on the map area
-          const map = mapRef?.current;
-          if (map && e.target === e.currentTarget) {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            const clickPoint = L.point(x, y);
-            const latLng = map.containerPointToLatLng(clickPoint);
-            
-            console.log("✅ Overlay clicked at:", latLng);
-            setMarkerPos([latLng.lat, latLng.lng]);
-            setFormData(prev => ({ 
-              ...prev, 
-              lat: Math.round(latLng.lat * 100) / 100,
-              lng: Math.round(latLng.lng * 100) / 100
-            }));
-            setIsPinningMode(false);
-            // Keep wasOpenBeforePinning true so modal stays visible after exiting pinning
-          }
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: "#fff",
-            padding: "20px",
-            borderRadius: "8px",
-            pointerEvents: "auto",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            maxWidth: "400px",
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <h3 style={{ margin: "0 0 8px 0", fontSize: "16px", color: "#374151" }}>
-            📍 Nhấp vào bản đồ để ghim vị trí báo cáo
-          </h3>
-          <p style={{ margin: "0 0 12px 0", fontSize: "13px", color: "#6b7280" }}>
-            Hoặc bấm Escape / Hủy để quay lại
-          </p>
-          <button
-            onClick={() => {
-              setIsPinningMode(false);
-            }}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: "#ef4444",
-              color: "#fff",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "13px",
-              fontWeight: "500",
-            }}
-          >
-            Hủy
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const inputClass =
+    "w-full box-border rounded-md border border-gray-300 px-2.5 py-2.5 text-sm";
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 50000,
-      }}
-      onClick={() => {
-        onClose();
-        resetForm();
-      }}
+      className="fixed inset-0 z-[50000] flex items-center justify-center bg-black/50"
+      onClick={close}
     >
       <div
-        style={{
-          backgroundColor: "#fff",
-          borderRadius: "12px",
-          padding: "24px",
-          maxWidth: "700px",
-          width: "95%",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-        }}
-        onClick={(e) => e.stopPropagation()}
+        className="max-h-[90vh] w-[95%] max-w-[700px] overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
+        onClick={(event) => event.stopPropagation()}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "bold" }}>
-            Đăng case thú cưng
-          </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="m-0 text-xl font-bold">Đăng case thú cưng</h2>
           <button
-            onClick={() => {
-              onClose();
-              resetForm();
-            }}
-            style={{
-              background: "none",
-              border: "none",
-              fontSize: "24px",
-              cursor: "pointer",
-              padding: "0",
-              color: "#6b7280",
-            }}
+            type="button"
+            onClick={close}
+            className="border-0 bg-transparent p-0 text-2xl text-gray-500"
           >
             ✕
           </button>
         </div>
 
-        {/* Security Notice */}
-        <div
-          style={{
-            padding: "12px",
-            backgroundColor: "#fef3c7",
-            borderLeft: "4px solid #f59e0b",
-            borderRadius: "6px",
-            marginBottom: "20px",
-            fontSize: "13px",
-            color: "#92400e",
-            lineHeight: "1.5",
-          }}
-        >
-          <strong>⚠️ Lưu ý bảo mật:</strong> Thông tin liên hệ của bạn sẽ được ẩn. Vị trí được làm tròn để hạn chế người xấu.
+        <div className="mb-5 rounded-md border-l-4 border-amber-500 bg-amber-100 p-3 text-[13px] leading-6 text-amber-800">
+          <strong>⚠️ Lưu ý bảo mật:</strong> Thông tin liên hệ của bạn sẽ được
+          ẩn. Vị trí được làm tròn để hạn chế người xấu.
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Thông tin cơ bản */}
-          <div style={{ marginBottom: "20px", paddingBottom: "20px", borderBottom: "1px solid #e5e7eb" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px", color: "#374151" }}>
-              Thông tin thú cưng
-            </h3>
-
-            <div style={{ marginBottom: "16px" }}>
-              <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "14px" }}>
-                Tiêu đề bài viết
-              </label>
+          <Section title="Thông tin thú cưng">
+            <Field label="Tiêu đề bài viết">
               <input
-                type="text"
+                className={inputClass}
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(event) => update("name", event.target.value)}
                 placeholder="Ví dụ: Miu, Bé mèo xám..."
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
-                }}
               />
-            </div>
+            </Field>
 
-            <div style={{ marginBottom: "16px" }}>
-              <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "14px" }}>
-                Loại báo cáo
-              </label>
+            <Field label="Loại báo cáo">
               <select
+                className={inputClass}
                 value={formData.category}
-                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
-                }}
+                onChange={(event) => update("category", event.target.value)}
               >
                 <option value="lost">🔴 Thú cưng bị mất</option>
                 <option value="adopt">🟢 Tìm chủ nhân</option>
                 <option value="rescue">🟠 Cần cứu hộ</option>
               </select>
+            </Field>
+
+            <div className="mb-4 rounded-lg bg-blue-50 p-2.5 text-xs text-blue-800">
+              MeoMap không thu cọc, giữ thưởng hoặc nhận tiền quyên góp.
             </div>
 
-            <div style={{ marginBottom: "16px", padding: "10px", background: "#eff6ff", borderRadius: "8px", fontSize: "12px", color: "#1e40af" }}>MeoMap không thu cọc, giữ thưởng hoặc nhận tiền quyên góp.</div>
-
-            <div style={{ marginBottom: "16px" }}>
-              <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "14px" }}>
-                Mô tả chi tiết
-              </label>
+            <Field label="Mô tả chi tiết">
               <textarea
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Nhập mô tả chi tiết về thú cưng: đặc điểm, nơi thất lạc, v.v..."
+                className={inputClass}
                 rows="3"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
-                  fontFamily: "inherit",
-                }}
+                value={formData.description}
+                onChange={(event) => update("description", event.target.value)}
+                placeholder="Đặc điểm, nơi thất lạc, tình trạng..."
               />
-            </div>
+            </Field>
 
-            <div style={{ marginBottom: "16px" }}>
-              <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "14px" }}>
-                Tải ảnh
-              </label>
+            <Field label="Tải ảnh">
               <input
                 ref={photoInputRef}
+                className={inputClass}
                 type="file"
                 accept="image/*"
-                onChange={handlePhotoUpload}
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                }}
+                onChange={(event) =>
+                  update("photo", event.target.files?.[0] || null)
+                }
               />
               {formData.photo && (
-                <p style={{ fontSize: "12px", color: "#10b981", marginTop: "4px" }}>
+                <p className="mt-1 text-xs text-emerald-600">
                   ✓ {formData.photo.name}
                 </p>
               )}
-            </div>
-          </div>
+            </Field>
+          </Section>
 
-          {/* Thông tin liên hệ */}
-          <div style={{ marginBottom: "20px", paddingBottom: "20px", borderBottom: "1px solid #e5e7eb" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px", color: "#374151" }}>
-              📞 Thông tin liên hệ
-            </h3>
-            <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "12px" }}>
-              Sẽ được sử dụng làm thông tin đăng nhập nếu bạn chưa có tài khoản.
-            </p>
-
-            <div style={{ marginBottom: "12px" }}>
-              <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "13px" }}>
-                Loại thông tin liên hệ
-              </label>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <Section title="📞 Thông tin liên hệ">
+            <div className="mb-3 flex gap-2">
+              {[
+                ["phone", "📱 Số điện thoại"],
+                ["facebook", "f Facebook"],
+                ["google", "G Google"],
+              ].map(([value, label]) => (
                 <button
+                  key={value}
                   type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, contactType: "phone" }))}
-                  style={{
-                    flex: 1,
-                    minWidth: "100px",
-                    padding: "8px",
-                    backgroundColor: formData.contactType === "phone" ? "#3b82f6" : "#e5e7eb",
-                    color: formData.contactType === "phone" ? "#fff" : "#374151",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontWeight: "500",
-                  }}
+                  onClick={() => update("contactType", value)}
+                  className={`flex-1 rounded-md border-0 p-2 text-[13px] font-medium ${
+                    formData.contactType === value
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-200 text-gray-700"
+                  }`}
                 >
-                  📱 Số điện thoại
+                  {label}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, contactType: "facebook" }))}
-                  style={{
-                    flex: 1,
-                    minWidth: "100px",
-                    padding: "8px",
-                    backgroundColor: formData.contactType === "facebook" ? "#3b82f6" : "#e5e7eb",
-                    color: formData.contactType === "facebook" ? "#fff" : "#374151",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontWeight: "500",
-                  }}
-                >
-                  f Facebook
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, contactType: "google" }))}
-                  style={{
-                    flex: 1,
-                    minWidth: "100px",
-                    padding: "8px",
-                    backgroundColor: formData.contactType === "google" ? "#3b82f6" : "#e5e7eb",
-                    color: formData.contactType === "google" ? "#fff" : "#374151",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontWeight: "500",
-                  }}
-                >
-                  G Google
-                </button>
-              </div>
+              ))}
             </div>
 
-            <div>
-              <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "13px" }}>
-                {formData.contactType === "phone"
-                  ? "Số điện thoại"
-                  : formData.contactType === "facebook"
-                  ? "Facebook URL hoặc ID"
-                  : "Google Email"}
-              </label>
+            <Field label={contactLabel(formData.contactType)}>
               <input
+                className={inputClass}
                 type={formData.contactType === "phone" ? "tel" : "text"}
                 value={formData.contact}
-                onChange={(e) => setFormData(prev => ({ ...prev, contact: e.target.value }))}
-                placeholder={
-                  formData.contactType === "phone"
-                    ? "Ví dụ: 0987654321"
-                    : formData.contactType === "facebook"
-                    ? "Ví dụ: facebook.com/username hoặc @username"
-                    : "Ví dụ: your@gmail.com"
-                }
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
-                }}
+                onChange={(event) => update("contact", event.target.value)}
+                placeholder={contactPlaceholder(formData.contactType)}
               />
-            </div>
-          </div>
+            </Field>
+          </Section>
 
-          {/* Vị trí */}
-          <div style={{ marginBottom: "20px", paddingBottom: "20px", borderBottom: "1px solid #e5e7eb" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px", color: "#374151" }}>
-              📍 Vị trí báo cáo
-            </h3>
-
+          <Section title="📍 Vị trí báo cáo">
             {loadingLocation && (
-              <div style={{ padding: "12px", backgroundColor: "#e0e7ff", borderRadius: "6px", marginBottom: "12px", fontSize: "13px", color: "#4338ca" }}>
+              <Notice className="bg-indigo-100 text-indigo-700">
                 ⏳ Đang lấy vị trí của bạn...
-              </div>
+              </Notice>
             )}
-
             {locationError && (
-              <div style={{ padding: "12px", backgroundColor: "#fee2e2", borderRadius: "6px", marginBottom: "12px", fontSize: "13px", color: "#dc2626" }}>
+              <Notice className="bg-red-100 text-red-600">
                 ❌ {locationError}
-              </div>
+              </Notice>
             )}
-
             {formData.lat && formData.lng && (
-              <div style={{ padding: "12px", backgroundColor: "#dcfce7", borderRadius: "6px", marginBottom: "12px", fontSize: "13px", color: "#16a34a" }}>
+              <Notice className="bg-green-100 text-green-600">
                 ✓ Vị trí: {formData.lat.toFixed(4)}, {formData.lng.toFixed(4)}
-              </div>
+              </Notice>
             )}
 
-            {/* Location Mode Tabs */}
-            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
-              <button
-                type="button"
+            <div className="mb-4 flex gap-2">
+              <ModeButton
+                active={locationMode === "auto"}
                 onClick={() => setLocationMode("auto")}
-                style={{
-                  flex: 1,
-                  minWidth: "120px",
-                  padding: "10px",
-                  backgroundColor: locationMode === "auto" ? "#3b82f6" : "#e5e7eb",
-                  color: locationMode === "auto" ? "#fff" : "#374151",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: "500",
-                  transition: "all 0.2s",
-                }}
               >
                 🎯 Vị trí hiện tại
-              </button>
-              {/* <button
-                type="button"
-                onClick={() => setLocationMode("pin-map")}
-                style={{
-                  flex: 1,
-                  minWidth: "120px",
-                  padding: "10px",
-                  backgroundColor: locationMode === "pin-map" ? "#3b82f6" : "#e5e7eb",
-                  color: locationMode === "pin-map" ? "#fff" : "#374151",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: "500",
-                  transition: "all 0.2s",
-                }}
-              >
-                📌 Ghim trên bản đồ
-              </button>
-              <button
-                type="button"
-                onClick={() => setLocationMode("map")}
-                style={{
-                  flex: 1,
-                  minWidth: "120px",
-                  padding: "10px",
-                  backgroundColor: locationMode === "map" ? "#3b82f6" : "#e5e7eb",
-                  color: locationMode === "map" ? "#fff" : "#374151",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: "500",
-                  transition: "all 0.2s",
-                }}
-              >
-                🗺️ Chọn trên modal
-              </button> */}
-              <button
-                type="button"
+              </ModeButton>
+              <ModeButton
+                active={locationMode === "manual"}
                 onClick={() => setLocationMode("manual")}
-                style={{
-                  flex: 1,
-                  minWidth: "120px",
-                  padding: "10px",
-                  backgroundColor: locationMode === "manual" ? "#3b82f6" : "#e5e7eb",
-                  color: locationMode === "manual" ? "#fff" : "#374151",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: "500",
-                  transition: "all 0.2s",
-                }}
               >
                 ✍️ Nhập địa chỉ
-              </button>
+              </ModeButton>
             </div>
 
-            {/* Auto - Current Location */}
-            {locationMode === "auto" && (
-              <div>
-                <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "12px" }}>
-                  Vị trí của bạn sẽ được sử dụng để báo cáo thú cưng.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleZoomToUserLocation}
-                  disabled={!formData.lat || !formData.lng || loadingLocation}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    backgroundColor: formData.lat && formData.lng && !loadingLocation ? "#3b82f6" : "#d1d5db",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: formData.lat && formData.lng && !loadingLocation ? "pointer" : "not-allowed",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                  }}
-                >
-                  {loadingLocation ? "Đang lấy vị trí..." : "📍 Xem vị trí trên bản đồ"}
-                </button>
-              </div>
+            {locationMode === "auto" ? (
+              <p className="text-[13px] text-gray-500">
+                Vị trí hiện tại được lấy từ quyền định vị của trình duyệt.
+              </p>
+            ) : (
+              <ManualAddress
+                formData={formData}
+                update={update}
+                onSearch={geocodeAddress}
+                inputClass={inputClass}
+              />
             )}
+          </Section>
 
-            {/* Pin on Main Map */}
-            {locationMode === "pin-map" && (
-              <div>
-                <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "12px" }}>
-                  Tắt modal này và nhấp vào bản đồ chính để ghim vị trí báo cáo.
-                </p>
-                <button
-                  type="button"
-                  onClick={handlePinOnMap}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    backgroundColor: "#f59e0b",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                  }}
-                >
-                  📌 Ghim trên bản đồ
-                </button>
-                {markerPos && (
-                  <p style={{ fontSize: "12px", color: "#6b7280", marginTop: "8px" }}>
-                    💡 Vị trí hiện tại: {markerPos[0].toFixed(4)}, {markerPos[1].toFixed(4)}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Map - Select Location (Inline map) */}
-            {locationMode === "map" && (
-              <div>
-                <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "12px" }}>
-                  Nhấp vào bản đồ để chọn vị trí báo cáo. Bạn có thể kéo ghim để điều chỉnh.
-                </p>
-                <div
-                  style={{
-                    width: "100%",
-                    height: "300px",
-                    borderRadius: "8px",
-                    overflow: "hidden",
-                    border: "1px solid #d1d5db",
-                    marginBottom: "12px",
-                  }}
-                  ref={setMapContainer}
-                >
-                  {mapContainer && (
-                    <MapContainer
-                      center={formData.lat && formData.lng ? [formData.lat, formData.lng] : [10.8019, 106.7147]}
-                      zoom={16}
-                      style={{ width: "100%", height: "100%" }}
-                      ref={mapInModalRef}
-                    >
-                      <TileLayer
-                        url="https://tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png"
-                        attribution='&copy; OpenStreetMap contributors'
-                      />
-                      <MapClickHandler onLocationSelect={handleLocationSelect} />
-                      {markerPos && (
-                        <Marker
-                          position={markerPos}
-                          icon={L.icon({
-                            iconUrl: "https://cdn-icons-png.flaticon.com/512/566/566126.png",
-                            iconSize: [40, 40],
-                            iconAnchor: [20, 40],
-                          })}
-                          draggable={true}
-                          eventHandlers={{
-                            dragend: (e) => {
-                              const pos = e.target.getLatLng();
-                              handleLocationSelect([pos.lat, pos.lng]);
-                            },
-                          }}
-                        />
-                      )}
-                    </MapContainer>
-                  )}
-                </div>
-                <div
-                  style={{
-                    padding: "12px",
-                    backgroundColor: "#f3f4f6",
-                    borderRadius: "6px",
-                    fontSize: "12px",
-                    color: "#6b7280",
-                    lineHeight: "1.5",
-                  }}
-                >
-                  <strong>💡 Mẹo:</strong> Bạn có thể kéo ghim để điều chỉnh vị trí chính xác hơn.
-                </div>
-              </div>
-            )}
-
-            {/* Manual - Input Address */}
-            {locationMode === "manual" && (
-              <div>
-                <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "12px" }}>
-                  Nhập địa chỉ thủ công. Hệ thống sẽ tự động chuyển đổi sang tọa độ.
-                </p>
-
-                <div style={{ marginBottom: "12px" }}>
-                  <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "13px" }}>
-                    Phường/Xã
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.ward}
-                    onChange={(e) => setFormData(prev => ({ ...prev, ward: e.target.value }))}
-                    placeholder="Ví dụ: Phường 1"
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "13px",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: "12px" }}>
-                  <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "13px" }}>
-                    Đường/Phố
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.street}
-                    onChange={(e) => setFormData(prev => ({ ...prev, street: e.target.value }))}
-                    placeholder="Ví dụ: Nguyễn Huệ"
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "13px",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: "12px" }}>
-                  <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "13px" }}>
-                    Số nhà (không bắt buộc)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.houseNumber}
-                    onChange={(e) => setFormData(prev => ({ ...prev, houseNumber: e.target.value }))}
-                    placeholder="Ví dụ: 123"
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "13px",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (formData.ward || formData.street) {
-                      geocodeAddress(formData.ward, formData.street, formData.houseNumber);
-                    } else {
-                      setLocationError("Vui lòng nhập ít nhất phường hoặc đường");
-                    }
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    backgroundColor: "#10b981",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontWeight: "500",
-                    marginBottom: "12px",
-                  }}
-                >
-                  🔍 Tìm địa chỉ
-                </button>
-
-                <div
-                  style={{
-                    padding: "12px",
-                    backgroundColor: "#f3f4f6",
-                    borderRadius: "6px",
-                    fontSize: "12px",
-                    color: "#6b7280",
-                    lineHeight: "1.5",
-                  }}
-                >
-                  <strong>📍 Lưu ý:</strong> Địa chỉ sẽ được làm tròn cho bảo mật. Bạn cũng có thể dùng "Ghim trên bản đồ" để chính xác hơn.
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Buttons */}
-          <div style={{ display: "flex", gap: "12px" }}>
+          <div className="flex gap-3">
             <button
               type="submit"
-              style={{
-                flex: 1,
-                padding: "12px",
-                backgroundColor: "#3b82f6",
-                color: "#fff",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontSize: "16px",
-                fontWeight: "500",
-                transition: "background-color 0.2s",
-              }}
+              className="flex-1 rounded-lg border-0 bg-blue-500 p-3 text-base font-medium text-white"
             >
               ✓ Đăng case
             </button>
             <button
               type="button"
-              onClick={() => {
-                onClose();
-                resetForm();
-              }}
-              style={{
-                flex: 1,
-                padding: "12px",
-                backgroundColor: "#e5e7eb",
-                color: "#374151",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontSize: "16px",
-                fontWeight: "500",
-              }}
+              onClick={close}
+              className="flex-1 rounded-lg border-0 bg-gray-200 p-3 text-base font-medium text-gray-700"
             >
               Hủy
             </button>
@@ -999,6 +294,4 @@ const ReportPetModal = ({ isOpen, mapRef, onClose, onSubmit }) => {
       </div>
     </div>
   );
-};
-
-export default ReportPetModal;
+}

@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { localApi } from "../localClient";
 
-const AuthModal = ({ isOpen, onClose, onSuccess }) => {
-  const [mode, setMode] = useState("login"); // "login" | "signup"
+export default function AuthModal({ isOpen, onClose, onSuccess }) {
+  const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -10,100 +10,6 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    setMessage("");
-
-    try {
-      const { data, error: signInError } = await localApi.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) throw signInError;
-
-      // Ensure profile exists after login
-      if (data?.user) {
-        const { data: existingProfile } = await localApi
-          .from("profiles")
-          .select("id")
-          .eq("id", data.user.id)
-          .single();
-
-        if (!existingProfile) {
-          await localApi.from("profiles").insert({
-            id: data.user.id,
-            email: data.user.email,
-            display_name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
-          });
-        }
-      }
-
-      setMessage("Đăng nhập thành công!");
-      setTimeout(() => {
-        onSuccess();
-        resetForm();
-      }, 1000);
-    } catch (err) {
-      setError(err.message || "Đăng nhập thất bại");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignup = async (e) => {
-    e.preventDefault();
-    setError("");
-    setMessage("");
-
-    if (password !== confirmPassword) {
-      setError("Mật khẩu không khớp");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Mật khẩu phải ít nhất 6 ký tự");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { data, error: signUpError } = await localApi.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-          },
-        },
-      });
-
-      if (signUpError) throw signUpError;
-
-      // Create profile immediately after signup
-      if (data?.user) {
-        await localApi.from("profiles").insert({
-          id: data.user.id,
-          email: data.user.email,
-          display_name: name || data.user.email?.split('@')[0] || 'User',
-        });
-      }
-
-      setMessage("Tạo tài khoản local thành công!");
-      setTimeout(() => {
-        onSuccess?.();
-        resetForm();
-      }, 800);
-    } catch (err) {
-      setError(err.message || "Tạo tài khoản thất bại");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const resetForm = () => {
     setEmail("");
@@ -114,247 +20,229 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
     setMessage("");
   };
 
+  const close = () => {
+    onClose();
+    resetForm();
+  };
+
+  const ensureProfile = async (user, displayName) => {
+    if (!user) return;
+    const { data: existingProfile } = await localApi
+      .from("profiles")
+      .select("id")
+      .eq("id", user.id)
+      .single();
+
+    if (!existingProfile) {
+      await localApi.from("profiles").insert({
+        id: user.id,
+        email: user.email,
+        display_name:
+          displayName ||
+          user.user_metadata?.full_name ||
+          user.email?.split("@")[0] ||
+          "User",
+      });
+    }
+  };
+
+  const finishSuccess = (text, delay) => {
+    setMessage(text);
+    setTimeout(() => {
+      onSuccess?.();
+      resetForm();
+    }, delay);
+  };
+
+  const handleLogin = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const { data, error: signInError } =
+        await localApi.auth.signInWithPassword({ email, password });
+
+      if (signInError) throw signInError;
+      await ensureProfile(data?.user);
+      finishSuccess("Đăng nhập thành công!", 1000);
+    } catch (loginError) {
+      setError(loginError.message || "Đăng nhập thất bại");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignup = async (event) => {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+
+    if (password !== confirmPassword) {
+      setError("Mật khẩu không khớp");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Mật khẩu phải ít nhất 6 ký tự");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error: signUpError } = await localApi.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: name } },
+      });
+
+      if (signUpError) throw signUpError;
+      await ensureProfile(data?.user, name);
+      finishSuccess("Tạo tài khoản local thành công!", 800);
+    } catch (signupError) {
+      setError(signupError.message || "Tạo tài khoản thất bại");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
+
+  const inputClass =
+    "w-full box-border rounded-md border border-gray-300 px-2.5 py-2.5 text-sm";
+  const tabClass = (value) =>
+    `flex-1 border-0 bg-transparent p-3 text-sm font-medium ${
+      mode === value
+        ? "border-b-2 border-blue-500 text-blue-500"
+        : "text-gray-500"
+    }`;
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 50001,
-      }}
-      onClick={() => {
-        onClose();
-        resetForm();
-      }}
+      className="fixed inset-0 z-[50001] flex items-center justify-center bg-black/50"
+      onClick={close}
     >
       <div
-        style={{
-          backgroundColor: "#fff",
-          borderRadius: "12px",
-          padding: "24px",
-          maxWidth: "450px",
-          width: "90%",
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-        }}
-        onClick={(e) => e.stopPropagation()}
+        className="w-[90%] max-w-[450px] rounded-xl bg-white p-6 shadow-xl"
+        onClick={(event) => event.stopPropagation()}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "bold" }}>
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="m-0 text-xl font-bold">
             {mode === "login" ? "Đăng nhập" : "Tạo tài khoản"}
           </h2>
           <button
-            onClick={() => {
-              onClose();
-              resetForm();
-            }}
-            style={{
-              background: "none",
-              border: "none",
-              fontSize: "24px",
-              cursor: "pointer",
-              padding: "0",
-              color: "#6b7280",
-            }}
+            type="button"
+            onClick={close}
+            className="border-0 bg-transparent p-0 text-2xl text-gray-500"
           >
             ✕
           </button>
         </div>
 
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: "8px", marginBottom: "20px", borderBottom: "1px solid #e5e7eb" }}>
-          <button
-            onClick={() => {
-              setMode("login");
-              setError("");
-              setMessage("");
-            }}
-            style={{
-              flex: 1,
-              padding: "12px",
-              backgroundColor: mode === "login" ? "transparent" : "transparent",
-              borderBottom: mode === "login" ? "2px solid #3b82f6" : "none",
-              color: mode === "login" ? "#3b82f6" : "#6b7280",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "500",
-              transition: "all 0.2s",
-            }}
-          >
-            Đăng nhập
-          </button>
-          <button
-            onClick={() => {
-              setMode("signup");
-              setError("");
-              setMessage("");
-            }}
-            style={{
-              flex: 1,
-              padding: "12px",
-              backgroundColor: mode === "signup" ? "transparent" : "transparent",
-              borderBottom: mode === "signup" ? "2px solid #3b82f6" : "none",
-              color: mode === "signup" ? "#3b82f6" : "#6b7280",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "500",
-              transition: "all 0.2s",
-            }}
-          >
-            Đăng ký
-          </button>
+        <div className="mb-5 flex gap-2 border-b border-gray-200">
+          {[
+            ["login", "Đăng nhập"],
+            ["signup", "Đăng ký"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                setMode(value);
+                setError("");
+                setMessage("");
+              }}
+              className={tabClass(value)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        {/* Error Message */}
         {error && (
-          <div
-            style={{
-              padding: "12px",
-              backgroundColor: "#fee2e2",
-              color: "#dc2626",
-              borderRadius: "6px",
-              marginBottom: "16px",
-              fontSize: "14px",
-            }}
-          >
+          <div className="mb-4 rounded-md bg-red-100 p-3 text-sm text-red-600">
             {error}
           </div>
         )}
-
-        {/* Success Message */}
         {message && (
-          <div
-            style={{
-              padding: "12px",
-              backgroundColor: "#dcfce7",
-              color: "#16a34a",
-              borderRadius: "6px",
-              marginBottom: "16px",
-              fontSize: "14px",
-            }}
-          >
+          <div className="mb-4 rounded-md bg-green-100 p-3 text-sm text-green-600">
             {message}
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={mode === "login" ? handleLogin : handleSignup}>
           {mode === "signup" && (
-            <div style={{ marginBottom: "16px" }}>
-              <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "14px" }}>
-                Họ tên
-              </label>
+            <Field label="Họ tên">
               <input
+                className={inputClass}
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(event) => setName(event.target.value)}
                 placeholder="Nhập họ tên của bạn"
                 required
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
-                }}
               />
-            </div>
+            </Field>
           )}
 
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "14px" }}>
-              Email
-            </label>
+          <Field label="Email">
             <input
+              className={inputClass}
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
               placeholder="your@email.com"
               required
-              style={{
-                width: "100%",
-                padding: "10px",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                fontSize: "14px",
-                boxSizing: "border-box",
-              }}
             />
-          </div>
+          </Field>
 
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "14px" }}>
-              Mật khẩu
-            </label>
+          <Field label="Mật khẩu">
             <input
+              className={inputClass}
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(event) => setPassword(event.target.value)}
               placeholder="Nhập mật khẩu"
               required
-              style={{
-                width: "100%",
-                padding: "10px",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                fontSize: "14px",
-                boxSizing: "border-box",
-              }}
             />
-          </div>
+          </Field>
 
           {mode === "signup" && (
-            <div style={{ marginBottom: "16px" }}>
-              <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", color: "#374151", fontSize: "14px" }}>
-                Xác nhận mật khẩu
-              </label>
+            <Field label="Xác nhận mật khẩu">
               <input
+                className={inputClass}
                 type="password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(event) => setConfirmPassword(event.target.value)}
                 placeholder="Nhập lại mật khẩu"
                 required
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
-                }}
               />
-            </div>
+            </Field>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: "100%",
-              padding: "12px",
-              backgroundColor: loading ? "#9ca3af" : "#3b82f6",
-              color: "#fff",
-              border: "none",
-              borderRadius: "8px",
-              cursor: loading ? "not-allowed" : "pointer",
-              fontSize: "16px",
-              fontWeight: "500",
-              transition: "background-color 0.2s",
-            }}
+            className="w-full rounded-lg border-0 bg-blue-500 p-3 text-base font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            {loading ? "Đang xử lý..." : mode === "login" ? "Đăng nhập" : "Tạo tài khoản"}
+            {loading
+              ? "Đang xử lý..."
+              : mode === "login"
+                ? "Đăng nhập"
+                : "Tạo tài khoản"}
           </button>
         </form>
       </div>
     </div>
   );
-};
+}
 
-export default AuthModal;
+function Field({ label, children }) {
+  return (
+    <div className="mb-4">
+      <label className="mb-1 block text-sm font-medium text-gray-700">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}

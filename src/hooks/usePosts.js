@@ -18,7 +18,7 @@ export function usePostsByType(type, options = {}) {
     queryFn: () => fetchPosts({ type, userId, bbox, status }),
     enabled: enabled && !!type,
     staleTime: 1000 * 60, // 1 minute
-    cacheTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
@@ -33,6 +33,6 @@ export function useAllPosts(options = {}) {
     queryFn: () => fetchPosts({ type: 'all', userId, bbox, status }),
     enabled: enabled,
     staleTime: 1000 * 60,
-    cacheTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 5,
   });
 }

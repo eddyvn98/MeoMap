@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { localApi } from "../localClient";
 
-export default function RescueAppealsList({ caseId }) {
+export default function RescueAppealsList({ caseId, refreshKey = 0 }) {
   const [appeals, setAppeals] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+
     const loadAppeals = async () => {
       setLoading(true);
       const { data, error } = await localApi
@@ -15,12 +17,16 @@ export default function RescueAppealsList({ caseId }) {
         .eq("status", "active")
         .order("created_at", { ascending: false });
 
+      if (!active) return;
       setAppeals(error ? [] : data || []);
       setLoading(false);
     };
 
     if (caseId) loadAppeals();
-  }, [caseId]);
+    return () => {
+      active = false;
+    };
+  }, [caseId, refreshKey]);
 
   if (loading) {
     return <p className="text-sm text-gray-500">Đang tải lời kêu gọi...</p>;

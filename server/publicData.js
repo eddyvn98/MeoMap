@@ -26,11 +26,11 @@ export function publicProfile(profile, user) {
     id: cleanText(profile.id, 80),
     display_name: cleanText(profile.display_name, 100) || "",
     avatar_url: safeStoredUrl(profile.avatar_url),
-    phone: cleanText(profile.phone, 40),
-    zalo: cleanText(profile.zalo, 120),
   };
 
   if (user?.id === profile.id) {
+    safe.phone = cleanText(profile.phone, 40);
+    safe.zalo = cleanText(profile.zalo, 120);
     safe.email = user.email;
     safe.role = cleanText(profile.role, 40) || "user";
     safe.created_at = cleanText(profile.created_at, 40);
@@ -39,7 +39,7 @@ export function publicProfile(profile, user) {
   return safe;
 }
 
-export function publicPet(pet, includePrivateContact = false) {
+export function publicPet(pet, includePrivateContact = false, ownerProfile = null) {
   const safe = {
     id: cleanText(pet.id, 80),
     owner_id: cleanText(pet.owner_id, 80),
@@ -69,6 +69,17 @@ export function publicPet(pet, includePrivateContact = false) {
     } catch {
       contact.contact_type = null;
       contact.contact_value = null;
+    }
+
+    if (!contact.contact_value && ownerProfile?.phone) {
+      try {
+        sanitizeContactFields(contact, {
+          contact_type: "phone",
+          contact_value: ownerProfile.phone,
+        });
+      } catch {
+        // Invalid legacy profile phone remains private.
+      }
     }
 
     safe.contact_type = contact.contact_type ?? null;

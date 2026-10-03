@@ -7,7 +7,7 @@ export default function PetList({
   if (!pets || pets.length === 0) {
     return (
       <div style={{ padding: 12, fontSize: 12, color: "#6b7280" }}>
-        Không có mèo nào trong khu vực với bộ lọc hiện tại.
+        Không có thú cưng nào trong khu vực với bộ lọc hiện tại.
       </div>
     );
   }
@@ -22,7 +22,7 @@ export default function PetList({
           borderBottom: "1px solid #e5e7eb",
         }}
       >
-        Có {pets.length} bé trong khu vực này
+        Có {pets.length} thú cưng trong khu vực này
       </div>
 
       {pets.map((pet) => {
@@ -31,7 +31,7 @@ export default function PetList({
 
         const categoryLabel =
           pet.category === "lost"
-            ? "Mèo thất lạc"
+            ? "Thú cưng thất lạc"
             : pet.category === "adopt"
             ? "Cho nhận nuôi"
             : pet.category === "rescue"
@@ -54,7 +54,7 @@ export default function PetList({
             }}
           >
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
-              {pet.name || "Mèo chưa đặt tên"}
+              {pet.name || "Thú cưng chưa đặt tên"}
             </div>
             <div style={{ fontSize: 12, color: "#475569" }}>{categoryLabel}</div>
             <div style={{ fontSize: 11, color: "#6b7280" }}>

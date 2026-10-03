@@ -96,24 +96,22 @@ export default function App() {
     try {
       const { data: userData } = await localApi.auth.getUser();
       if (!userData.user) {
-        alert("Vui lòng đăng nhập để báo cáo");
-        return;
+        setAuthModalOpen(true);
+        return false;
       }
 
       let imageUrl = null;
       if (formData.photo) {
         const fileName = `${Date.now()}-${formData.photo.name}`;
         const path = `reports/${fileName}`;
-        const { error: uploadError } = await localApi.storage
+        const { data: uploadData, error: uploadError } = await localApi.storage
           .from("pet-images")
           .upload(path, formData.photo);
 
-        if (uploadError) {
-          console.error("Lỗi upload ảnh:", uploadError);
-        } else {
-          imageUrl = localApi.storage.from("pet-images").getPublicUrl(path)
-            .data.publicUrl;
-        }
+        if (uploadError) throw uploadError;
+        imageUrl = localApi.storage
+          .from("pet-images")
+          .getPublicUrl(uploadData.path).data.publicUrl;
       }
 
       const { error: insertError } = await localApi.from("pets").insert([
@@ -125,18 +123,21 @@ export default function App() {
           description: formData.description,
           image_url: imageUrl,
           status: "available",
-          owner_id: userData.user.id,
-          created_at: new Date().toISOString(),
+          contact_type:
+            formData.contactType === "google" ? "email" : formData.contactType,
+          contact_value: formData.contact,
         },
       ]);
 
       if (insertError) throw insertError;
       alert("Báo cáo thú cưng thành công!");
       setReportModalOpen(false);
-      loadPets();
+      await loadPets();
+      return true;
     } catch (submitError) {
       console.error("Lỗi gửi báo cáo:", submitError);
       alert("Gửi báo cáo thất bại: " + submitError.message);
+      return false;
     }
   };
 

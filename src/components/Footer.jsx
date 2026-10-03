@@ -26,7 +26,7 @@ export default function Footer() {
           </div>
 
           {/* Copyright */}
-          <p className="text-gray-500 text-xs">&copy; 2024 MeoMap</p>
+          <p className="text-gray-500 text-xs">&copy; {new Date().getFullYear()} MeoMap</p>
         </div>
       </div>
     </footer>

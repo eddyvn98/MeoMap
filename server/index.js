@@ -1,6 +1,6 @@
 import http from "node:http";
 import { existsSync } from "node:fs";
-import { join, normalize } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import {
   DIST_DIR,
   PORT,
@@ -18,6 +18,11 @@ import {
 } from "./http.js";
 
 let apiQueue = Promise.resolve();
+
+function isWithin(root, target) {
+  const path = relative(root, target);
+  return path === "" || (!path.startsWith("..") && !isAbsolute(path));
+}
 
 function enqueueApi(task) {
   const next = apiQueue.then(task, task);
@@ -50,8 +55,8 @@ const server = http.createServer(async (req, res) => {
       const relative = safeUploadPath(
         decodeURIComponent(url.pathname.slice("/uploads/".length)),
       );
-      const full = normalize(join(UPLOAD_DIR, relative));
-      if (!full.startsWith(normalize(UPLOAD_DIR))) {
+      const full = resolve(UPLOAD_DIR, relative);
+      if (!isWithin(UPLOAD_DIR, full)) {
         return json(res, 403, { error: "Forbidden" });
       }
       if (serveFile(res, full)) return;
@@ -61,9 +66,9 @@ const server = http.createServer(async (req, res) => {
     if (existsSync(DIST_DIR)) {
       const requested =
         url.pathname === "/" ? "index.html" : url.pathname.replace(/^\/+/, "");
-      const candidate = normalize(join(DIST_DIR, requested));
+      const candidate = resolve(DIST_DIR, requested);
 
-      if (candidate.startsWith(normalize(DIST_DIR)) && serveFile(res, candidate)) {
+      if (isWithin(DIST_DIR, candidate) && serveFile(res, candidate)) {
         return;
       }
       if (serveFile(res, join(DIST_DIR, "index.html"))) return;

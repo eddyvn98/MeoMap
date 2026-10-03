@@ -19,6 +19,7 @@ import {
 } from "./auth.js";
 import { json, readBody, safeUploadPath } from "./http.js";
 import { executeQuery } from "./query.js";
+import { deleteOwnedUpload } from "./uploadFiles.js";
 import { cleanText } from "./validation.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -179,7 +180,41 @@ export async function handleApi(req, res, url) {
     }
 
     try {
-      return json(res, 200, { data: executeQuery(body, user, db) });
+      let previousImage = null;
+      let previousOwner = null;
+
+      if (
+        body?.table === "pets" &&
+        body?.action === "update" &&
+        Object.prototype.hasOwnProperty.call(body?.payload || {}, "image_url")
+      ) {
+        const idFilter = (body.filters || []).find(
+          (filter) => filter.op === "eq" && filter.column === "id",
+        );
+        const existing = idFilter
+          ? db.pets.find((pet) => pet.id === idFilter.value)
+          : null;
+        previousImage = existing?.image_url || null;
+        previousOwner = existing?.owner_id || null;
+      }
+
+      const data = executeQuery(body, user, db);
+
+      if (
+        previousImage &&
+        previousImage !== body?.payload?.image_url &&
+        previousOwner === user?.id
+      ) {
+        deleteOwnedUpload(previousImage, previousOwner);
+      }
+
+      if (body?.table === "pets" && body?.action === "delete") {
+        for (const deleted of data || []) {
+          deleteOwnedUpload(deleted.image_url, deleted.owner_id);
+        }
+      }
+
+      return json(res, 200, { data });
     } catch (error) {
       return json(res, error.status || 400, { error: error.message });
     }

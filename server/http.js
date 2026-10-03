@@ -66,7 +66,7 @@ export function readBody(req, maxBytes = 20 * 1024 * 1024) {
       if (settled) return;
       total += chunk.length;
       if (total > maxBytes) {
-        fail(new Error("Request too large"));
+        fail(Object.assign(new Error("Request too large"), { status: 413 }));
         req.destroy();
         return;
       }
@@ -79,7 +79,7 @@ export function readBody(req, maxBytes = 20 * 1024 * 1024) {
       try {
         resolveBody(JSON.parse(Buffer.concat(chunks).toString("utf8")));
       } catch {
-        reject(new Error("Invalid JSON"));
+        reject(Object.assign(new Error("Invalid JSON"), { status: 400 }));
       }
     });
     req.on("error", fail);

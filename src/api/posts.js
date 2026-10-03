@@ -1,62 +1,39 @@
-import { localApi } from '../localClient';
+import { localApi } from "../localClient";
+import { CLOSED_STATUSES, OPEN_STATUSES } from "../utils/petStatus";
 
-/**
- * Fetch posts from local server with filters
- * @param {Object} options - Query options
- * @param {string} options.type - Post type: 'rescue', 'lost', 'adopt'
- * @param {string} options.userId - Filter by owner_id
- * @param {Array<number>} options.bbox - Bounding box [minLng, minLat, maxLng, maxLat]
- * @param {string} options.status - Filter by status
- * @returns {Promise<Array>} Array of posts
- */
 export async function fetchPosts({ type, userId, bbox, status }) {
-  let query = localApi.from('pets').select('*');
+  let query = localApi.from("pets").select("*");
 
-  // Filter by type (category)
-  if (type && type !== 'all') {
-    query = query.eq('category', type);
+  if (type && type !== "all") query = query.eq("category", type);
+  if (userId) query = query.eq("owner_id", userId);
+
+  if (status === "open") {
+    query = query.in("status", OPEN_STATUSES);
+  } else if (status === "closed") {
+    query = query.in("status", CLOSED_STATUSES);
+  } else if (status && status !== "all") {
+    query = query.eq("status", status);
   }
 
-  // Filter by owner (for user's own posts)
-  if (userId) {
-    query = query.eq('owner_id', userId);
-  }
-
-  // Filter by status
-  if (status && status !== 'all') {
-    if (status === 'open') {
-      query = query.in('status', ['available', 'Lost', 'Found', 'Abandoned']);
-    } else {
-      query = query.eq('status', status);
+  if (bbox && bbox.length === 4) {
+    const [minLng, minLat, maxLng, maxLat] = bbox.map(Number);
+    if ([minLng, minLat, maxLng, maxLat].every(Number.isFinite)) {
+      query = query
+        .gte("lng", minLng)
+        .lte("lng", maxLng)
+        .gte("lat", minLat)
+        .lte("lat", maxLat);
     }
   }
 
-  // Filter by bounding box (map viewport)
-  if (bbox && bbox.length === 4) {
-    const [minLng, minLat, maxLng, maxLat] = bbox;
-    query = query
-      .gte('lng', minLng)
-      .lte('lng', maxLng)
-      .gte('lat', minLat)
-      .lte('lat', maxLat);
-  }
+  const { data, error } = await query.order("created_at", {
+    ascending: false,
+  });
 
-  // Order by created_at descending
-  query = query.order('created_at', { ascending: false });
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('Error fetching posts:', error);
-    throw new Error(error.message);
-  }
-
+  if (error) throw new Error(error.message);
   return data || [];
 }
 
-/**
- * Get query key for React Query
- */
 export function getPostsQueryKey({ type, userId, bbox, status }) {
-  return ['posts', type, userId, bbox?.join(','), status];
+  return ["posts", type, userId, bbox?.join(","), status];
 }

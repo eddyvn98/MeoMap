@@ -1,3 +1,5 @@
+import { cleanPublicUrl } from "./validation.js";
+
 const FILTER_OPS = new Set(["eq", "neq", "is", "in", "gte", "lte"]);
 const BLOCKED_COLUMNS = new Set(["__proto__", "prototype", "constructor"]);
 
@@ -63,7 +65,13 @@ export function decorateRows(table, rows, columns, db) {
             id: profile.id,
             name: profile.display_name || "",
             display_name: profile.display_name || "",
-            avatar_url: profile.avatar_url || null,
+            avatar_url: (() => {
+              try {
+                return cleanPublicUrl(profile.avatar_url);
+              } catch {
+                return null;
+              }
+            })(),
           }
         : null,
     };

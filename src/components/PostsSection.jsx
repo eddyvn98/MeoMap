@@ -12,8 +12,6 @@ export default function PostsSection({
   bbox = null,
   onEdit,
   onDelete,
-  onShowQR,
-  onEnterToken,
   onViewDetail,
 }) {
   const queryClient = useQueryClient();
@@ -242,8 +240,6 @@ export default function PostsSection({
       actions={{
         onEdit,
         onDelete,
-        onShowQR,
-        onEnterToken,
         onViewDetail,
       }}
     />

@@ -1,3 +1,4 @@
+import { isClosedStatus } from "../utils/petStatus";
 import { useEffect, useState } from "react";
 import { localApi } from "../localClient";
 import CaseContact from "./CaseContact";
@@ -5,7 +6,7 @@ import CaseContact from "./CaseContact";
 export default function LostPetDetail({ pet, user, isOwner, onEdit }) {
   const [owner, setOwner] = useState(null);
   const [closing, setClosing] = useState(false);
-  const isClosed = ["closed", "delivered", "completed", "found"].includes(String(pet.status || "").toLowerCase());
+  const isClosed = isClosedStatus(pet.status);
 
   useEffect(() => {
     const loadOwner = async () => {

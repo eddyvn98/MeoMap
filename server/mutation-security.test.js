@@ -171,4 +171,21 @@ describe("mutation hardening", () => {
     expect(db.rescue_appeals).toHaveLength(0);
     expect(db.rescue_updates).toHaveLength(0);
   });
+  it("blocks filtering by private pet fields", () => {
+    const db = dbWithPet();
+    expect(() =>
+      executeQuery(
+        {
+          table: "pets",
+          action: "select",
+          filters: [
+            { op: "eq", column: "contact_value", value: "0901234567" },
+          ],
+        },
+        null,
+        db,
+      ),
+    ).toThrow("Filter column is not allowed");
+  });
+
 });

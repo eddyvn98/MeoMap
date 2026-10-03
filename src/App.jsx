@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "./AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { localApi } from "./localClient";
 import Footer from "./components/Footer";
@@ -24,7 +25,7 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const mapRef = useRef(null);
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
@@ -62,10 +63,6 @@ export default function App() {
     openProfilePanel,
     closeProfilePanel,
   } = useProfilePanel({ location, navigate, setBounds });
-
-  useEffect(() => {
-    localApi.auth.getUser().then(({ data }) => setUser(data.user));
-  }, []);
 
   useEffect(() => {
     if (!localStorage.getItem("meomap_onboarding_seen")) {
@@ -123,8 +120,7 @@ export default function App() {
           description: formData.description,
           image_url: imageUrl,
           status: "available",
-          contact_type:
-            formData.contactType === "google" ? "email" : formData.contactType,
+          contact_type: formData.contactType,
           contact_value: formData.contact,
         },
       ]);
@@ -168,7 +164,7 @@ export default function App() {
         onClose={() => setGlobalEditingPost(null)}
         onSuccess={() => {
           setGlobalEditingPost(null);
-          window.location.reload();
+          loadPets();
         }}
       />
 
@@ -233,10 +229,7 @@ export default function App() {
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
-        onSuccess={() => {
-          setAuthModalOpen(false);
-          window.location.reload();
-        }}
+        onSuccess={() => setAuthModalOpen(false)}
       />
 
       <QuickGuideModal

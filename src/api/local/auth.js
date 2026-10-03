@@ -77,7 +77,9 @@ export const auth = {
       return { data: { user: result.user }, error: null };
     } catch (error) {
       if (error.status === 401) {
+        const hadToken = !!getToken();
         setToken("");
+        if (hadToken) emitAuth("SIGNED_OUT", null);
         return { data: { user: null }, error: null };
       }
       return { data: { user: null }, error };

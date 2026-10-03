@@ -68,11 +68,11 @@ export function ManualAddress({ formData, update, onSearch, inputClass }) {
 export function contactLabel(type) {
   if (type === "phone") return "Số điện thoại";
   if (type === "facebook") return "Facebook URL hoặc ID";
-  return "Google Email";
+  return "Email";
 }
 
 export function contactPlaceholder(type) {
   if (type === "phone") return "Ví dụ: 0987654321";
   if (type === "facebook") return "Ví dụ: facebook.com/username";
-  return "Ví dụ: your@gmail.com";
+  return "Ví dụ: ten@example.com";
 }

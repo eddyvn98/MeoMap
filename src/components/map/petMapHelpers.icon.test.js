@@ -61,4 +61,15 @@ describe("pet marker status icon", () => {
     expect(icon.html).toContain("2127645.png");
     expect(divIcon).toHaveBeenCalledTimes(1);
   });
+
+  it("escapes marker image attributes", () => {
+    const icon = makeStatusIcon(
+      "available",
+      "lost",
+      'x" onerror="alert(1)',
+    );
+
+    expect(icon.html).toContain("&quot;");
+    expect(icon.html).not.toContain('src="x" onerror=');
+  });
 });

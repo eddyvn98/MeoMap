@@ -115,6 +115,8 @@ export default function App() {
         {
           name: formData.name,
           category: formData.category,
+          animal: formData.animal,
+          ...(formData.color ? { color: formData.color } : {}),
           lat: formData.lat,
           lng: formData.lng,
           description: formData.description,
@@ -214,7 +216,6 @@ export default function App() {
 
       <ReportPetModal
         isOpen={reportModalOpen}
-        mapRef={mapRef}
         onClose={() => setReportModalOpen(false)}
         onSubmit={submitReport}
       />

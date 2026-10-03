@@ -1,17 +1,19 @@
+import { isClosedStatus } from "../utils/petStatus";
 import { useEffect, useState } from "react";
 import { localApi } from "../localClient";
+import CaseContact from "./CaseContact";
 
 export default function LostPetDetail({ pet, user, isOwner, onEdit }) {
   const [owner, setOwner] = useState(null);
   const [closing, setClosing] = useState(false);
-  const isClosed = ["closed", "delivered", "completed", "found"].includes(String(pet.status || "").toLowerCase());
+  const isClosed = isClosedStatus(pet.status);
 
   useEffect(() => {
     const loadOwner = async () => {
       if (!pet.owner_id) return;
       const { data } = await localApi
         .from("profiles")
-        .select("display_name,email,phone")
+        .select("display_name,phone")
         .eq("id", pet.owner_id)
         .maybeSingle();
       setOwner(data || null);
@@ -59,9 +61,7 @@ export default function LostPetDetail({ pet, user, isOwner, onEdit }) {
           <p className="mb-3 mt-1 text-sm text-blue-800">
             Hãy liên hệ trực tiếp người đăng. MeoMap không thu, giữ hoặc chi trả tiền thưởng.
           </p>
-          {owner?.phone && <a className="mb-2 block rounded bg-green-600 px-4 py-2 text-center font-semibold text-white" href={`tel:${owner.phone}`}>📱 Gọi {owner.phone}</a>}
-          {owner?.email && <a className="block rounded bg-blue-600 px-4 py-2 text-center font-semibold text-white" href={`mailto:${owner.email}`}>✉️ Gửi email</a>}
-          {!owner?.phone && !owner?.email && <p className="text-sm text-gray-600">Người đăng chưa cập nhật thông tin liên hệ công khai.</p>}
+          <CaseContact pet={pet} owner={owner} />
         </section>
       )}
 

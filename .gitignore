@@ -15,6 +15,7 @@ dist-ssr
 # MeoMap local runtime data
 server/data/db.json
 server/data/db.json.tmp
+server/data/db.json.bak
 server/data/uploads/
 
 # Editor directories and files

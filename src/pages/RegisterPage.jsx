@@ -8,35 +8,28 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  const handleRegister = async (event) => {
+    event.preventDefault();
     setError("");
+
+    if (password.length < 8 || password.length > 128) {
+      setError("Mật khẩu phải từ 8 đến 128 ký tự.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data, error } = await localApi.auth.signUp({
+      const { error: signUpError } = await localApi.auth.signUp({
         email,
         password,
       });
-      if (error) {
-        setError(error.message || "Register failed");
-        return;
-      }
-
-      // Create profile immediately after signup
-      if (data?.user) {
-        await localApi.from("profiles").insert({
-          id: data.user.id,
-          email: data.user.email,
-          display_name: data.user.email?.split('@')[0] || 'User',
-        });
-      }
+      if (signUpError) throw signUpError;
 
       alert("Đã tạo tài khoản local thành công.");
       navigate("/account");
-    } catch (err) {
-      setError(err.message || String(err));
+    } catch (registerError) {
+      setError(registerError.message || "Không thể tạo tài khoản.");
     } finally {
       setLoading(false);
     }
@@ -49,18 +42,44 @@ export default function RegisterPage() {
         <div style={{ marginBottom: 8 }}>
           <label>Email</label>
           <br />
-          <input value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: 8 }} />
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={inputStyle}
+          />
         </div>
         <div style={{ marginBottom: 8 }}>
-          <label>Mật khẩu</label>
+          <label>Mật khẩu (8–128 ký tự)</label>
           <br />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: 8 }} />
+          <input
+            type="password"
+            required
+            minLength={8}
+            maxLength={128}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={inputStyle}
+          />
         </div>
-        {error && <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>}
-        <button type="submit" disabled={loading} style={{ padding: 10, background: '#ff7f32', color: '#fff', border: 'none', borderRadius: 6 }}>
-          {loading ? 'Đang tạo...' : 'Đăng ký'}
+        {error && <div style={{ color: "red", marginBottom: 8 }}>{error}</div>}
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            padding: 10,
+            background: "#ff7f32",
+            color: "#fff",
+            border: "none",
+            borderRadius: 6,
+          }}
+        >
+          {loading ? "Đang tạo..." : "Đăng ký"}
         </button>
       </form>
     </div>
   );
 }
+
+const inputStyle = { width: "100%", padding: 8, boxSizing: "border-box" };

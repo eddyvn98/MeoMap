@@ -9,41 +9,20 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async (event) => {
+    event.preventDefault();
     setError("");
     setLoading(true);
+
     try {
-      const { data, error } = await localApi.auth.signInWithPassword({
+      const { error: signInError } = await localApi.auth.signInWithPassword({
         email,
         password,
       });
-      if (error) {
-        setError(error.message || "Login failed");
-        return;
-      }
-
-      // Ensure profile exists after login
-      if (data?.user) {
-        const { data: existingProfile } = await localApi
-          .from("profiles")
-          .select("id")
-          .eq("id", data.user.id)
-          .single();
-
-        if (!existingProfile) {
-          await localApi.from("profiles").insert({
-            id: data.user.id,
-            email: data.user.email,
-            display_name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
-          });
-        }
-      }
-
-      // logged in → redirect to /account
+      if (signInError) throw signInError;
       navigate("/account");
-    } catch (err) {
-      setError(err.message || String(err));
+    } catch (loginError) {
+      setError(loginError.message || "Đăng nhập thất bại.");
     } finally {
       setLoading(false);
     }
@@ -56,18 +35,43 @@ export default function LoginPage() {
         <div style={{ marginBottom: 8 }}>
           <label>Email</label>
           <br />
-          <input value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: 8 }} />
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={inputStyle}
+          />
         </div>
         <div style={{ marginBottom: 8 }}>
           <label>Mật khẩu</label>
           <br />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: 8 }} />
+          <input
+            type="password"
+            required
+            maxLength={128}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={inputStyle}
+          />
         </div>
-        {error && <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>}
-        <button type="submit" disabled={loading} style={{ padding: 10, background: '#ff7f32', color: '#fff', border: 'none', borderRadius: 6 }}>
-          {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+        {error && <div style={{ color: "red", marginBottom: 8 }}>{error}</div>}
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            padding: 10,
+            background: "#ff7f32",
+            color: "#fff",
+            border: "none",
+            borderRadius: 6,
+          }}
+        >
+          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </button>
       </form>
     </div>
   );
 }
+
+const inputStyle = { width: "100%", padding: 8, boxSizing: "border-box" };

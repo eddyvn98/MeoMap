@@ -20,7 +20,7 @@ function shutdown(code = 0) {
 
 for (const child of children) {
   child.on("exit", (code) => {
-    if (!closing && code && code !== 0) shutdown(code);
+    if (!closing) shutdown(code ?? 0);
   });
 }
 

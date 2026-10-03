@@ -51,6 +51,7 @@ describe("security query rules", () => {
 
     expect(profile.id).toBe("owner-1");
     expect(profile.email).toBeUndefined();
+    expect(profile.phone).toBeUndefined();
   });
 
   it("rejects invalid pet coordinates", () => {

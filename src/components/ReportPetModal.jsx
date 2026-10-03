@@ -4,6 +4,7 @@ import {
   ManualAddress,
   ModeButton,
   Notice,
+  PetAttributes,
   Section,
   contactLabel,
   contactPlaceholder,
@@ -11,17 +12,15 @@ import {
 import {
   EMPTY_REPORT_FORM,
   geocodeReportAddress,
+  roundReportCoordinate,
 } from "./report/reportPetModel";
 
-export default function ReportPetModal({
-  isOpen,
-  onClose,
-  onSubmit,
-}) {
+export default function ReportPetModal({ isOpen, onClose, onSubmit }) {
   const [locationMode, setLocationMode] = useState("auto");
   const [formData, setFormData] = useState(EMPTY_REPORT_FORM);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [locationError, setLocationError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const photoInputRef = useRef(null);
 
   useEffect(() => {
@@ -40,8 +39,8 @@ export default function ReportPetModal({
       ({ coords }) => {
         setFormData((current) => ({
           ...current,
-          lat: coords.latitude,
-          lng: coords.longitude,
+          lat: roundReportCoordinate(coords.latitude),
+          lng: roundReportCoordinate(coords.longitude),
         }));
         setLoadingLocation(false);
       },
@@ -94,7 +93,7 @@ export default function ReportPetModal({
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!formData.lat || !formData.lng) {
+    if (!Number.isFinite(formData.lat) || !Number.isFinite(formData.lng)) {
       alert("Vui lòng chọn vị trí");
       return;
     }
@@ -107,8 +106,13 @@ export default function ReportPetModal({
       return;
     }
 
-    await onSubmit(formData);
-    resetForm();
+    setSubmitting(true);
+    try {
+      const success = await onSubmit(formData);
+      if (success !== false) resetForm();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -137,8 +141,9 @@ export default function ReportPetModal({
         </div>
 
         <div className="mb-5 rounded-md border-l-4 border-amber-500 bg-amber-100 p-3 text-[13px] leading-6 text-amber-800">
-          <strong>⚠️ Lưu ý bảo mật:</strong> Thông tin liên hệ của bạn sẽ được
-          ẩn. Vị trí được làm tròn để hạn chế người xấu.
+          <strong>⚠️ Lưu ý bảo mật:</strong> Thông tin liên hệ chỉ hiển thị
+          trong trang chi tiết case. Vị trí được làm tròn để hạn chế lộ vị trí
+          quá chính xác.
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -152,17 +157,11 @@ export default function ReportPetModal({
               />
             </Field>
 
-            <Field label="Loại báo cáo">
-              <select
-                className={inputClass}
-                value={formData.category}
-                onChange={(event) => update("category", event.target.value)}
-              >
-                <option value="lost">🔴 Thú cưng bị mất</option>
-                <option value="adopt">🟢 Tìm chủ nhân</option>
-                <option value="rescue">🟠 Cần cứu hộ</option>
-              </select>
-            </Field>
+            <PetAttributes
+              formData={formData}
+              update={update}
+              inputClass={inputClass}
+            />
 
             <div className="mb-4 rounded-lg bg-blue-50 p-2.5 text-xs text-blue-800">
               MeoMap không thu cọc, giữ thưởng hoặc nhận tiền quyên góp.
@@ -183,7 +182,7 @@ export default function ReportPetModal({
                 ref={photoInputRef}
                 className={inputClass}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,image/gif"
                 onChange={(event) =>
                   update("photo", event.target.files?.[0] || null)
                 }
@@ -201,7 +200,7 @@ export default function ReportPetModal({
               {[
                 ["phone", "📱 Số điện thoại"],
                 ["facebook", "f Facebook"],
-                ["google", "G Google"],
+                ["email", "✉️ Email"],
               ].map(([value, label]) => (
                 <button
                   key={value}
@@ -240,7 +239,7 @@ export default function ReportPetModal({
                 ❌ {locationError}
               </Notice>
             )}
-            {formData.lat && formData.lng && (
+            {Number.isFinite(formData.lat) && Number.isFinite(formData.lng) && (
               <Notice className="bg-green-100 text-green-600">
                 ✓ Vị trí: {formData.lat.toFixed(4)}, {formData.lng.toFixed(4)}
               </Notice>
@@ -278,9 +277,10 @@ export default function ReportPetModal({
           <div className="flex gap-3">
             <button
               type="submit"
-              className="flex-1 rounded-lg border-0 bg-blue-500 p-3 text-base font-medium text-white"
+              disabled={submitting}
+              className="flex-1 rounded-lg border-0 bg-blue-500 p-3 text-base font-medium text-white disabled:opacity-50"
             >
-              ✓ Đăng case
+              {submitting ? "Đang đăng..." : "✓ Đăng case"}
             </button>
             <button
               type="button"

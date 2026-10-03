@@ -1,4 +1,5 @@
 import { extname } from "node:path";
+import { TRUST_PROXY_HEADERS } from "./config.js";
 
 const buckets = new Map();
 const IMAGE_TYPES = new Map([
@@ -10,17 +11,30 @@ const IMAGE_TYPES = new Map([
 ]);
 
 export function clientKey(req) {
-  const forwarded = String(req.headers["cf-connecting-ip"] || req.headers["x-forwarded-for"] || "");
-  const ip = forwarded.split(",")[0].trim() || req.socket?.remoteAddress || "unknown";
-  return ip.slice(0, 128);
+  const remote = req.socket?.remoteAddress || "unknown";
+  if (!TRUST_PROXY_HEADERS) return String(remote).slice(0, 128);
+
+  const forwarded = String(
+    req.headers["cf-connecting-ip"] || req.headers["x-forwarded-for"] || "",
+  );
+  const ip = forwarded.split(",")[0].trim() || remote;
+  return String(ip).slice(0, 128);
 }
 
 export function consumeRateLimit(key, { limit, windowMs }) {
   const now = Date.now();
+
+  if (buckets.size > 5000) {
+    for (const [bucketKey, bucket] of buckets) {
+      if (bucket.resetAt <= now) buckets.delete(bucketKey);
+    }
+  }
+
   const existing = buckets.get(key);
-  const bucket = existing && existing.resetAt > now
-    ? existing
-    : { count: 0, resetAt: now + windowMs };
+  const bucket =
+    existing && existing.resetAt > now
+      ? existing
+      : { count: 0, resetAt: now + windowMs };
 
   bucket.count += 1;
   buckets.set(key, bucket);
@@ -33,13 +47,21 @@ export function consumeRateLimit(key, { limit, windowMs }) {
 
 function hasImageSignature(buffer, ext) {
   if (ext === ".jpg" || ext === ".jpeg") {
-    return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    return buffer.length >= 3 &&
+      buffer[0] === 0xff &&
+      buffer[1] === 0xd8 &&
+      buffer[2] === 0xff;
   }
   if (ext === ".png") {
     return buffer.length >= 8 &&
-      buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e &&
-      buffer[3] === 0x47 && buffer[4] === 0x0d && buffer[5] === 0x0a &&
-      buffer[6] === 0x1a && buffer[7] === 0x0a;
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47 &&
+      buffer[4] === 0x0d &&
+      buffer[5] === 0x0a &&
+      buffer[6] === 0x1a &&
+      buffer[7] === 0x0a;
   }
   if (ext === ".gif") {
     const header = buffer.subarray(0, 6).toString("ascii");
@@ -54,9 +76,9 @@ function hasImageSignature(buffer, ext) {
 }
 
 export function validateImageUpload(path, base64Data, maxBytes = 8 * 1024 * 1024) {
-  const ext = extname(path).toLowerCase();
-  const expectedType = IMAGE_TYPES.get(ext);
-  if (!expectedType) {
+  const extension = extname(path).toLowerCase();
+  const contentType = IMAGE_TYPES.get(extension);
+  if (!contentType) {
     throw new Error("Chỉ hỗ trợ ảnh JPG, PNG, WebP hoặc GIF.");
   }
 
@@ -68,9 +90,9 @@ export function validateImageUpload(path, base64Data, maxBytes = 8 * 1024 * 1024
   const buffer = Buffer.from(data, "base64");
   if (!buffer.length) throw new Error("Ảnh rỗng.");
   if (buffer.length > maxBytes) throw new Error("Ảnh vượt quá 8 MB.");
-  if (!hasImageSignature(buffer, ext)) {
+  if (!hasImageSignature(buffer, extension)) {
     throw new Error("Nội dung file không khớp định dạng ảnh.");
   }
 
-  return { buffer, contentType: expectedType };
+  return { buffer, contentType, extension };
 }

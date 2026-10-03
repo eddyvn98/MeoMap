@@ -8,59 +8,60 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Ensure profile exists for user
-    const ensureProfile = async (user) => {
-      if (!user) return;
-      
-      try {
-        const { data: existingProfile } = await localApi
-          .from("profiles")
-          .select("id")
-          .eq("id", user.id)
-          .single();
+    let active = true;
 
-        if (!existingProfile) {
-          await localApi.from("profiles").insert({
-            id: user.id,
-            email: user.email,
-            display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-          });
-        }
-      } catch (err) {
-        console.error("Profile creation error:", err);
+    const ensureProfile = async (currentUser) => {
+      if (!currentUser) return;
+
+      const { data: existingProfile, error } = await localApi
+        .from("profiles")
+        .select("id")
+        .eq("id", currentUser.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Profile lookup error:", error);
+        return;
+      }
+
+      if (!existingProfile) {
+        const { error: createError } = await localApi.from("profiles").insert({
+          display_name:
+            currentUser.user_metadata?.full_name ||
+            currentUser.email?.split("@")[0] ||
+            "User",
+        });
+        if (createError) console.error("Profile creation error:", createError);
       }
     };
 
-    // Check session khi mount
-    const checkSession = async () => {
-      try {
-        const { data } = await localApi.auth.getSession();
-        if (data?.session?.user) {
-          setUser(data.session.user);
-          await ensureProfile(data.session.user);
-        }
-        setLoading(false);
-      } catch (err) {
-        console.error("Auth error:", err);
-        setLoading(false);
-      }
+    const applySession = async (session) => {
+      const nextUser = session?.user || null;
+      if (!active) return;
+      setUser(nextUser);
+      if (nextUser) await ensureProfile(nextUser);
     };
 
-    checkSession();
-
-    // Simple auth state change listener
-    try {
-      localApi.auth.onAuthStateChanged(async (session) => {
-        if (session?.user) {
-          setUser(session.user);
-          await ensureProfile(session.user);
-        } else {
-          setUser(null);
-        }
+    localApi.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (error) console.error("Auth error:", error);
+        return applySession(data?.session || null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
-    } catch (err) {
-      console.warn("Auth listener not available:", err);
-    }
+
+    const { data } = localApi.auth.onAuthStateChanged((session) => {
+      applySession(session).catch((error) => {
+        console.error("Auth state error:", error);
+      });
+    });
+
+    return () => {
+      active = false;
+      data?.subscription?.unsubscribe?.();
+    };
   }, []);
 
   return (
@@ -72,8 +73,6 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 }

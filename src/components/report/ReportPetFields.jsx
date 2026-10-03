@@ -68,11 +68,59 @@ export function ManualAddress({ formData, update, onSearch, inputClass }) {
 export function contactLabel(type) {
   if (type === "phone") return "Số điện thoại";
   if (type === "facebook") return "Facebook URL hoặc ID";
-  return "Google Email";
+  return "Email";
 }
 
 export function contactPlaceholder(type) {
   if (type === "phone") return "Ví dụ: 0987654321";
   if (type === "facebook") return "Ví dụ: facebook.com/username";
-  return "Ví dụ: your@gmail.com";
+  return "Ví dụ: ten@example.com";
+}
+
+
+export function PetAttributes({ formData, update, inputClass }) {
+  return (
+    <>
+      <Field label="Loại báo cáo">
+        <select
+          className={inputClass}
+          value={formData.category}
+          onChange={(event) => update("category", event.target.value)}
+        >
+          <option value="lost">🔴 Thú cưng bị mất</option>
+          <option value="adopt">🟢 Tìm chủ nhân</option>
+          <option value="rescue">🟠 Cần cứu hộ</option>
+        </select>
+      </Field>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Loài">
+          <select
+            className={inputClass}
+            value={formData.animal}
+            onChange={(event) => update("animal", event.target.value)}
+          >
+            <option value="cat">Mèo</option>
+            <option value="dog">Chó</option>
+          </select>
+        </Field>
+
+        <Field label="Màu lông">
+          <select
+            className={inputClass}
+            value={formData.color}
+            onChange={(event) => update("color", event.target.value)}
+          >
+            <option value="">Chưa rõ</option>
+            <option value="white">Trắng</option>
+            <option value="black">Đen</option>
+            <option value="orange">Vàng / cam</option>
+            <option value="gray">Xám</option>
+            <option value="mixed">Nhiều màu</option>
+            <option value="other">Khác</option>
+          </select>
+        </Field>
+      </div>
+    </>
+  );
 }

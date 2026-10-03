@@ -27,7 +27,22 @@ export const storage = {
     return {
       async upload(path, file) {
         try {
+          if (!file) throw new Error("Chưa chọn file.");
+          if (file.size > 8 * 1024 * 1024) {
+            throw new Error("Ảnh vượt quá 8 MB.");
+          }
+          const allowedTypes = new Set([
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/gif",
+          ]);
+          if (file.type && !allowedTypes.has(file.type)) {
+            throw new Error("Chỉ hỗ trợ ảnh JPG, PNG, WebP hoặc GIF.");
+          }
+
           const normalizedPath = normalizeUploadPath(path);
+          if (!normalizedPath) throw new Error("Tên file không hợp lệ.");
           const data = await fileToBase64(file);
           const result = await request("/api/upload", {
             method: "POST",

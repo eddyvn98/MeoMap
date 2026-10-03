@@ -13,8 +13,12 @@ export default function EditPetPage() {
     const load = async () => {
       const { data: auth } = await localApi.auth.getUser();
       if (!auth?.user) return navigate("/login");
-      const { data } = await localApi.from("pets").select("*").eq("id", id).maybeSingle();
-      if (!data || (data.owner_id !== auth.user.id && data.user_id !== auth.user.id)) return navigate("/");
+      const { data, error } = await localApi
+        .from("pets")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (error || !data || data.owner_id !== auth.user.id) return navigate("/");
       setPet(data);
       setForm({ name: data.name || "", district: data.district || "", description: data.description || "" });
     };

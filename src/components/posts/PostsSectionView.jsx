@@ -1,7 +1,7 @@
 import * as ReactWindow from "react-window";
 import PostCard from "../PostCard";
 
-const FixedSizeList = ReactWindow.FixedSizeList;
+const VirtualList = ReactWindow.List;
 
 export const TYPE_ORDER = ["rescue", "lost", "adopt"];
 
@@ -19,10 +19,8 @@ const TYPE_ICON = {
 
 const STATUS_OPTIONS = [
   { value: "all", label: "Tất cả" },
-  { value: "available", label: "Có sẵn" },
-  { value: "pending_qr", label: "Chờ QR" },
+  { value: "open", label: "Đang mở" },
   { value: "closed", label: "Đã đóng" },
-  { value: "urgent", label: "Khẩn cấp" },
 ];
 
 const SORT_OPTIONS = [
@@ -31,22 +29,24 @@ const SORT_OPTIONS = [
 ];
 
 function PostList({ posts, actions }) {
-  if (posts.length > 30) {
-    const Row = ({ index, style }) => (
+  if (posts.length > 30 && VirtualList) {
+    const Row = ({ index, style, posts: rowPosts, actions: rowActions }) => (
       <div style={{ ...style, paddingBottom: 12 }}>
-        <PostCard post={posts[index]} {...actions} />
+        <PostCard post={rowPosts[index]} {...rowActions} />
       </div>
     );
 
     return (
-      <FixedSizeList
-        height={Math.min(posts.length * 120, 600)}
-        itemCount={posts.length}
-        itemSize={120}
-        width="100%"
-      >
-        {Row}
-      </FixedSizeList>
+      <VirtualList
+        rowComponent={Row}
+        rowCount={posts.length}
+        rowHeight={120}
+        rowProps={{ posts, actions }}
+        style={{
+          height: Math.min(posts.length * 120, 600),
+          width: "100%",
+        }}
+      />
     );
   }
 

@@ -1,3 +1,5 @@
+import { isClosedStatus } from "../../utils/petStatus";
+
 export function AvailableRescueCard({ caseItem, onAccept }) {
   return (
     <div className="rounded-lg border border-gray-300 p-4 transition hover:shadow-lg">
@@ -51,7 +53,7 @@ export function AvailableRescueCard({ caseItem, onAccept }) {
 }
 
 export function MyRescueCard({ caseItem }) {
-  const isClosed = caseItem.status === "delivered";
+  const isClosed = isClosedStatus(caseItem.status);
 
   return (
     <div

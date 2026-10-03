@@ -1,17 +1,19 @@
+import { isClosedStatus } from "../utils/petStatus";
 import { useEffect, useState } from "react";
 import { localApi } from "../localClient";
+import CaseContact from "./CaseContact";
 
 export default function AdoptPetDetail({ pet, user, isOwner }) {
   const [owner, setOwner] = useState(null);
   const [closing, setClosing] = useState(false);
-  const isClosed = ["closed", "delivered", "completed"].includes(pet.status);
+  const isClosed = isClosedStatus(pet.status);
 
   useEffect(() => {
     const loadOwner = async () => {
       if (!pet.owner_id) return;
       const { data } = await localApi
         .from("profiles")
-        .select("display_name,email,phone")
+        .select("display_name,phone")
         .eq("id", pet.owner_id)
         .maybeSingle();
       setOwner(data || null);
@@ -59,12 +61,7 @@ export default function AdoptPetDetail({ pet, user, isOwner }) {
           <p className="mb-3 mt-1 text-sm text-blue-800">
             MeoMap chỉ kết nối hai bên. Việc trao đổi và bàn giao do hai bên tự thỏa thuận; hệ thống không thu tiền cọc.
           </p>
-          <div className="space-y-2 text-sm">
-            {owner?.display_name && <div>👤 {owner.display_name}</div>}
-            {owner?.phone && <a className="block font-semibold text-blue-700" href={`tel:${owner.phone}`}>📱 {owner.phone}</a>}
-            {owner?.email && <a className="block font-semibold text-blue-700" href={`mailto:${owner.email}`}>✉️ {owner.email}</a>}
-            {!owner?.phone && !owner?.email && <div className="text-gray-600">Người đăng chưa cập nhật thông tin liên hệ công khai.</div>}
-          </div>
+          <CaseContact pet={pet} owner={owner} />
         </section>
       )}
 

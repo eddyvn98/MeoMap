@@ -69,6 +69,7 @@ export default function HomePage() {
               <option value="orange">Vàng / Mèo mướp vàng</option>
               <option value="gray">Xám</option>
               <option value="mixed">Nhiều màu</option>
+              <option value="other">Khác</option>
             </select>
           </div>
 
@@ -123,7 +124,7 @@ export default function HomePage() {
               <option value="q10">Quận 10</option>
               <option value="q11">Quận 11</option>
               <option value="q12">Quận 12</option>
-              <option value="qbn">Quận Bình Nhật</option>
+              <option value="qbn">Bình Chánh</option>
               <option value="qbt">Quận Bình Tân</option>
               <option value="qbth">Quận Bình Thạnh</option>
               <option value="qgg">Quận Gò Vấp</option>

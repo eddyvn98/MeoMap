@@ -19,6 +19,10 @@ export function useProfilePanel({ location, navigate, setBounds }) {
     }, 400),
   ).current;
 
+  useEffect(() => {
+    return () => updateMapBbox.cancel();
+  }, [updateMapBbox]);
+
   const handleBoundsChange = useCallback(
     (nextBounds) => {
       setBounds((previous) => {

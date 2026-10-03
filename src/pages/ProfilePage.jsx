@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { localApi } from "../localClient";
 
 export default function ProfilePage() {
@@ -41,13 +41,13 @@ export default function ProfilePage() {
         {posts.length === 0 ? <div className="text-sm text-gray-500">Chưa có case nào.</div> : (
           <div className="grid gap-3 sm:grid-cols-2">
             {posts.map(post => (
-              <a key={post.id} href={`/pet/${post.id}`} className="border rounded-lg overflow-hidden bg-white">
+              <Link key={post.id} to={`/pet/${post.id}`} className="border rounded-lg overflow-hidden bg-white">
                 {post.image_url && <img src={post.image_url} alt={post.name} className="h-32 w-full object-cover" />}
                 <div className="p-3">
                   <div className="font-semibold">{post.name || "Case thú cưng"}</div>
                   <div className="text-xs text-gray-500 mt-1">{post.category === "rescue" ? "🚑 Cứu hộ" : post.category === "lost" ? "🔍 Đi lạc" : "🏡 Nhận nuôi"}</div>
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
         )}

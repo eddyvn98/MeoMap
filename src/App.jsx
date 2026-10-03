@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "./AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { localApi } from "./localClient";
 import Footer from "./components/Footer";
@@ -24,7 +25,7 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const mapRef = useRef(null);
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
@@ -64,10 +65,6 @@ export default function App() {
   } = useProfilePanel({ location, navigate, setBounds });
 
   useEffect(() => {
-    localApi.auth.getUser().then(({ data }) => setUser(data.user));
-  }, []);
-
-  useEffect(() => {
     if (!localStorage.getItem("meomap_onboarding_seen")) {
       setShowOnboarding(true);
     }
@@ -96,47 +93,49 @@ export default function App() {
     try {
       const { data: userData } = await localApi.auth.getUser();
       if (!userData.user) {
-        alert("Vui lòng đăng nhập để báo cáo");
-        return;
+        setAuthModalOpen(true);
+        return false;
       }
 
       let imageUrl = null;
       if (formData.photo) {
         const fileName = `${Date.now()}-${formData.photo.name}`;
         const path = `reports/${fileName}`;
-        const { error: uploadError } = await localApi.storage
+        const { data: uploadData, error: uploadError } = await localApi.storage
           .from("pet-images")
           .upload(path, formData.photo);
 
-        if (uploadError) {
-          console.error("Lỗi upload ảnh:", uploadError);
-        } else {
-          imageUrl = localApi.storage.from("pet-images").getPublicUrl(path)
-            .data.publicUrl;
-        }
+        if (uploadError) throw uploadError;
+        imageUrl = localApi.storage
+          .from("pet-images")
+          .getPublicUrl(uploadData.path).data.publicUrl;
       }
 
       const { error: insertError } = await localApi.from("pets").insert([
         {
           name: formData.name,
           category: formData.category,
+          animal: formData.animal,
+          ...(formData.color ? { color: formData.color } : {}),
           lat: formData.lat,
           lng: formData.lng,
           description: formData.description,
           image_url: imageUrl,
           status: "available",
-          owner_id: userData.user.id,
-          created_at: new Date().toISOString(),
+          contact_type: formData.contactType,
+          contact_value: formData.contact,
         },
       ]);
 
       if (insertError) throw insertError;
       alert("Báo cáo thú cưng thành công!");
       setReportModalOpen(false);
-      loadPets();
+      await loadPets();
+      return true;
     } catch (submitError) {
       console.error("Lỗi gửi báo cáo:", submitError);
       alert("Gửi báo cáo thất bại: " + submitError.message);
+      return false;
     }
   };
 
@@ -167,7 +166,7 @@ export default function App() {
         onClose={() => setGlobalEditingPost(null)}
         onSuccess={() => {
           setGlobalEditingPost(null);
-          window.location.reload();
+          loadPets();
         }}
       />
 
@@ -217,7 +216,6 @@ export default function App() {
 
       <ReportPetModal
         isOpen={reportModalOpen}
-        mapRef={mapRef}
         onClose={() => setReportModalOpen(false)}
         onSubmit={submitReport}
       />
@@ -232,10 +230,7 @@ export default function App() {
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
-        onSuccess={() => {
-          setAuthModalOpen(false);
-          window.location.reload();
-        }}
+        onSuccess={() => setAuthModalOpen(false)}
       />
 
       <QuickGuideModal

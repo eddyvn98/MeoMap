@@ -1,6 +1,8 @@
 export const EMPTY_REPORT_FORM = {
   name: "",
   category: "lost",
+  animal: "cat",
+  color: "",
   description: "",
   photo: null,
   lat: null,
@@ -11,6 +13,12 @@ export const EMPTY_REPORT_FORM = {
   contact: "",
   contactType: "phone",
 };
+
+export function roundReportCoordinate(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return Math.round(number * 1000) / 1000;
+}
 
 export async function geocodeReportAddress(formData) {
   const query = [
@@ -25,12 +33,15 @@ export async function geocodeReportAddress(formData) {
   const response = await fetch(
     `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
   );
-  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(`Geocoding failed with HTTP ${response.status}`);
+  }
 
+  const data = await response.json();
   if (!data?.length) return null;
 
   return {
-    lat: Math.round(Number(data[0].lat) * 100) / 100,
-    lng: Math.round(Number(data[0].lon) * 100) / 100,
+    lat: roundReportCoordinate(data[0].lat),
+    lng: roundReportCoordinate(data[0].lon),
   };
 }

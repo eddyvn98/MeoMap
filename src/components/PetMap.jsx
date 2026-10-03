@@ -57,10 +57,12 @@ export default forwardRef(function PetMap({
   useEffect(() => {
     if (!selectedPetId || !map) return;
     const pet = pets.find((p) => (p.id || p.pet_id) === selectedPetId);
-    if (!pet || !pet.lat || !pet.lng) return;
+    const lat = Number(pet?.lat);
+    const lng = Number(pet?.lng);
+    if (!pet || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
     const targetZoom = Math.max(map.getZoom() || 13, 15);
-    map.setView([pet.lat, pet.lng], targetZoom, { animate: true });
+    map.setView([lat, lng], targetZoom, { animate: true });
   }, [selectedPetId, pets, map]);
 
   const containerStyle = fullscreen
@@ -121,22 +123,28 @@ export default forwardRef(function PetMap({
         )}
 
         {pets.map((p) => {
-          if (!p.lat || !p.lng) return null;
+          const lat = Number(p.lat);
+          const lng = Number(p.lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
           const petId = p.id || p.pet_id;
-
-          let markerIcon = makeStatusIcon(p.status, p.category, p.image_url, p, currentUserId);
-
+          const markerIcon = makeStatusIcon(
+            p.status,
+            p.category,
+            p.image_url,
+            p,
+            currentUserId,
+          );
 
           return (
             <Marker
               key={petId}
-              position={[p.lat, p.lng]}
+              position={[lat, lng]}
               icon={markerIcon}
               eventHandlers={{
                 click: () => {
-                  onSelectPet && onSelectPet(p);
-                  onSelectPetDetail && onSelectPetDetail(p);
+                  onSelectPet?.(petId);
+                  onSelectPetDetail?.(p);
                 },
               }}
             >

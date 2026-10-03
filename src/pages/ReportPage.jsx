@@ -10,6 +10,8 @@ export default function ReportPage() {
   const [name, setName] = useState("");
   const [status, setStatus] = useState("available");
   const [category, setCategory] = useState("lost");
+  const [animal, setAnimal] = useState("cat");
+  const [color, setColor] = useState("");
   const [district, setDistrict] = useState("");
   const [description, setDescription] = useState("");
   const [contact, setContact] = useState("");
@@ -53,6 +55,8 @@ export default function ReportPage() {
         name: name.trim(),
         status,
         category,
+        animal,
+        ...(color ? { color } : {}),
         district: district.trim(),
         description: description.trim(),
         lat: roundReportCoordinate(position.lat),
@@ -109,6 +113,26 @@ export default function ReportPage() {
               <option value="rescue">🚑 Cứu hộ</option>
             </select>
           </Field>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <Field label="Loài">
+              <select style={inputStyle} value={animal} onChange={(e) => setAnimal(e.target.value)}>
+                <option value="cat">Mèo</option>
+                <option value="dog">Chó</option>
+              </select>
+            </Field>
+            <Field label="Màu lông">
+              <select style={inputStyle} value={color} onChange={(e) => setColor(e.target.value)}>
+                <option value="">Chưa rõ</option>
+                <option value="white">Trắng</option>
+                <option value="black">Đen</option>
+                <option value="orange">Vàng / cam</option>
+                <option value="gray">Xám</option>
+                <option value="mixed">Nhiều màu</option>
+                <option value="other">Khác</option>
+              </select>
+            </Field>
+          </div>
 
           <Field label="Trạng thái">
             <select

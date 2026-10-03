@@ -1,17 +1,11 @@
+import { isClosedStatus } from "../utils/petStatus";
 import { useState } from "react";
 import { localApi } from "../localClient";
 import RescueAppealsList from "./RescueAppealsList";
 
 export default function RescuePetDetail({ pet, user, isOwner }) {
   const isRescuer = !!user && pet.rescuer_id === user.id;
-  const isClosed = ["closed", "delivered", "completed"].includes(String(pet.status || "").toLowerCase());
-  const [busy, setBusy] = useState(false);
-  const [appeal, setAppeal] = useState("");
-  const [bank, setBank] = useState({
-    bank_account_number: pet.bank_account_number || "",
-    bank_account_name: pet.bank_account_name || "",
-    bank_name: pet.bank_name || "",
-  });
+  const isClosed = isClosedStatus(pet.status);
 
   const acceptCase = async () => {
     if (!user) return alert("Vui lòng đăng nhập để nhận ca.");

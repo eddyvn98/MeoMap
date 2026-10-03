@@ -121,3 +121,17 @@ export function serveFile(res, path) {
   createReadStream(path).pipe(res);
   return true;
 }
+
+export function serveUploadFile(res, path) {
+  const type = mimeType(path);
+  if (!type.startsWith("image/") || type === "image/svg+xml") return false;
+  if (!existsSync(path) || !statSync(path).isFile()) return false;
+
+  res.writeHead(200, {
+    "Content-Type": type,
+    "Cache-Control": "public, max-age=86400",
+    "X-Content-Type-Options": "nosniff",
+  });
+  createReadStream(path).pipe(res);
+  return true;
+}

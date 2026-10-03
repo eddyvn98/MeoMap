@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { writeDb } from "./db.js";
+import { assertProfileSelectAllowed, publicProfile, validatePetInsert, validatePetUpdate } from "./validation.js";
 
 function applyFilters(rows, filters = []) {
   return rows.filter((row) =>
@@ -107,6 +108,9 @@ export function executeQuery(body, user, db) {
   if (!rows) throw Object.assign(new Error("Unknown table"), { status: 400 });
 
   if (action === "select") {
+    if (table === "profiles") {
+      assertProfileSelectAllowed(filters, user);
+    }
     let result = applyFilters([...rows], filters);
     if (order?.column) {
       const direction = order.ascending === false ? -1 : 1;
@@ -122,6 +126,9 @@ export function executeQuery(body, user, db) {
 
     if (Number.isFinite(limit)) result = result.slice(0, limit);
     result = decorateRows(table, result, columns, db);
+    if (table === "profiles") {
+      result = result.map((profile) => publicProfile(profile, user));
+    }
 
     if (single === "single") {
       if (result.length !== 1) {
@@ -182,6 +189,7 @@ export function executeQuery(body, user, db) {
         item.category = item.category || "lost";
         item.created_at = item.created_at || now;
         item.updated_at = now;
+        validatePetInsert(item);
       } else {
         item.id = item.id || randomUUID();
         item.rescuer_id = user.id;
@@ -207,12 +215,13 @@ export function executeQuery(body, user, db) {
   }
 
   if (action === "update") {
+    const safePayload = table === "pets" ? validatePetUpdate(payload || {}) : (payload || {});
     const changed = [];
     for (const row of matched) {
-      if (!authorizeMutation(table, "update", user, row, payload || {}, db)) {
+      if (!authorizeMutation(table, "update", user, row, safePayload, db)) {
         throw Object.assign(new Error("Không có quyền cập nhật."), { status: 403 });
       }
-      Object.assign(row, payload || {}, { updated_at: new Date().toISOString() });
+      Object.assign(row, safePayload, { updated_at: new Date().toISOString() });
       changed.push(row);
     }
     writeDb(db);

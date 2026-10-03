@@ -4,6 +4,7 @@ import {
   ManualAddress,
   ModeButton,
   Notice,
+  PetAttributes,
   Section,
   contactLabel,
   contactPlaceholder,
@@ -160,17 +161,11 @@ export default function ReportPetModal({
               />
             </Field>
 
-            <Field label="Loại báo cáo">
-              <select
-                className={inputClass}
-                value={formData.category}
-                onChange={(event) => update("category", event.target.value)}
-              >
-                <option value="lost">🔴 Thú cưng bị mất</option>
-                <option value="adopt">🟢 Tìm chủ nhân</option>
-                <option value="rescue">🟠 Cần cứu hộ</option>
-              </select>
-            </Field>
+            <PetAttributes
+              formData={formData}
+              update={update}
+              inputClass={inputClass}
+            />
 
             <div className="mb-4 rounded-lg bg-blue-50 p-2.5 text-xs text-blue-800">
               MeoMap không thu cọc, giữ thưởng hoặc nhận tiền quyên góp.
@@ -191,7 +186,7 @@ export default function ReportPetModal({
                 ref={photoInputRef}
                 className={inputClass}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,image/gif"
                 onChange={(event) =>
                   update("photo", event.target.files?.[0] || null)
                 }

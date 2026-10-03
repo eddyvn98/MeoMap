@@ -19,6 +19,21 @@ export function getDistanceKm(a, b) {
   return radiusKm * arc;
 }
 
+export function isClosedStatus(status) {
+  return ["closed", "delivered", "completed", "found"].includes(
+    String(status || "").toLowerCase(),
+  );
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 export function makeStatusIcon(
   status,
   category,
@@ -26,34 +41,28 @@ export function makeStatusIcon(
   pet = {},
   currentUserId = null,
 ) {
-  const cat = (category || "lost").toLowerCase();
-  const isDelivered = status === "delivered";
-  let badgeColor;
-  let badgeText;
-  let borderColor;
+  const cat = String(category || "lost").toLowerCase();
+  const closed = isClosedStatus(status);
+  let badgeColor = "#3b82f6";
+  let badgeText = closed ? "Closed" : String(status || "Unknown");
 
   if (cat === "lost") {
-    badgeColor = isDelivered ? "#10b981" : "#ef4444";
-    borderColor = badgeColor;
-    badgeText = isDelivered ? "✓ Found" : "Lost";
+    badgeColor = closed ? "#10b981" : "#ef4444";
+    badgeText = closed ? "✓ Found" : "Lost";
   } else if (cat === "adopt") {
-    badgeColor = "#10b981";
-    borderColor = "#10b981";
-    badgeText = "Adopt";
+    badgeColor = closed ? "#6b7280" : "#10b981";
+    badgeText = closed ? "Closed" : "Adopt";
   } else if (cat === "rescue") {
-    badgeColor = "#f59e0b";
-    borderColor = "#f59e0b";
-    badgeText = "Rescue";
-  } else {
-    badgeColor = "#3b82f6";
-    borderColor = "#3b82f6";
-    badgeText = status || "Unknown";
+    badgeColor = closed ? "#6b7280" : "#f59e0b";
+    badgeText = closed ? "Closed" : "Rescue";
   }
 
-  const imgSrc =
+  const imgSrc = escapeHtml(
     imageUrl ||
-    "https://cdn-icons-png.flaticon.com/512/2127/2127645.png";
-  const isOwner = currentUserId && pet.owner_id === currentUserId;
+      "https://cdn-icons-png.flaticon.com/512/2127/2127645.png",
+  );
+  const safeBadgeText = escapeHtml(badgeText);
+  const isOwner = !!currentUserId && pet.owner_id === currentUserId;
   const ownerBadge = isOwner
     ? '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#8b5cf6;color:#fff;padding:3px 10px;border-radius:12px;font-size:9px;font-weight:bold;box-shadow:0 3px 8px rgba(0,0,0,0.5);white-space:nowrap;letter-spacing:0.5px;">OWNER</div>'
     : "";
@@ -62,11 +71,11 @@ export function makeStatusIcon(
     className: "pet-marker-icon",
     html: `
       <div style="position:relative;width:80px;height:80px;">
-        <div style="width:80px;height:80px;border-radius:50%;overflow:hidden;border:5px solid ${borderColor};box-shadow:0 4px 12px rgba(0,0,0,0.3);background:#fff;">
+        <div style="width:80px;height:80px;border-radius:50%;overflow:hidden;border:5px solid ${badgeColor};box-shadow:0 4px 12px rgba(0,0,0,0.3);background:#fff;">
           <img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;" />
         </div>
         <div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);background:${badgeColor};color:#fff;padding:4px 12px;border-radius:14px;font-size:11px;font-weight:bold;white-space:nowrap;box-shadow:0 3px 6px rgba(0,0,0,0.4);">
-          ${badgeText}
+          ${safeBadgeText}
         </div>
         ${ownerBadge}
       </div>

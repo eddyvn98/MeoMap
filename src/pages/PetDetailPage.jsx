@@ -12,6 +12,7 @@ export default function PetDetailPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -41,7 +42,7 @@ export default function PetDetailPage() {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, refreshKey]);
 
   if (loading) return <div className="p-6 text-sm">Đang tải...</div>;
   if (error || !pet) {
@@ -63,7 +64,12 @@ export default function PetDetailPage() {
         ← Quay lại
       </button>
       {pet.category === "rescue" ? (
-        <RescuePetDetail pet={pet} user={user} isOwner={isOwner} />
+        <RescuePetDetail
+          pet={pet}
+          user={user}
+          isOwner={isOwner}
+          onChanged={() => setRefreshKey((value) => value + 1)}
+        />
       ) : pet.category === "adopt" ? (
         <AdoptPetDetail pet={pet} user={user} isOwner={isOwner} />
       ) : (

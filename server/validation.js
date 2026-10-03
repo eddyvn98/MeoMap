@@ -232,15 +232,22 @@ export function sanitizeRescueRecord(table, raw = {}) {
 
 export function publicProfile(profile, user) {
   if (!profile) return null;
-  if (user?.id === profile.id) return { ...profile };
 
-  return {
+  const safe = {
     id: profile.id,
-    display_name: profile.display_name || "",
+    display_name: cleanText(profile.display_name, 100) || "",
     avatar_url: safeStoredUrl(profile.avatar_url),
-    phone: profile.phone || null,
-    zalo: profile.zalo || null,
+    phone: cleanText(profile.phone, 40),
+    zalo: cleanText(profile.zalo, 120),
   };
+
+  if (user?.id === profile.id) {
+    safe.email = user.email;
+    safe.role = profile.role || "user";
+    safe.created_at = profile.created_at;
+    safe.updated_at = profile.updated_at;
+  }
+  return safe;
 }
 
 export function publicPet(pet, includePrivateContact = false) {

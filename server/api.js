@@ -1,6 +1,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import {
+  randomBytes,
+  randomUUID,
+  timingSafeEqual,
+} from "node:crypto";
 import { clientKey, consumeRateLimit, validateImageUpload } from "./security.js";
 import { UPLOAD_DIR } from "./config.js";
 import { readDb, writeDb } from "./db.js";
@@ -10,10 +14,38 @@ import {
   createSession,
   hashPassword,
   requireUser,
+  revokeSession,
   safeUser,
 } from "./auth.js";
 import { json, readBody, safeUploadPath } from "./http.js";
 import { executeQuery } from "./query.js";
+import { cleanText } from "./validation.js";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CLOSED_STATUSES = new Set(["closed", "delivered", "completed", "Found"]);
+
+function isClosedPet(pet) {
+  return CLOSED_STATUSES.has(String(pet?.status || ""));
+}
+
+function rateLimited(res, rate, message) {
+  if (rate.allowed) return false;
+  res.setHeader("Retry-After", String(rate.retryAfter));
+  json(res, 429, { error: message });
+  return true;
+}
+
+function verifyPassword(password, user) {
+  const salt = user?.password_salt || "00000000000000000000000000000000";
+  const expectedHex =
+    user?.password_hash ||
+    hashPassword("invalid-password-placeholder", salt);
+  const actual = Buffer.from(hashPassword(password, salt), "hex");
+  const expected = Buffer.from(expectedHex, "hex");
+  return !!user &&
+    actual.length === expected.length &&
+    timingSafeEqual(actual, expected);
+}
 
 export async function handleApi(req, res, url) {
   const db = readDb();
@@ -23,20 +55,26 @@ export async function handleApi(req, res, url) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/auth/signup") {
-    const rate = consumeRateLimit(`signup:${clientKey(req)}`, { limit: 8, windowMs: 15 * 60 * 1000 });
-    if (!rate.allowed) {
-      res.setHeader("Retry-After", String(rate.retryAfter));
-      return json(res, 429, { error: "Bạn thao tác quá nhanh. Vui lòng thử lại sau." });
+    const rate = consumeRateLimit(`signup:${clientKey(req)}`, {
+      limit: 8,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (rateLimited(res, rate, "Bạn thao tác quá nhanh. Vui lòng thử lại sau.")) {
+      return;
     }
+
     const body = await readBody(req);
     const email = cleanEmail(body.email);
     const password = String(body.password || "");
+    const fullName = cleanText(body.full_name, 120) || "";
 
-    if (!email || !email.includes("@")) {
+    if (!EMAIL_RE.test(email) || email.length > 254) {
       return json(res, 400, { error: "Email không hợp lệ." });
     }
-    if (password.length < 6) {
-      return json(res, 400, { error: "Mật khẩu phải ít nhất 6 ký tự." });
+    if (password.length < 8 || password.length > 128) {
+      return json(res, 400, {
+        error: "Mật khẩu phải từ 8 đến 128 ký tự.",
+      });
     }
     if (db.users.some((user) => user.email === email)) {
       return json(res, 409, { error: "Email đã tồn tại." });
@@ -44,7 +82,6 @@ export async function handleApi(req, res, url) {
 
     const id = randomUUID();
     const salt = randomBytes(16).toString("hex");
-    const fullName = String(body.full_name || "").trim();
     const now = new Date().toISOString();
     const user = {
       id,
@@ -74,29 +111,29 @@ export async function handleApi(req, res, url) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/auth/login") {
-    const rate = consumeRateLimit(`login:${clientKey(req)}`, { limit: 20, windowMs: 15 * 60 * 1000 });
-    if (!rate.allowed) {
-      res.setHeader("Retry-After", String(rate.retryAfter));
-      return json(res, 429, { error: "Đăng nhập thất bại quá nhiều lần. Vui lòng thử lại sau." });
+    const rate = consumeRateLimit(`login:${clientKey(req)}`, {
+      limit: 20,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (
+      rateLimited(
+        res,
+        rate,
+        "Đăng nhập thất bại quá nhiều lần. Vui lòng thử lại sau.",
+      )
+    ) {
+      return;
     }
+
     const body = await readBody(req);
     const email = cleanEmail(body.email);
-    const user = db.users.find((item) => item.email === email);
-
-    if (!user) {
+    const password = String(body.password || "");
+    if (password.length > 128) {
       return json(res, 401, { error: "Email hoặc mật khẩu không đúng." });
     }
 
-    const actual = Buffer.from(
-      hashPassword(String(body.password || ""), user.password_salt),
-      "hex",
-    );
-    const expected = Buffer.from(user.password_hash, "hex");
-
-    if (
-      actual.length !== expected.length ||
-      !timingSafeEqual(actual, expected)
-    ) {
+    const user = db.users.find((item) => item.email === email);
+    if (!verifyPassword(password, user)) {
       return json(res, 401, { error: "Email hoặc mật khẩu không đúng." });
     }
 
@@ -109,7 +146,7 @@ export async function handleApi(req, res, url) {
     const header = String(req.headers.authorization || "");
     const sessionToken = header.startsWith("Bearer ") ? header.slice(7) : "";
     if (sessionToken) {
-      db.sessions = db.sessions.filter((session) => session.token !== sessionToken);
+      revokeSession(db, sessionToken);
       writeDb(db);
     }
     return json(res, 200, { ok: true });
@@ -124,6 +161,23 @@ export async function handleApi(req, res, url) {
   if (req.method === "POST" && url.pathname === "/api/query") {
     const body = await readBody(req);
     const user = authUser(req, db);
+
+    if (body?.action && body.action !== "select") {
+      const mutationRate = consumeRateLimit(
+        `mutation:${user?.id || clientKey(req)}`,
+        { limit: 120, windowMs: 10 * 60 * 1000 },
+      );
+      if (
+        rateLimited(
+          res,
+          mutationRate,
+          "Bạn thao tác quá nhanh. Vui lòng thử lại sau.",
+        )
+      ) {
+        return;
+      }
+    }
+
     try {
       return json(res, 200, { data: executeQuery(body, user, db) });
     } catch (error) {
@@ -137,25 +191,43 @@ export async function handleApi(req, res, url) {
 
     try {
       const body = await readBody(req);
-      const relative = safeUploadPath(body.path);
-      const uploadRate = consumeRateLimit(`upload:${user.id}`, { limit: 30, windowMs: 10 * 60 * 1000 });
-      if (!uploadRate.allowed) {
-        res.setHeader("Retry-After", String(uploadRate.retryAfter));
-        return json(res, 429, { error: "Bạn tải ảnh lên quá nhanh. Vui lòng thử lại sau." });
+      const requested = safeUploadPath(body.path);
+      const uploadRate = consumeRateLimit(`upload:${user.id}`, {
+        limit: 30,
+        windowMs: 10 * 60 * 1000,
+      });
+      if (
+        rateLimited(
+          res,
+          uploadRate,
+          "Bạn tải ảnh lên quá nhanh. Vui lòng thử lại sau.",
+        )
+      ) {
+        return;
       }
-      const { buffer } = validateImageUpload(relative, body.data);
+
+      const { buffer, extension } = validateImageUpload(requested, body.data);
+      const relative = `${user.id}/${randomUUID()}${extension}`;
       const full = join(UPLOAD_DIR, relative);
       mkdirSync(dirname(full), { recursive: true });
       writeFileSync(full, buffer);
       return json(res, 201, { path: relative, url: `/uploads/${relative}` });
     } catch (error) {
-      return json(res, 400, { error: error.message });
+      return json(res, error.status || 400, { error: error.message });
     }
   }
 
   if (req.method === "POST" && url.pathname.startsWith("/api/rpc/")) {
     const user = requireUser(req, res, db);
     if (!user) return;
+
+    const rpcRate = consumeRateLimit(`rpc:${user.id}`, {
+      limit: 90,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (rateLimited(res, rpcRate, "Bạn thao tác quá nhanh. Vui lòng thử lại sau.")) {
+      return;
+    }
 
     const name = decodeURIComponent(url.pathname.slice("/api/rpc/".length));
     const body = await readBody(req);
@@ -166,7 +238,7 @@ export async function handleApi(req, res, url) {
         !pet ||
         pet.category !== "rescue" ||
         pet.rescuer_id ||
-        ["closed", "delivered", "completed"].includes(pet.status)
+        isClosedPet(pet)
       ) {
         return json(res, 200, { data: false });
       }
@@ -177,14 +249,20 @@ export async function handleApi(req, res, url) {
     }
 
     if (name === "update_rescue_support_info") {
-      if (!pet || pet.category !== "rescue" || pet.rescuer_id !== user.id) {
+      if (
+        !pet ||
+        pet.category !== "rescue" ||
+        pet.rescuer_id !== user.id ||
+        isClosedPet(pet)
+      ) {
         return json(res, 200, { data: false });
       }
+
       pet.bank_account_number =
-        String(body.p_bank_account_number || "").trim() || null;
+        cleanText(body.p_bank_account_number, 64) || null;
       pet.bank_account_name =
-        String(body.p_bank_account_name || "").trim() || null;
-      pet.bank_name = String(body.p_bank_name || "").trim() || null;
+        cleanText(body.p_bank_account_name, 120) || null;
+      pet.bank_name = cleanText(body.p_bank_name, 120) || null;
       pet.updated_at = new Date().toISOString();
       writeDb(db);
       return json(res, 200, { data: true });
@@ -194,6 +272,7 @@ export async function handleApi(req, res, url) {
       if (
         !pet ||
         pet.category !== "rescue" ||
+        isClosedPet(pet) ||
         (pet.owner_id !== user.id && pet.rescuer_id !== user.id)
       ) {
         return json(res, 200, { data: false });

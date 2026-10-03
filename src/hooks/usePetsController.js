@@ -27,7 +27,7 @@ const DISTRICT_ALIASES = {
 export function usePetsController(initialFilters = {}) {
   const [pets, setPets] = useState([]);
   const [filters, setFilters] = useState({
-    status: "available",
+    status: "open",
     category: initialFilters.category || "all",
     color: initialFilters.color || "all",
     animal: initialFilters.animal || "all",

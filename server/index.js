@@ -14,6 +14,7 @@ import {
   json,
   safeUploadPath,
   serveFile,
+  serveUploadFile,
   writeCorsPreflight,
 } from "./http.js";
 
@@ -59,7 +60,7 @@ const server = http.createServer(async (req, res) => {
       if (!isWithin(UPLOAD_DIR, full)) {
         return json(res, 403, { error: "Forbidden" });
       }
-      if (serveFile(res, full)) return;
+      if (serveUploadFile(res, full)) return;
       return json(res, 404, { error: "File not found" });
     }
 

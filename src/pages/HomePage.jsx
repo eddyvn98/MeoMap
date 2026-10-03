@@ -69,6 +69,7 @@ export default function HomePage() {
               <option value="orange">Vàng / Mèo mướp vàng</option>
               <option value="gray">Xám</option>
               <option value="mixed">Nhiều màu</option>
+              <option value="other">Khác</option>
             </select>
           </div>
 

@@ -1,3 +1,4 @@
+import { OPEN_STATUSES } from "../utils/petStatus";
 import { useEffect, useState } from "react";
 import { localApi } from "../localClient";
 import {
@@ -29,7 +30,7 @@ export default function RescuerDashboard() {
         .from("pets")
         .select("*, profiles(name, avatar_url)")
         .eq("category", "rescue")
-        .neq("status", "delivered")
+        .in("status", OPEN_STATUSES)
         .is("rescuer_id", null)
         .order("created_at", { ascending: false });
 
@@ -86,12 +87,15 @@ export default function RescuerDashboard() {
     }
 
     try {
-      const { error: updateError } = await localApi
-        .from("pets")
-        .update({ rescuer_id: selectedUser.id })
-        .eq("id", caseId);
+      const { data: claimed, error: claimError } = await localApi.rpc(
+        "claim_rescue_case",
+        { p_case_id: caseId },
+      );
 
-      if (updateError) throw updateError;
+      if (claimError) throw claimError;
+      if (!claimed) {
+        throw new Error("Ca đã có người nhận hoặc đã kết thúc.");
+      }
 
       const acceptedCase = availableCases.find((item) => item.id === caseId);
       setAvailableCases((items) =>

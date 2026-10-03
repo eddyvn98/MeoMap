@@ -39,6 +39,16 @@ export function createSession(db, userId) {
   db.sessions = db.sessions.filter(
     (session) => new Date(session.expires_at).getTime() > Date.now(),
   );
+
+  const ownSessions = db.sessions
+    .filter((session) => session.user_id === userId)
+    .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+  const excess = Math.max(0, ownSessions.length - 9);
+  if (excess) {
+    const remove = new Set(ownSessions.slice(0, excess));
+    db.sessions = db.sessions.filter((session) => !remove.has(session));
+  }
+
   db.sessions.push({
     token_hash: hashSessionToken(token),
     user_id: userId,

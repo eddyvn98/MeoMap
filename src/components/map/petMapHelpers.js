@@ -1,4 +1,5 @@
 import L from "leaflet";
+import { isClosedStatus } from "../../utils/petStatus";
 
 export const DEFAULT_CENTER = { lat: 10.8019, lng: 106.7147 };
 
@@ -17,12 +18,6 @@ export function getDistanceKm(a, b) {
     Math.cos(lat1) * Math.cos(lat2) * sinDLon * sinDLon;
   const arc = 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
   return radiusKm * arc;
-}
-
-export function isClosedStatus(status) {
-  return ["closed", "delivered", "completed", "found"].includes(
-    String(status || "").toLowerCase(),
-  );
 }
 
 function escapeHtml(value) {

@@ -27,7 +27,12 @@ function decorateRows(table, rows, columns, db) {
     return {
       ...row,
       profiles: profile
-        ? { ...profile, name: profile.display_name || profile.name || "" }
+        ? {
+            id: profile.id,
+            name: profile.display_name || profile.name || "",
+            display_name: profile.display_name || profile.name || "",
+            avatar_url: profile.avatar_url || null,
+          }
         : null,
     };
   });

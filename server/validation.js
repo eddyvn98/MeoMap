@@ -1,5 +1,5 @@
 const PET_CATEGORIES = new Set(["lost", "adopt", "rescue"]);
-const PET_STATUSES = new Set(["available", "closed", "delivered", "completed"]);
+const PET_STATUSES = new Set(["available", "closed", "delivered", "completed", "Lost", "Found", "Abandoned"]);
 
 function cleanText(value, max = 500) {
   if (value == null) return value;

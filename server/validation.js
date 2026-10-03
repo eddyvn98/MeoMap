@@ -103,10 +103,38 @@ function applyContactFields(target, source) {
   if (!("contact_type" in source) && !("contact_value" in source)) return;
 
   const type = String(source.contact_type || "");
-  const value = cleanText(source.contact_value, 300);
+  let value = cleanText(source.contact_value, 300);
   if (!CONTACT_TYPES.has(type) || !value) {
     throw badRequest("Thông tin liên hệ không hợp lệ.");
   }
+
+  if (type === "phone") {
+    if (!/^[0-9+().\s-]{6,40}$/.test(value)) {
+      throw badRequest("Số điện thoại không hợp lệ.");
+    }
+  } else if (type === "email") {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || value.length > 254) {
+      throw badRequest("Email liên hệ không hợp lệ.");
+    }
+    value = value.toLowerCase();
+  } else {
+    if (/^https?:\/\//i.test(value)) {
+      value = cleanPublicUrl(value);
+      if (!/^https?:\/\/(www\.)?(facebook\.com|fb\.com)\//i.test(value)) {
+        throw badRequest("Liên kết Facebook không hợp lệ.");
+      }
+    } else {
+      const username = value
+        .replace(/^@/, "")
+        .replace(/^(www\.)?(facebook\.com|fb\.com)\//i, "")
+        .replace(/\/+$/, "");
+      if (!/^[A-Za-z0-9._-]{2,100}$/.test(username)) {
+        throw badRequest("Facebook ID không hợp lệ.");
+      }
+      value = `https://facebook.com/${username}`;
+    }
+  }
+
   target.contact_type = type;
   target.contact_value = value;
 }

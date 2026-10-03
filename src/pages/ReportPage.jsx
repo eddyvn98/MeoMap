@@ -1,111 +1,73 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { localApi } from "../localClient";
 import PetMap from "../components/PetMap";
-
-console.log("ReportPage module loaded, localApi:", localApi ? "✅ OK" : "❌ undefined");
+import { roundReportCoordinate } from "../components/report/reportPetModel";
+import { localApi } from "../localClient";
 
 export default function ReportPage() {
   const navigate = useNavigate();
-
   const [position, setPosition] = useState(null);
   const [name, setName] = useState("");
-  const [status, setStatus] = useState("Lost");
-  const [category, setCategory] = useState("lost"); // adopt, lost, rescue
+  const [status, setStatus] = useState("available");
+  const [category, setCategory] = useState("lost");
   const [district, setDistrict] = useState("");
   const [description, setDescription] = useState("");
+  const [contact, setContact] = useState("");
   const [file, setFile] = useState(null);
-  
-  
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  console.log("ReportPage component rendered");
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError("");
 
-    if (!name.trim()) {
-      setError("Nhập Tiêu đề bài viết.");
-      return;
-    }
-    if (!position) {
-      setError("Chọn vị trí trên bản đồ (chạm vào map).");
-      return;
-    }
+    if (!name.trim()) return setError("Nhập tiêu đề bài viết.");
+    if (!position) return setError("Chọn vị trí trên bản đồ.");
+    if (!contact.trim()) return setError("Nhập số điện thoại hoặc email liên hệ.");
 
     setSubmitting(true);
-
-    let imageUrl = null;
-
     try {
-      // 1) Upload ảnh nếu có
-      if (file) {
-        const ext = file.name.split(".").pop();
-        const filePath = `pets/${Date.now()}.${ext}`;
-
-        const { error: uploadError } = await localApi.storage
-          .from("pet-images")
-          .upload(filePath, file);
-
-        if (uploadError) {
-          console.error(uploadError);
-          setError("Upload ảnh lỗi.");
-          setSubmitting(false);
-          return;
-        }
-
-        const { data: publicData } = localApi.storage
-          .from("pet-images")
-          .getPublicUrl(filePath);
-
-        imageUrl = publicData?.publicUrl || null;
-      }
-
-      // 2) Ghi bản ghi vào bảng pets (insert trả về row mới bằng .select())
-      const petData = {
-        name,
-        status,
-        category, // adopt, lost, rescue
-        district,
-        description,
-        lat: position.lat,
-        lng: position.lng,
-        image_url: imageUrl,
-        created_at: new Date().toISOString(),
-      };
-
-      console.log("Attempting to insert pet:", petData);
-
-      const { data: insertedData, error: insertError } = await localApi
-        .from("pets")
-        .insert([petData])
-        .select();
-
-      console.log("Insert response - data:", insertedData, "error:", insertError);
-
-      if (insertError) {
-        console.error("Insert pet error (full):", {
-          message: insertError.message,
-          code: insertError.code,
-          details: insertError.details,
-          hint: insertError.hint,
-        });
-        setError(
-          "Lưu thú cưng bị lỗi: " +
-            (insertError.details || insertError.message || insertError)
-        );
-        setSubmitting(false);
+      const { data: auth } = await localApi.auth.getUser();
+      if (!auth?.user) {
+        navigate("/login");
         return;
       }
 
-      console.log("Inserted pet successfully:", insertedData);
-      alert("Đã báo mèo thành công.");
+      let imageUrl = null;
+      if (file) {
+        const ext = file.name.split(".").pop() || "jpg";
+        const requestedPath = `pets/${Date.now()}.${ext}`;
+        const { data: uploadData, error: uploadError } = await localApi.storage
+          .from("pet-images")
+          .upload(requestedPath, file);
+
+        if (uploadError) throw uploadError;
+        imageUrl = localApi.storage
+          .from("pet-images")
+          .getPublicUrl(uploadData.path).data.publicUrl;
+      }
+
+      const contactValue = contact.trim();
+      const contactType = contactValue.includes("@") ? "email" : "phone";
+      const { error: insertError } = await localApi.from("pets").insert({
+        name: name.trim(),
+        status,
+        category,
+        district: district.trim(),
+        description: description.trim(),
+        lat: roundReportCoordinate(position.lat),
+        lng: roundReportCoordinate(position.lng),
+        image_url: imageUrl,
+        contact_type: contactType,
+        contact_value: contactValue,
+      });
+
+      if (insertError) throw insertError;
+      alert("Đã đăng case thành công.");
       navigate("/");
-    } catch (err) {
-      console.error(err);
-      setError("Có lỗi bất ngờ.");
+    } catch (submitError) {
+      console.error(submitError);
+      setError(submitError.message || "Không thể đăng case.");
     } finally {
       setSubmitting(false);
     }
@@ -118,103 +80,112 @@ export default function ReportPage() {
 
         <PetMap
           pets={[]}
-          fullscreen={true}
-          reportMode={true}
+          fullscreen
+          reportMode
           onSelectPosition={setPosition}
         />
 
         <p style={{ marginTop: 8, fontSize: 12 }}>
-          Chạm vào bản đồ để chọn vị trí thú cưng được thấy lần cuối.
+          Chạm vào bản đồ để chọn vị trí gần đúng của thú cưng.
         </p>
 
         <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
-          <div style={{ marginBottom: 10 }}>
-            <label>Tiêu đề bài viết</label>
+          <Field label="Tiêu đề bài viết">
             <input
-              style={{ width: "100%", padding: 8 }}
+              style={inputStyle}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-          </div>
+          </Field>
 
-          <div style={{ marginBottom: 10 }}>
-            <label>Nhóm bài</label>
+          <Field label="Nhóm bài">
             <select
-              style={{ width: "100%", padding: 8 }}
+              style={inputStyle}
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
-              <option value="lost">🔍 Đi lạc (Lost)</option>
-              <option value="adopt">🏡 Nhận nuôi (Adoption)</option>
-              <option value="rescue">🚑 Cứu hộ (Rescue)</option>
+              <option value="lost">🔍 Đi lạc</option>
+              <option value="adopt">🏡 Nhận nuôi</option>
+              <option value="rescue">🚑 Cứu hộ</option>
             </select>
-          </div>
+          </Field>
 
-          <div style={{ marginBottom: 10 }}>
-            <label>Trạng thái</label>
+          <Field label="Trạng thái">
             <select
-              style={{ width: "100%", padding: 8 }}
+              style={inputStyle}
               value={status}
               onChange={(e) => setStatus(e.target.value)}
             >
-              <option value="available">Có sẵn</option>
+              <option value="available">Đang mở</option>
               <option value="pending">Chờ xử lý</option>
               <option value="in_contact">Đang liên lạc</option>
             </select>
-          </div>
+          </Field>
 
-          <div style={{ marginBottom: 10 }}>
-            <label>Quận / Khu vực</label>
+          <Field label="Quận / Khu vực">
             <input
-              style={{ width: "100%", padding: 8 }}
+              style={inputStyle}
               value={district}
               onChange={(e) => setDistrict(e.target.value)}
               placeholder="VD: Bình Thạnh"
             />
-          </div>
+          </Field>
 
-          <div style={{ marginBottom: 10 }}>
-            <label>Mô tả ngắn</label>
+          <Field label="Mô tả ngắn">
             <textarea
-              style={{ width: "100%", padding: 8 }}
+              style={inputStyle}
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Đặc điểm nhận dạng, thời điểm, thông tin liên hệ..."
             />
-          </div>
+          </Field>
 
-          <div style={{ marginBottom: 10 }}>
-            <label>Ảnh thú cưng (tuỳ chọn)</label>
+          <Field label="Số điện thoại hoặc email liên hệ">
+            <input
+              style={inputStyle}
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              placeholder="0987654321 hoặc ten@example.com"
+            />
+          </Field>
+
+          <Field label="Ảnh thú cưng (tuỳ chọn)">
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
             />
-          </div>
+          </Field>
 
-          {error && (
-            <div style={{ color: "red", marginBottom: 10 }}>{error}</div>
-          )}
+          {error && <div style={{ color: "red", marginBottom: 10 }}>{error}</div>}
 
           <button
             type="submit"
             disabled={submitting}
             style={{
-              width: "100%",
-              padding: 12,
+              ...inputStyle,
               background: "#ff7f32",
               border: "none",
               color: "#fff",
-              borderRadius: 10,
-              fontSize: 16,
               fontWeight: "bold",
+              opacity: submitting ? 0.6 : 1,
             }}
           >
             {submitting ? "Đang gửi..." : "Đăng case"}
           </button>
         </form>
       </div>
+    </div>
+  );
+}
+
+const inputStyle = { width: "100%", padding: 8, boxSizing: "border-box" };
+
+function Field({ label, children }) {
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <label>{label}</label>
+      {children}
     </div>
   );
 }

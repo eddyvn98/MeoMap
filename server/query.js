@@ -16,13 +16,14 @@ import {
 } from "./publicData.js";
 import {
   applyFilters,
-  assertColumn,
   assertObject,
   decorateRows,
   isExactIdQuery,
   queryError,
   tableRows,
+  validateColumns,
   validateFilters,
+  validateOrder,
 } from "./queryHelpers.js";
 
 function canUpdatePet(user, row, payload) {
@@ -103,7 +104,7 @@ function prepareProfile(raw, user, existing, now) {
 
 function selectRows({ table, rows, filters, order, limit, columns }, user, db) {
   if (table === "profiles") assertProfileSelectAllowed(filters);
-  if (order?.column) assertColumn(order.column);
+  validateOrder(table, order);
 
   let result = applyFilters([...rows], filters);
   if (order?.column) {
@@ -254,7 +255,8 @@ export function executeQuery(body, user, db) {
 
   const rows = tableRows(db, table);
   if (!rows) throw queryError("Unknown table");
-  validateFilters(filters);
+  validateFilters(table, filters);
+  validateColumns(columns);
 
   if (action === "select") {
     const result = selectRows(

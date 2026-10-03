@@ -2,6 +2,42 @@ import { cleanPublicUrl } from "./validation.js";
 
 const FILTER_OPS = new Set(["eq", "neq", "is", "in", "gte", "lte"]);
 const BLOCKED_COLUMNS = new Set(["__proto__", "prototype", "constructor"]);
+const TABLE_FILTER_COLUMNS = {
+  profiles: new Set(["id"]),
+  pets: new Set([
+    "id",
+    "owner_id",
+    "rescuer_id",
+    "category",
+    "status",
+    "district",
+    "animal",
+    "color",
+    "lat",
+    "lng",
+    "created_at",
+    "updated_at",
+  ]),
+  rescue_appeals: new Set([
+    "id",
+    "case_id",
+    "rescuer_id",
+    "status",
+    "created_at",
+  ]),
+  rescue_updates: new Set([
+    "id",
+    "case_id",
+    "rescuer_id",
+    "created_at",
+  ]),
+};
+const TABLE_ORDER_COLUMNS = {
+  profiles: new Set(["created_at", "updated_at", "display_name"]),
+  pets: new Set(["created_at", "updated_at", "name", "status", "district"]),
+  rescue_appeals: new Set(["created_at", "updated_at"]),
+  rescue_updates: new Set(["created_at", "updated_at", "spent_cost"]),
+};
 
 export function queryError(message, status = 400) {
   return Object.assign(new Error(message), { status });
@@ -18,7 +54,7 @@ export function assertColumn(column) {
   }
 }
 
-export function validateFilters(filters) {
+export function validateFilters(table, filters) {
   if (!Array.isArray(filters) || filters.length > 20) {
     throw queryError("Invalid filters");
   }
@@ -28,6 +64,9 @@ export function validateFilters(filters) {
       throw queryError("Invalid filter");
     }
     assertColumn(filter.column);
+    if (!TABLE_FILTER_COLUMNS[table]?.has(filter.column)) {
+      throw queryError("Filter column is not allowed");
+    }
     if (!FILTER_OPS.has(filter.op)) {
       throw queryError("Invalid filter operator");
     }
@@ -98,4 +137,19 @@ export function assertObject(value) {
     throw queryError("Invalid payload");
   }
   return value;
+}
+
+export function validateOrder(table, order) {
+  if (!order?.column) return;
+  assertColumn(order.column);
+  if (!TABLE_ORDER_COLUMNS[table]?.has(order.column)) {
+    throw queryError("Order column is not allowed");
+  }
+}
+
+export function validateColumns(columns) {
+  if (columns == null) return;
+  if (typeof columns !== "string" || columns.length > 500) {
+    throw queryError("Invalid columns");
+  }
 }

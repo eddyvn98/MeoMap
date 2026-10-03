@@ -6,6 +6,7 @@ import {
   assertProfileSelectAllowed,
   publicPet,
   publicProfile,
+  publicRescueRecord,
   sanitizePetInsert,
   sanitizePetUpdate,
   sanitizeProfileInput,
@@ -224,6 +225,11 @@ export function executeQuery(body, user, db) {
     } else if (table === "pets") {
       const includePrivateContact = isExactIdQuery(filters);
       result = result.map((pet) => publicPet(pet, includePrivateContact));
+    } else if (
+      table === "rescue_appeals" ||
+      table === "rescue_updates"
+    ) {
+      result = result.map((row) => publicRescueRecord(table, row));
     }
 
     result = decorateRows(table, result, columns, db);

@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { clientKey, consumeRateLimit, validateImageUpload } from "./security.js";
 import { UPLOAD_DIR } from "./config.js";
 import { readDb, writeDb } from "./db.js";
 import {
@@ -22,6 +23,11 @@ export async function handleApi(req, res, url) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/auth/signup") {
+    const rate = consumeRateLimit(`signup:${clientKey(req)}`, { limit: 8, windowMs: 15 * 60 * 1000 });
+    if (!rate.allowed) {
+      res.setHeader("Retry-After", String(rate.retryAfter));
+      return json(res, 429, { error: "Bạn thao tác quá nhanh. Vui lòng thử lại sau." });
+    }
     const body = await readBody(req);
     const email = cleanEmail(body.email);
     const password = String(body.password || "");
@@ -68,6 +74,11 @@ export async function handleApi(req, res, url) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/auth/login") {
+    const rate = consumeRateLimit(`login:${clientKey(req)}`, { limit: 20, windowMs: 15 * 60 * 1000 });
+    if (!rate.allowed) {
+      res.setHeader("Retry-After", String(rate.retryAfter));
+      return json(res, 429, { error: "Đăng nhập thất bại quá nhiều lần. Vui lòng thử lại sau." });
+    }
     const body = await readBody(req);
     const email = cleanEmail(body.email);
     const user = db.users.find((item) => item.email === email);
@@ -127,9 +138,15 @@ export async function handleApi(req, res, url) {
     try {
       const body = await readBody(req);
       const relative = safeUploadPath(body.path);
+      const uploadRate = consumeRateLimit(`upload:${user.id}`, { limit: 30, windowMs: 10 * 60 * 1000 });
+      if (!uploadRate.allowed) {
+        res.setHeader("Retry-After", String(uploadRate.retryAfter));
+        return json(res, 429, { error: "Bạn tải ảnh lên quá nhanh. Vui lòng thử lại sau." });
+      }
+      const { buffer } = validateImageUpload(relative, body.data);
       const full = join(UPLOAD_DIR, relative);
       mkdirSync(dirname(full), { recursive: true });
-      writeFileSync(full, Buffer.from(String(body.data || ""), "base64"));
+      writeFileSync(full, buffer);
       return json(res, 201, { path: relative, url: `/uploads/${relative}` });
     } catch (error) {
       return json(res, 400, { error: error.message });

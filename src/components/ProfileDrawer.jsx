@@ -1,3 +1,4 @@
+import { isClosedStatus } from "../utils/petStatus";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { localApi } from "../localClient";
@@ -99,7 +100,7 @@ export default function ProfileDrawer({
                       <div className="font-semibold">{post.name || "Case thú cưng"}</div>
                       <div className="text-xs text-gray-500 mt-1">
                         {post.category === "rescue" ? "🚑 Cứu hộ" : post.category === "lost" ? "🔍 Đi lạc" : "🏡 Nhận nuôi"}
-                        {" · "}{["closed","delivered","completed"].includes(post.status) ? "Đã đóng" : "Đang mở"}
+                        {" · "}{isClosedStatus(post.status) ? "Đã đóng" : "Đang mở"}
                       </div>
                     </button>
                   ))}

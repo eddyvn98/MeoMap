@@ -1,6 +1,8 @@
 export const EMPTY_REPORT_FORM = {
   name: "",
   category: "lost",
+  animal: "cat",
+  color: "",
   description: "",
   photo: null,
   lat: null,

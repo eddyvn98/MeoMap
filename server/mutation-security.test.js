@@ -188,4 +188,44 @@ describe("mutation hardening", () => {
     ).toThrow("Filter column is not allowed");
   });
 
+  it("uses a valid legacy profile phone only on exact pet detail", () => {
+    const db = dbWithPet();
+    db.profiles[0].phone = "0907654321";
+    delete db.pets[0].contact_type;
+    delete db.pets[0].contact_value;
+
+    const pet = executeQuery(
+      {
+        table: "pets",
+        action: "select",
+        filters: [{ op: "eq", column: "id", value: "pet-1" }],
+        single: "single",
+      },
+      null,
+      db,
+    );
+
+    expect(pet.contact_type).toBe("phone");
+    expect(pet.contact_value).toBe("0907654321");
+  });
+
+  it("keeps rescue records bound to their original case", () => {
+    const db = dbWithPet();
+    const rescuer = { id: "rescuer-1", email: "r@example.com" };
+
+    const updated = executeQuery(
+      {
+        table: "rescue_appeals",
+        action: "update",
+        filters: [{ op: "eq", column: "id", value: "appeal-1" }],
+        payload: { case_id: "other-case", content: "Update" },
+        single: "single",
+      },
+      rescuer,
+      db,
+    );
+
+    expect(updated.case_id).toBe("pet-1");
+  });
+
 });

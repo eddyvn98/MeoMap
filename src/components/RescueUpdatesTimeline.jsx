@@ -5,12 +5,14 @@ import { localApi } from "../localClient";
  * Timeline hiển thị tất cả cập nhật từ người cứu
  * Đọc từ rescue_updates table
  */
-export default function RescueUpdatesTimeline({ caseId }) {
+export default function RescueUpdatesTimeline({ caseId, refreshKey = 0 }) {
   const [updates, setUpdates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let active = true;
+
     const loadUpdates = async () => {
       setLoading(true);
       setError("");
@@ -21,6 +23,7 @@ export default function RescueUpdatesTimeline({ caseId }) {
         .eq("case_id", caseId)
         .order("created_at", { ascending: false });
 
+      if (!active) return;
       if (fetchError) {
         setError("Không tải được cập nhật");
         setUpdates([]);
@@ -31,7 +34,10 @@ export default function RescueUpdatesTimeline({ caseId }) {
     };
 
     if (caseId) loadUpdates();
-  }, [caseId]);
+    return () => {
+      active = false;
+    };
+  }, [caseId, refreshKey]);
 
   if (error) {
     return (

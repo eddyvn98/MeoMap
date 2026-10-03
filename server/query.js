@@ -128,7 +128,12 @@ function selectRows({ table, rows, filters, order, limit, columns }, user, db) {
     result = result.map((profile) => publicProfile(profile, user));
   } else if (table === "pets") {
     const includePrivateContact = isExactIdQuery(filters);
-    result = result.map((pet) => publicPet(pet, includePrivateContact));
+    result = result.map((pet) => {
+      const ownerProfile = includePrivateContact
+        ? db.profiles.find((profile) => profile.id === pet.owner_id)
+        : null;
+      return publicPet(pet, includePrivateContact, ownerProfile);
+    });
   } else {
     result = result.map((row) => publicRescueRecord(table, row));
   }

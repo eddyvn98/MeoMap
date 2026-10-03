@@ -1,12 +1,50 @@
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { extname } from "node:path";
+import { CORS_ORIGINS } from "./config.js";
+
+function sameHostOrigin(req, origin) {
+  try {
+    return new URL(origin).host === String(req.headers.host || "");
+  } catch {
+    return false;
+  }
+}
+
+export function isAllowedOrigin(req) {
+  const origin = String(req.headers.origin || "");
+  if (!origin) return true;
+  return sameHostOrigin(req, origin) || CORS_ORIGINS.includes(origin);
+}
+
+export function applyResponseHeaders(req, res) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "same-origin");
+  res.setHeader("Permissions-Policy", "geolocation=(self)");
+
+  const origin = String(req.headers.origin || "");
+  if (origin && isAllowedOrigin(req)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
+}
+
+export function writeCorsPreflight(req, res) {
+  if (!isAllowedOrigin(req)) {
+    return json(res, 403, { error: "Origin không được phép." });
+  }
+
+  res.writeHead(204, {
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    "Access-Control-Max-Age": "600",
+  });
+  return res.end();
+}
 
 export function json(res, status, body) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
     "Cache-Control": "no-store",
   });
   res.end(JSON.stringify(body));
@@ -16,16 +54,27 @@ export function readBody(req, maxBytes = 20 * 1024 * 1024) {
   return new Promise((resolveBody, reject) => {
     let total = 0;
     const chunks = [];
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
+
     req.on("data", (chunk) => {
+      if (settled) return;
       total += chunk.length;
       if (total > maxBytes) {
-        reject(new Error("Request too large"));
+        fail(new Error("Request too large"));
         req.destroy();
         return;
       }
       chunks.push(chunk);
     });
     req.on("end", () => {
+      if (settled) return;
+      settled = true;
       if (!chunks.length) return resolveBody({});
       try {
         resolveBody(JSON.parse(Buffer.concat(chunks).toString("utf8")));
@@ -33,7 +82,7 @@ export function readBody(req, maxBytes = 20 * 1024 * 1024) {
         reject(new Error("Invalid JSON"));
       }
     });
-    req.on("error", reject);
+    req.on("error", fail);
   });
 }
 
@@ -56,7 +105,6 @@ export function mimeType(path) {
     ".png": "image/png",
     ".webp": "image/webp",
     ".gif": "image/gif",
-    ".svg": "image/svg+xml",
     ".css": "text/css",
     ".js": "text/javascript",
     ".html": "text/html",

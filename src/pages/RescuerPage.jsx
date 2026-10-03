@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import RescuerDashboard from "../components/RescuerDashboard";
 
@@ -23,12 +24,12 @@ export default function RescuerPage() {
           <p className="text-sm text-yellow-800 mb-4">
             Vui lòng đăng nhập để xem và quản lý ca cứu hộ
           </p>
-          <a
-            href="/login"
+          <Link
+            to="/login"
             className="inline-block px-6 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600"
           >
             📝 Đăng nhập
-          </a>
+          </Link>
         </div>
       </div>
     );

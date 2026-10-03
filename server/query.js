@@ -193,7 +193,13 @@ function updateRows({ table, rows, filters, payload, single }, user, db) {
     let next;
     if (table === "pets") next = sanitizePetUpdate(raw);
     else if (table === "profiles") next = sanitizeProfileInput(raw);
-    else next = sanitizeRescueRecord(table, { ...row, ...raw });
+    else {
+      next = sanitizeRescueRecord(table, {
+        ...row,
+        ...raw,
+        case_id: row.case_id,
+      });
+    }
 
     if (!authorizeMutation(table, "update", user, row, next, db)) {
       throw queryError("Không có quyền cập nhật.", 403);

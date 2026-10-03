@@ -11,6 +11,15 @@ const PET_STATUSES = new Set([
   "Abandoned",
 ]);
 const CONTACT_TYPES = new Set(["phone", "facebook", "email"]);
+const ANIMAL_TYPES = new Set(["cat", "dog"]);
+const PET_COLORS = new Set([
+  "white",
+  "black",
+  "orange",
+  "gray",
+  "mixed",
+  "other",
+]);
 
 export const OWNER_PET_UPDATE_FIELDS = new Set([
   "name",
@@ -102,10 +111,18 @@ function applyPetTextFields(target, source) {
     target.district = cleanText(source.district, 120);
   }
   if ("animal" in source) {
-    target.animal = cleanText(source.animal, 40);
+    const animal = String(source.animal || "");
+    if (!ANIMAL_TYPES.has(animal)) {
+      throw badRequest("Loại thú cưng không hợp lệ.");
+    }
+    target.animal = animal;
   }
   if ("color" in source) {
-    target.color = cleanText(source.color, 40);
+    const color = String(source.color || "");
+    if (color && !PET_COLORS.has(color)) {
+      throw badRequest("Màu lông không hợp lệ.");
+    }
+    target.color = color || null;
   }
   if ("image_url" in source) {
     target.image_url = cleanPublicUrl(source.image_url);

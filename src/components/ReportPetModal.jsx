@@ -15,11 +15,7 @@ import {
   roundReportCoordinate,
 } from "./report/reportPetModel";
 
-export default function ReportPetModal({
-  isOpen,
-  onClose,
-  onSubmit,
-}) {
+export default function ReportPetModal({ isOpen, onClose, onSubmit }) {
   const [locationMode, setLocationMode] = useState("auto");
   const [formData, setFormData] = useState(EMPTY_REPORT_FORM);
   const [loadingLocation, setLoadingLocation] = useState(false);

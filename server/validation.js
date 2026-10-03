@@ -203,23 +203,70 @@ export function publicProfile(profile, user) {
 }
 
 export function publicPet(pet, includePrivateContact = false) {
-  if (includePrivateContact) return { ...pet };
-  const {
-    contact_type,
-    contact_value,
-    bank_account_number,
-    bank_account_name,
-    bank_name,
-    bank_qr_code_url,
-    ...safe
-  } = pet;
-  void contact_type;
-  void contact_value;
-  void bank_account_number;
-  void bank_account_name;
-  void bank_name;
-  void bank_qr_code_url;
+  const safe = {
+    id: pet.id,
+    owner_id: pet.owner_id,
+    name: pet.name,
+    category: pet.category,
+    status: pet.status,
+    district: pet.district ?? null,
+    description: pet.description ?? null,
+    lat: pet.lat ?? null,
+    lng: pet.lng ?? null,
+    image_url: pet.image_url ?? null,
+    animal: pet.animal ?? null,
+    color: pet.color ?? null,
+    rescuer_id: pet.rescuer_id ?? null,
+    created_at: pet.created_at,
+    updated_at: pet.updated_at,
+    completed_at: pet.completed_at ?? null,
+  };
+
+  if (includePrivateContact) {
+    safe.contact_type = pet.contact_type ?? null;
+    safe.contact_value = pet.contact_value ?? null;
+    safe.bank_account_number = pet.bank_account_number ?? null;
+    safe.bank_account_name = pet.bank_account_name ?? null;
+    safe.bank_name = pet.bank_name ?? null;
+    safe.bank_qr_code_url = pet.bank_qr_code_url ?? null;
+  }
   return safe;
+}
+
+export function publicRescueRecord(table, row) {
+  const base = {
+    id: row.id,
+    case_id: row.case_id,
+    rescuer_id: row.rescuer_id,
+    title: row.title,
+    content: row.content,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+
+  if (table === "rescue_appeals") {
+    return { ...base, status: row.status || "active" };
+  }
+
+  const safeUrls = (value) =>
+    Array.isArray(value)
+      ? value
+          .map((url) => {
+            try {
+              return cleanPublicUrl(url);
+            } catch {
+              return null;
+            }
+          })
+          .filter(Boolean)
+      : [];
+
+  return {
+    ...base,
+    spent_cost: Number(row.spent_cost || 0),
+    image_urls: safeUrls(row.image_urls),
+    video_urls: safeUrls(row.video_urls),
+  };
 }
 
 export function assertProfileSelectAllowed(filters) {

@@ -102,8 +102,13 @@ function applyPetTextFields(target, source) {
 function applyContactFields(target, source) {
   if (!("contact_type" in source) && !("contact_value" in source)) return;
 
-  const type = String(source.contact_type || "");
+  const type = String(source.contact_type || "").trim();
   let value = cleanText(source.contact_value, 300);
+  if (!type && !value) {
+    target.contact_type = null;
+    target.contact_value = null;
+    return;
+  }
   if (!CONTACT_TYPES.has(type) || !value) {
     throw badRequest("Thông tin liên hệ không hợp lệ.");
   }

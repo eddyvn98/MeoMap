@@ -1,25 +1,49 @@
 import http from "node:http";
 import { existsSync } from "node:fs";
 import { join, normalize } from "node:path";
-import { DIST_DIR, PORT, UPLOAD_DIR } from "./config.js";
+import {
+  DIST_DIR,
+  PORT,
+  REQUEST_TIMEOUT_MS,
+  UPLOAD_DIR,
+} from "./config.js";
 import { handleApi } from "./api.js";
-import { json, safeUploadPath, serveFile } from "./http.js";
+import {
+  applyResponseHeaders,
+  isAllowedOrigin,
+  json,
+  safeUploadPath,
+  serveFile,
+  writeCorsPreflight,
+} from "./http.js";
+
+let apiQueue = Promise.resolve();
+
+function enqueueApi(task) {
+  const next = apiQueue.then(task, task);
+  apiQueue = next.catch(() => {});
+  return next;
+}
 
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  applyResponseHeaders(req, res);
 
   if (req.method === "OPTIONS") {
-    res.writeHead(204, {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-    });
-    return res.end();
+    return writeCorsPreflight(req, res);
   }
+
+  if (!isAllowedOrigin(req)) {
+    return json(res, 403, { error: "Origin không được phép." });
+  }
+
+  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
   try {
     if (url.pathname.startsWith("/api/")) {
-      return await handleApi(req, res, url);
+      if (req.method === "GET") {
+        return await handleApi(req, res, url);
+      }
+      return await enqueueApi(() => handleApi(req, res, url));
     }
 
     if (url.pathname.startsWith("/uploads/")) {
@@ -50,12 +74,15 @@ const server = http.createServer(async (req, res) => {
   } catch (error) {
     console.error(error);
     if (!res.headersSent) {
-      json(res, 500, { error: error.message || "Internal server error" });
+      json(res, 500, { error: "Internal server error" });
     } else {
       res.end();
     }
   }
 });
+
+server.requestTimeout = REQUEST_TIMEOUT_MS;
+server.headersTimeout = Math.min(REQUEST_TIMEOUT_MS, 20000);
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`MeoMap local server: http://localhost:${PORT}`);

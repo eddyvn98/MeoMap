@@ -270,4 +270,56 @@ describe("business query flows", () => {
       ),
     ).toThrow("Mutation requires filters");
   });
+
+  it("blocks bulk profile enumeration and hides email from public profile reads", () => {
+    const db = createDb();
+
+    expect(() =>
+      executeQuery(
+        {
+          table: "profiles",
+          action: "select",
+        },
+        null,
+        db,
+      ),
+    ).toThrow("Profile query requires an id filter.");
+
+    const profile = executeQuery(
+      {
+        table: "profiles",
+        action: "select",
+        filters: [{ op: "eq", column: "id", value: "owner-1" }],
+        single: "single",
+      },
+      null,
+      db,
+    );
+
+    expect(profile.id).toBe("owner-1");
+    expect(profile.email).toBeUndefined();
+  });
+
+  it("rejects invalid pet coordinates", () => {
+    const db = createDb();
+
+    expect(() =>
+      executeQuery(
+        {
+          table: "pets",
+          action: "insert",
+          payload: {
+            name: "Bad pin",
+            category: "lost",
+            status: "available",
+            lat: 999,
+            lng: 106.7,
+          },
+        },
+        owner,
+        db,
+      ),
+    ).toThrow("Tọa độ không hợp lệ.");
+  });
+
 });

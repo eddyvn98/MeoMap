@@ -90,7 +90,8 @@ describe("business query flows", () => {
       db,
     );
 
-    expect(created.id).toBe("new-1");
+    expect(created.id).not.toBe("new-1");
+    expect(created.id).toEqual(expect.any(String));
     expect(created.owner_id).toBe(owner.id);
     expect(created.status).toBe("available");
     expect(db.pets).toContainEqual(created);

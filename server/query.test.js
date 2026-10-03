@@ -138,6 +138,7 @@ describe("business query flows", () => {
 
     expect(row.id).toBe("lost-1");
     expect(row.profiles.name).toBe("Owner One");
+    expect(row.profiles.email).toBeUndefined();
   });
 
   it("lets the owner close their own case", () => {
@@ -270,4 +271,5 @@ describe("business query flows", () => {
       ),
     ).toThrow("Mutation requires filters");
   });
+
 });

@@ -15,7 +15,7 @@ function MapFilters({ filters, setFilters }) {
         border: "1px solid #e5e7eb",
         borderRadius: 12,
         boxShadow: "0 8px 30px rgba(0,0,0,0.16)",
-        maxHeight: expanded ? 520 : 56,
+        maxHeight: expanded ? 620 : 56,
         overflow: "hidden",
         transition: "max-height 0.3s ease, box-shadow 0.2s ease",
         width: 320,
@@ -38,7 +38,7 @@ function MapFilters({ filters, setFilters }) {
       </div>
 
       {expanded && (
-        <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10, maxHeight: 440, overflowY: "auto" }}>
+        <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10, maxHeight: 540, overflowY: "auto" }}>
           {/* Tìm kiếm theo tên */}
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Tìm theo tên</label>
@@ -56,6 +56,19 @@ function MapFilters({ filters, setFilters }) {
                 outline: "none",
               }}
             />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Trạng thái</label>
+            <select
+              value={filters.status || "open"}
+              onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+              style={{ width: "100%", padding: 6, border: "1px solid #d1d5db", borderRadius: 4, fontSize: 12 }}
+            >
+              <option value="open">Đang mở</option>
+              <option value="closed">Đã đóng</option>
+              <option value="all">Tất cả</option>
+            </select>
           </div>
 
           {/* Nhóm bài */}
@@ -99,6 +112,23 @@ function MapFilters({ filters, setFilters }) {
               <option value="all">Tất cả</option>
               <option value="cat">Mèo</option>
               <option value="dog">Chó</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Màu lông</label>
+            <select
+              value={filters.color || "all"}
+              onChange={(e) => setFilters((f) => ({ ...f, color: e.target.value }))}
+              style={{ width: "100%", padding: 6, border: "1px solid #d1d5db", borderRadius: 4, fontSize: 12 }}
+            >
+              <option value="all">Tất cả</option>
+              <option value="white">Trắng</option>
+              <option value="black">Đen</option>
+              <option value="orange">Vàng / cam</option>
+              <option value="gray">Xám</option>
+              <option value="mixed">Nhiều màu</option>
+              <option value="other">Khác</option>
             </select>
           </div>
 

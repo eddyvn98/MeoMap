@@ -1,3 +1,4 @@
+import { isClosedStatus } from "../utils/petStatus";
 import { useEffect, useState } from "react";
 import { localApi } from "../localClient";
 import CaseContact from "./CaseContact";
@@ -5,7 +6,7 @@ import CaseContact from "./CaseContact";
 export default function AdoptPetDetail({ pet, user, isOwner }) {
   const [owner, setOwner] = useState(null);
   const [closing, setClosing] = useState(false);
-  const isClosed = ["closed", "delivered", "completed"].includes(pet.status);
+  const isClosed = isClosedStatus(pet.status);
 
   useEffect(() => {
     const loadOwner = async () => {

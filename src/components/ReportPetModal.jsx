@@ -209,7 +209,7 @@ export default function ReportPetModal({
               {[
                 ["phone", "📱 Số điện thoại"],
                 ["facebook", "f Facebook"],
-                ["google", "G Google"],
+                ["email", "✉️ Email"],
               ].map(([value, label]) => (
                 <button
                   key={value}

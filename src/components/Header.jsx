@@ -37,17 +37,41 @@ export default function Header({ setAuthModalOpen, setReportModalOpen, onOpenPro
     <header style={{ padding:"10px 18px", background:"#fff", borderBottom:"1px solid #eee", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
       <Link to="/" style={{ textDecoration:"none", color:"#2cb6b5", fontSize:22, fontWeight:800 }}>MeoMap</Link>
       <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap", justifyContent:"flex-end" }}>
-        <Link to="/rescuer"><button style={{...buttonStyle, background:"#fff7ed", color:"#c2410c"}}>🚑 Cứu hộ</button></Link>
-        <button onClick={() => onOpenGuide?.()} style={{...buttonStyle, background:"#eef2ff", color:"#4338ca"}}>❓ Hướng dẫn</button>
+        <Link
+          to="/rescuer"
+          style={{ ...buttonStyle, background: "#fff7ed", color: "#c2410c", textDecoration: "none" }}
+        >
+          🚑 Cứu hộ
+        </Link>
+        <button
+          onClick={() => (onOpenGuide ? onOpenGuide() : navigate("/how-it-works"))}
+          style={{ ...buttonStyle, background: "#eef2ff", color: "#4338ca" }}
+        >
+          ❓ Hướng dẫn
+        </button>
         {user ? (
           <>
             <button ref={profileBtnRef} onClick={openProfile} style={{...buttonStyle, background:"#f3f4f6", color:"#374151"}}>Trang cá nhân</button>
             <button onClick={handleLogout} style={{...buttonStyle, background:"#fee2e2", color:"#b91c1c"}}>Đăng xuất</button>
           </>
         ) : (
-          <button onClick={() => setAuthModalOpen?.(true)} style={{...buttonStyle, background:"#2cb6b5", color:"#fff"}}>Đăng nhập</button>
+          <button
+            onClick={() =>
+              setAuthModalOpen ? setAuthModalOpen(true) : navigate("/login")
+            }
+            style={{ ...buttonStyle, background: "#2cb6b5", color: "#fff" }}
+          >
+            Đăng nhập
+          </button>
         )}
-        <button onClick={() => setReportModalOpen?.(true)} style={{...buttonStyle, background:"#ff7f32", color:"#fff"}}>+ Đăng case</button>
+        <button
+          onClick={() =>
+            setReportModalOpen ? setReportModalOpen(true) : navigate("/report")
+          }
+          style={{ ...buttonStyle, background: "#ff7f32", color: "#fff" }}
+        >
+          + Đăng case
+        </button>
       </div>
     </header>
   );

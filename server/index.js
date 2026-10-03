@@ -74,7 +74,10 @@ const server = http.createServer(async (req, res) => {
   } catch (error) {
     console.error(error);
     if (!res.headersSent) {
-      json(res, 500, { error: "Internal server error" });
+      const status = Number(error.status) || 500;
+      json(res, status, {
+        error: status < 500 ? error.message : "Internal server error",
+      });
     } else {
       res.end();
     }

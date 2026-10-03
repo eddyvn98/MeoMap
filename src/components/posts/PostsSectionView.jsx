@@ -19,10 +19,8 @@ const TYPE_ICON = {
 
 const STATUS_OPTIONS = [
   { value: "all", label: "Tất cả" },
-  { value: "available", label: "Có sẵn" },
-  { value: "pending_qr", label: "Chờ QR" },
+  { value: "open", label: "Đang mở" },
   { value: "closed", label: "Đã đóng" },
-  { value: "urgent", label: "Khẩn cấp" },
 ];
 
 const SORT_OPTIONS = [

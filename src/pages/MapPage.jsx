@@ -13,6 +13,8 @@ export default function MapPage() {
   const [form, setForm] = useState({
     name: "",
     status: "available",
+    animal: "cat",
+    color: "",
     district: "",
     imageUrl: "",
     description: "",
@@ -82,6 +84,8 @@ export default function MapPage() {
         name: form.name.trim(),
         status: form.status,
         category: "lost",
+        animal: form.animal,
+        ...(form.color ? { color: form.color } : {}),
         district: form.district.trim(),
         description: form.description.trim(),
         lat: roundReportCoordinate(position.lat),
@@ -120,6 +124,26 @@ export default function MapPage() {
         <Field label="Tiêu đề">
           <input name="name" value={form.name} onChange={handleChange} style={inputStyle} />
         </Field>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <Field label="Loài">
+            <select name="animal" value={form.animal} onChange={handleChange} style={inputStyle}>
+              <option value="cat">Mèo</option>
+              <option value="dog">Chó</option>
+            </select>
+          </Field>
+          <Field label="Màu lông">
+            <select name="color" value={form.color} onChange={handleChange} style={inputStyle}>
+              <option value="">Chưa rõ</option>
+              <option value="white">Trắng</option>
+              <option value="black">Đen</option>
+              <option value="orange">Vàng / cam</option>
+              <option value="gray">Xám</option>
+              <option value="mixed">Nhiều màu</option>
+              <option value="other">Khác</option>
+            </select>
+          </Field>
+        </div>
 
         <Field label="Trạng thái">
           <select name="status" value={form.status} onChange={handleChange} style={inputStyle}>

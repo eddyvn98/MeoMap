@@ -31,12 +31,10 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
       .from("profiles")
       .select("id")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!existingProfile) {
       await localApi.from("profiles").insert({
-        id: user.id,
-        email: user.email,
         display_name:
           displayName ||
           user.user_metadata?.full_name ||
@@ -83,8 +81,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
       setError("Mật khẩu không khớp");
       return;
     }
-    if (password.length < 6) {
-      setError("Mật khẩu phải ít nhất 6 ký tự");
+    if (password.length < 8 || password.length > 128) {
+      setError("Mật khẩu phải từ 8 đến 128 ký tự");
       return;
     }
 
@@ -202,6 +200,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Nhập mật khẩu"
+              minLength={mode === "signup" ? 8 : undefined}
+              maxLength={128}
               required
             />
           </Field>
@@ -214,6 +214,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 placeholder="Nhập lại mật khẩu"
+                minLength={8}
+                maxLength={128}
                 required
               />
             </Field>

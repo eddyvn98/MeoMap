@@ -56,6 +56,14 @@ export function cleanPublicUrl(value) {
   throw badRequest("URL không hợp lệ.");
 }
 
+function safeStoredUrl(value) {
+  try {
+    return cleanPublicUrl(value);
+  } catch {
+    return null;
+  }
+}
+
 function validateCategory(value) {
   const category = String(value || "lost");
   if (!PET_CATEGORIES.has(category)) {
@@ -229,7 +237,7 @@ export function publicProfile(profile, user) {
   return {
     id: profile.id,
     display_name: profile.display_name || "",
-    avatar_url: profile.avatar_url || null,
+    avatar_url: safeStoredUrl(profile.avatar_url),
     phone: profile.phone || null,
     zalo: profile.zalo || null,
   };
@@ -246,7 +254,7 @@ export function publicPet(pet, includePrivateContact = false) {
     description: pet.description ?? null,
     lat: pet.lat ?? null,
     lng: pet.lng ?? null,
-    image_url: pet.image_url ?? null,
+    image_url: safeStoredUrl(pet.image_url),
     animal: pet.animal ?? null,
     color: pet.color ?? null,
     rescuer_id: pet.rescuer_id ?? null,
@@ -256,12 +264,23 @@ export function publicPet(pet, includePrivateContact = false) {
   };
 
   if (includePrivateContact) {
-    safe.contact_type = pet.contact_type ?? null;
-    safe.contact_value = pet.contact_value ?? null;
-    safe.bank_account_number = pet.bank_account_number ?? null;
-    safe.bank_account_name = pet.bank_account_name ?? null;
-    safe.bank_name = pet.bank_name ?? null;
-    safe.bank_qr_code_url = pet.bank_qr_code_url ?? null;
+    const contact = {};
+    try {
+      applyContactFields(contact, {
+        contact_type: pet.contact_type,
+        contact_value: pet.contact_value,
+      });
+    } catch {
+      contact.contact_type = null;
+      contact.contact_value = null;
+    }
+
+    safe.contact_type = contact.contact_type ?? null;
+    safe.contact_value = contact.contact_value ?? null;
+    safe.bank_account_number = cleanText(pet.bank_account_number, 64);
+    safe.bank_account_name = cleanText(pet.bank_account_name, 120);
+    safe.bank_name = cleanText(pet.bank_name, 120);
+    safe.bank_qr_code_url = safeStoredUrl(pet.bank_qr_code_url);
   }
   return safe;
 }
@@ -283,15 +302,7 @@ export function publicRescueRecord(table, row) {
 
   const safeUrls = (value) =>
     Array.isArray(value)
-      ? value
-          .map((url) => {
-            try {
-              return cleanPublicUrl(url);
-            } catch {
-              return null;
-            }
-          })
-          .filter(Boolean)
+      ? value.map(safeStoredUrl).filter(Boolean)
       : [];
 
   return {

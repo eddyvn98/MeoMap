@@ -160,19 +160,6 @@ export default function PostsSection({
 
   const sortPosts = (posts) => {
     const next = [...posts];
-
-    if (statusFilter !== "all") {
-      return next
-        .filter((post) => post.status?.toLowerCase() === statusFilter)
-        .sort((a, b) =>
-          sortBy === "newest"
-            ? new Date(b.updated_at || b.created_at) -
-              new Date(a.updated_at || a.created_at)
-            : new Date(a.updated_at || a.created_at) -
-              new Date(b.updated_at || b.created_at),
-        );
-    }
-
     return next.sort((a, b) =>
       sortBy === "newest"
         ? new Date(b.updated_at || b.created_at) -
